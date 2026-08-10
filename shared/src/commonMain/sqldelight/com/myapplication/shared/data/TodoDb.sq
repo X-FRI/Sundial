@@ -1,3 +1,5 @@
+import kotlin.Boolean;
+
 CREATE TABLE reminder_list (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -12,9 +14,9 @@ CREATE TABLE todo (
   title TEXT NOT NULL,
   note TEXT NOT NULL DEFAULT '',
   due_date INTEGER,
-  is_completed INTEGER NOT NULL DEFAULT 0,
+  is_completed INTEGER AS Boolean NOT NULL DEFAULT 0,
   completed_at INTEGER,
-  is_trashed INTEGER NOT NULL DEFAULT 0,
+  is_trashed INTEGER AS Boolean NOT NULL DEFAULT 0,
   trashed_at INTEGER,
   parent_id INTEGER,
   sort_position REAL NOT NULL DEFAULT 0,
