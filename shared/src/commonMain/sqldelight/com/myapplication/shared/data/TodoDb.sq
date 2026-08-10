@@ -1,0 +1,95 @@
+CREATE TABLE reminder_list (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  color_key TEXT NOT NULL,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE todo (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  list_id INTEGER NOT NULL REFERENCES reminder_list(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  due_date INTEGER,
+  is_completed INTEGER NOT NULL DEFAULT 0,
+  completed_at INTEGER,
+  is_trashed INTEGER NOT NULL DEFAULT 0,
+  trashed_at INTEGER,
+  parent_id INTEGER,
+  sort_position REAL NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_todo_list_trash ON todo(list_id, is_trashed);
+CREATE INDEX idx_todo_trash_due ON todo(is_trashed, due_date);
+CREATE INDEX idx_todo_parent ON todo(parent_id);
+
+insertList:
+INSERT INTO reminder_list(name, color_key, position, created_at)
+VALUES (?, ?, ?, ?);
+
+selectLists:
+SELECT * FROM reminder_list ORDER BY position, id;
+
+deleteList:
+DELETE FROM reminder_list WHERE id = ?;
+
+trashTodosInList:
+UPDATE todo SET is_trashed = 1, trashed_at = ? WHERE list_id = ? AND is_trashed = 0;
+
+insertTodo:
+INSERT INTO todo(list_id, title, note, due_date, is_completed, is_trashed, parent_id, sort_position, created_at)
+VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?);
+
+selectAllActive:
+SELECT * FROM todo WHERE is_trashed = 0 ORDER BY is_completed, due_date IS NULL, due_date, sort_position, id;
+
+selectByList:
+SELECT * FROM todo WHERE is_trashed = 0 AND list_id = ? ORDER BY is_completed, due_date IS NULL, due_date, sort_position, id;
+
+selectWithDueDate:
+SELECT * FROM todo WHERE is_trashed = 0 AND due_date IS NOT NULL ORDER BY due_date;
+
+selectToday:
+SELECT * FROM todo WHERE is_trashed = 0 AND due_date >= ? AND due_date < ? ORDER BY due_date;
+
+selectCompleted:
+SELECT * FROM todo WHERE is_trashed = 0 AND is_completed = 1 ORDER BY completed_at DESC;
+
+selectTrashed:
+SELECT * FROM todo WHERE is_trashed = 1 ORDER BY trashed_at DESC;
+
+selectSubTasks:
+SELECT * FROM todo WHERE is_trashed = 0 AND parent_id = ? ORDER BY sort_position, id;
+
+selectById:
+SELECT * FROM todo WHERE id = ?;
+
+searchTodos:
+SELECT * FROM todo WHERE is_trashed = 0 AND (title LIKE ? ESCAPE '\' OR note LIKE ? ESCAPE '\')
+ORDER BY is_completed, due_date IS NULL, due_date;
+
+updateCompleted:
+UPDATE todo SET is_completed = ?, completed_at = ? WHERE id = ?;
+
+updateTitle:
+UPDATE todo SET title = ? WHERE id = ?;
+
+updateNote:
+UPDATE todo SET note = ? WHERE id = ?;
+
+updateDueDate:
+UPDATE todo SET due_date = ? WHERE id = ?;
+
+moveToList:
+UPDATE todo SET list_id = ? WHERE id = ?;
+
+trashTodo:
+UPDATE todo SET is_trashed = 1, trashed_at = ? WHERE id = ?;
+
+restoreTodo:
+UPDATE todo SET is_trashed = 0, trashed_at = NULL WHERE id = ?;
+
+deleteTodo:
+DELETE FROM todo WHERE id = ?;
