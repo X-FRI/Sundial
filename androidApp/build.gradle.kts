@@ -1,7 +1,15 @@
+import java.util.Properties
+
 plugins {
     kotlin("multiplatform")
     id("com.android.application")
     id("org.jetbrains.compose")
+    id("org.jetbrains.kotlin.plugin.compose")
+}
+
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
 }
 
 kotlin {
@@ -28,11 +36,27 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+    signingConfigs {
+        if (keystoreProps.getProperty("keystore.storeFile") != null) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("keystore.storeFile"))
+                storePassword = keystoreProps.getProperty("keystore.storePassword")
+                keyAlias = keystoreProps.getProperty("keystore.keyAlias")
+                keyPassword = keystoreProps.getProperty("keystore.keyPassword")
+            }
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release")
+        }
+    }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
     kotlin {
-        jvmToolchain(17)
+        jvmToolchain(21)
     }
 }
