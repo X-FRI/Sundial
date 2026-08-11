@@ -113,4 +113,46 @@ class DateParserTest {
         assertEquals("明天", r.title)
         assertEquals(LocalDate(2026, 8, 12), r.dueDate?.date)
     }
+
+    @Test
+    fun englishCapitalized() {
+        val r = DateParser.parse("Next Monday meeting", today)
+        assertEquals("meeting", r.title)
+        assertEquals(LocalDate(2026, 8, 17), r.dueDate?.date)
+    }
+
+    @Test
+    fun englishDayAfterTomorrowUpper() {
+        val r = DateParser.parse("DAY AFTER TOMORROW review", today)
+        assertEquals("review", r.title)
+        assertEquals(LocalDate(2026, 8, 13), r.dueDate?.date)
+    }
+
+    @Test
+    fun tomorrowlandNotMangled() {
+        val r = DateParser.parse("tomorrowland concert", today)
+        assertEquals("tomorrowland concert", r.title)
+        assertNull(r.dueDate)
+    }
+
+    @Test
+    fun sundayZhRollsToThisWeek() {
+        val r = DateParser.parse("周日开会", today)
+        assertEquals("开会", r.title)
+        assertEquals(LocalDate(2026, 8, 16), r.dueDate?.date)
+    }
+
+    @Test
+    fun middayMarker() {
+        val r = DateParser.parse("中午12点 吃饭", today)
+        assertEquals("吃饭", r.title)
+        assertEquals(LocalTime(12, 0), r.dueDate?.time)
+    }
+
+    @Test
+    fun invalidHourIgnored() {
+        val r = DateParser.parse("25点 见", today)
+        assertNull(r.dueDate)
+        assertEquals("25点 见", r.title)
+    }
 }

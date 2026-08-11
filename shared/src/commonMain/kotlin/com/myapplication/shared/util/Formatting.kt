@@ -19,7 +19,7 @@ fun bucketOf(due: LocalDate, today: LocalDate): DueBucket {
         diff < 0 -> DueBucket.OVERDUE
         diff == 0 -> DueBucket.TODAY
         diff == 1 -> DueBucket.TOMORROW
-        diff < 7 - today.dayOfWeek.isoDayNumber -> DueBucket.THIS_WEEK
+        diff < 8 - today.dayOfWeek.isoDayNumber -> DueBucket.THIS_WEEK
         else -> DueBucket.LATER
     }
 }
@@ -34,18 +34,21 @@ fun bucketLabel(bucket: DueBucket): String = when (bucket) {
 
 private val weekdaysZh = arrayOf("", "一", "二", "三", "四", "五", "六", "日")
 
-fun formatDueDate(due: Instant?, tz: TimeZone = TimeZone.currentSystemDefault()): String {
+fun formatDueDate(due: Instant?, tz: TimeZone = TimeZone.currentSystemDefault()): String =
+    formatDueDate(due, tz, todayDate())
+
+fun formatDueDate(due: Instant?, tz: TimeZone, today: LocalDate): String {
     if (due == null) return ""
     val ldt = due.toLocalDateTime(tz)
     val date = ldt.date
-    val days = todayDate().daysUntil(date)
+    val days = today.daysUntil(date)
     val dateLabel = when (days) {
         0 -> "今天"
         -1 -> "昨天"
         1 -> "明天"
         else -> {
-            val todayDow = todayDate().dayOfWeek.isoDayNumber
-            if (date.dayOfWeek.isoDayNumber > todayDow && days in 2..6) "周${weekdaysZh[date.dayOfWeek.isoDayNumber]}"
+            val todayDow = today.dayOfWeek.isoDayNumber
+            if (date.dayOfWeek.isoDayNumber > todayDow && days in 2..7) "周${weekdaysZh[date.dayOfWeek.isoDayNumber]}"
             else "${date.monthNumber}月${date.dayOfMonth}日"
         }
     }

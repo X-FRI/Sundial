@@ -72,24 +72,26 @@ object DateParser {
         }
 
         if (date == null) {
-            val lower = title.lowercase()
+            val datMatch = Regex("""\bday after tomorrow\b""", RegexOption.IGNORE_CASE).find(title)
+            val tomorrowMatch = Regex("""\btomorrow\b""", RegexOption.IGNORE_CASE).find(title)
+            val todayMatch = Regex("""\btoday\b""", RegexOption.IGNORE_CASE).find(title)
             when {
-                lower.contains("day after tomorrow") -> {
+                datMatch != null -> {
                     date = today.plus(2, DateTimeUnit.DAY)
-                    title = removeToken(title, "day after tomorrow")
+                    title = removeToken(title, datMatch.value)
                 }
-                lower.contains("tomorrow") -> {
+                tomorrowMatch != null -> {
                     date = today.plus(1, DateTimeUnit.DAY)
-                    title = removeToken(title, "tomorrow")
+                    title = removeToken(title, tomorrowMatch.value)
                 }
-                lower.contains("today") -> {
+                todayMatch != null -> {
                     date = today
-                    title = removeToken(title, "today")
+                    title = removeToken(title, todayMatch.value)
                 }
                 else -> {
-                    Regex("next\\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)")
-                        .find(lower)?.let { m ->
-                            val target = weekdayEn.getValue(m.groupValues[1])
+                    Regex("""\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b""", RegexOption.IGNORE_CASE)
+                        .find(title)?.let { m ->
+                            val target = weekdayEn.getValue(m.groupValues[1].lowercase())
                             date = today.plus(
                                 (7 - today.dayOfWeek.isoDayNumber + target).toLong(),
                                 DateTimeUnit.DAY,
