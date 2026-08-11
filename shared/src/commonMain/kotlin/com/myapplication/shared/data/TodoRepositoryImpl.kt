@@ -188,19 +188,19 @@ class TodoRepositoryImpl(
     // ---- 命令（双写 outbox） ----
 
     override suspend fun ensureInbox(): Either<TodoError, Long> = either {
-        val lists = guard { db.todoDbQueries.selectLists().executeAsList() }.bind()
-        if (lists.isEmpty()) {
-            try {
-                db.transaction {
+        try {
+            db.transaction {
+                val lists = db.todoDbQueries.selectLists().executeAsList()
+                if (lists.isEmpty()) {
                     db.todoDbQueries.insertList("收件箱", "blue", 0, now, now, deviceId)
                     val row = db.todoDbQueries.selectLists().executeAsList().first()
                     appendListOutbox(row.toDto())
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                raise(TodoError.Persistence(e.message ?: "初始化收件箱失败"))
             }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            raise(TodoError.Persistence(e.message ?: "初始化收件箱失败"))
         }
         guard { db.todoDbQueries.selectLists().executeAsList().firstOrNull()?.id }.bind()
             ?: raise(TodoError.InboxNotFound)
