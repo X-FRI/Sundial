@@ -1,6 +1,7 @@
 package com.myapplication.shared.ui.detail
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -44,6 +46,7 @@ import com.myapplication.shared.ui.components.RemTextField
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.theme.ListColorOf
 import com.myapplication.shared.ui.theme.LocalRemColors
+import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemSpacing
 import com.myapplication.shared.ui.theme.RemType
 import com.myapplication.shared.util.formatDueDate
@@ -97,21 +100,45 @@ fun DetailScreen(
                 filled = false,
                 modifier = Modifier.weight(1f),
             )
+            if (current.dueDate != null) {
+                Spacer(Modifier.width(8.dp))
+                RemBadge(
+                    label = formatDueDate(current.dueDate),
+                    bg = colors.upcomingBadgeBg,
+                    tint = colors.upcomingBadgeText,
+                    onClick = { showDatePicker = true },
+                )
+            }
             RemIconButton(IconName.Close, "关闭详情", onClick = mainVm::back, size = 16.dp)
         }
+        if (current.isCompleted && current.completedAt != null) {
+            Spacer(Modifier.height(4.dp))
+            androidx.compose.foundation.text.BasicText(
+                "已完成 ${formatDueDate(current.completedAt)}",
+                style = RemType.text12.copy(color = colors.textTertiary),
+            )
+        }
         Spacer(Modifier.height(10.dp))
-        RemTextField(
-            value = noteText,
-            onValueChange = {
-                noteText = it
-                detailVm.setNote(it)
-            },
-            placeholder = "备注…",
-            singleLine = false,
-            minLines = 3,
-            filled = false,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .background(colors.cardBg, RoundedCornerShape(RemRadii.r6))
+                .border(1.dp, colors.cardBorder, RoundedCornerShape(RemRadii.r6))
+                .padding(4.dp),
+        ) {
+            RemTextField(
+                value = noteText,
+                onValueChange = {
+                    noteText = it
+                    detailVm.setNote(it)
+                },
+                placeholder = "备注…",
+                singleLine = false,
+                minLines = 3,
+                filled = false,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         Spacer(Modifier.height(4.dp))
 
         Row(
@@ -125,6 +152,8 @@ fun DetailScreen(
                 .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            RemIcon(IconName.Calendar, colors.textTertiary, Modifier.size(14.dp))
+            Spacer(Modifier.width(8.dp))
             androidx.compose.foundation.text.BasicText("日期", style = RemType.text13.copy(color = colors.textSecondary))
             Spacer(Modifier.weight(1f))
             if (current.dueDate != null) {
@@ -139,6 +168,24 @@ fun DetailScreen(
             }
         }
 
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { mainVm.toggleFlag(current) }
+                .drawBehind { drawLine(colors.rowDivider, Offset(0f, size.height), Offset(size.width, size.height), 1f) }
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            androidx.compose.foundation.text.BasicText("旗标", style = RemType.text13.copy(color = colors.textSecondary))
+            Spacer(Modifier.weight(1f))
+            RemIcon(IconName.Flag, if (current.flag) colors.flagColor else colors.textTertiary, Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            androidx.compose.foundation.text.BasicText(if (current.flag) "已标记" else "未标记", style = RemType.text13.copy(color = if (current.flag) colors.textPrimary else colors.textTertiary))
+        }
+
         val currentList = lists.firstOrNull { it.id == current.listId }
         Row(
             Modifier
@@ -151,6 +198,8 @@ fun DetailScreen(
                 .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            RemIcon(IconName.Tray, colors.textTertiary, Modifier.size(14.dp))
+            Spacer(Modifier.width(8.dp))
             androidx.compose.foundation.text.BasicText("列表", style = RemType.text13.copy(color = colors.textSecondary))
             Spacer(Modifier.weight(1f))
             Box(Modifier.size(10.dp).background(ListColorOf[currentList?.colorKey] ?: Color.Gray, CircleShape))
@@ -162,7 +211,11 @@ fun DetailScreen(
         }
         Spacer(Modifier.height(16.dp))
 
-        androidx.compose.foundation.text.BasicText("子任务", style = RemType.label13.copy(color = colors.textTertiary))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RemIcon(IconName.ChevronDown, colors.textTertiary, Modifier.size(14.dp))
+            Spacer(Modifier.width(6.dp))
+            androidx.compose.foundation.text.BasicText("子任务", style = RemType.label13.copy(color = colors.textTertiary))
+        }
         Spacer(Modifier.height(6.dp))
         subtasks.forEach { sub ->
             Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -195,25 +248,39 @@ fun DetailScreen(
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(16.dp))
-        RemButton(
-            "移到垃圾箱",
-            onClick = {
-                mainVm.trash(current)
-                mainVm.back()
-            },
-            danger = true,
-            modifier = Modifier.fillMaxWidth(),
+        Spacer(Modifier.height(8.dp))
+        androidx.compose.foundation.text.BasicText(
+            "创建于 ${current.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).let { "${it.monthNumber} 月 ${it.dayOfMonth} 日" }}",
+            style = RemType.text12.copy(color = colors.textTertiary),
         )
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            RemButton("移到列表", onClick = { showListDialog = true }, modifier = Modifier.weight(1f))
+            Spacer(Modifier.width(8.dp))
+            RemButton(
+                "移到垃圾箱",
+                onClick = {
+                    mainVm.trash(current)
+                    mainVm.back()
+                },
+                danger = true,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 
     if (showDatePicker) {
         RemDatePicker(
             initialDate = current?.dueDate?.toLocalDateTime(TimeZone.currentSystemDefault())?.date,
+            initialTime = current?.dueDate?.toLocalDateTime(TimeZone.currentSystemDefault())?.time?.takeIf { !(it.hour == 0 && it.minute == 0) },
             onPick = { date ->
                 val time = current?.dueDate
                     ?.toLocalDateTime(TimeZone.currentSystemDefault())?.time
                     ?: LocalTime(9, 0)
                 detailVm.setDueDate(LocalDateTime(date, time))
+            },
+            onPickTime = { h, m ->
+                if (h == -1 && m == -1) detailVm.setTimeNull() else detailVm.setTime(h, m)
             },
             onDismiss = { showDatePicker = false },
         )

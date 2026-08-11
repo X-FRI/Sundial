@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,6 +27,7 @@ import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemType
 import com.myapplication.shared.util.todayDate
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.YearMonth
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minusMonth
@@ -36,7 +38,9 @@ import kotlinx.datetime.plusMonth
 @Composable
 fun RemDatePicker(
     initialDate: LocalDate?,
+    initialTime: LocalTime? = null,
     onPick: (LocalDate) -> Unit,
+    onPickTime: (Int, Int) -> Unit = { _, _ -> },
     onDismiss: () -> Unit,
 ) {
     val colors = LocalRemColors.current
@@ -116,5 +120,30 @@ fun RemDatePicker(
                     }
                 }
             }
+            Spacer(Modifier.height(12.dp))
+            TimePickerRow(initialTime = initialTime, onPickTime = onPickTime)
         })
+}
+
+@Composable
+private fun TimePickerRow(initialTime: LocalTime?, onPickTime: (Int, Int) -> Unit) {
+    val colors = LocalRemColors.current
+    var hour by remember { mutableStateOf(initialTime?.hour ?: 9) }
+    var minute by remember { mutableStateOf(initialTime?.minute ?: 0) }
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.foundation.text.BasicText("时间", style = RemType.text13.copy(color = colors.textSecondary))
+        Spacer(Modifier.weight(1f))
+        RemIconButton(IconName.ChevronBack, "减一小时", onClick = { hour = (hour + 23) % 24 }, size = 14.dp)
+        androidx.compose.foundation.text.BasicText(
+            "${hour.toString().padStart(2, '0')} : ${minute.toString().padStart(2, '0')}",
+            style = RemType.title15.copy(color = colors.textPrimary),
+        )
+        RemIconButton(IconName.ChevronRight, "加一小时", onClick = { hour = (hour + 1) % 24 }, size = 14.dp)
+        Spacer(Modifier.width(4.dp))
+        RemIconButton(IconName.ChevronBack, "减五分钟", onClick = { minute = (minute + 55) % 60 }, size = 14.dp)
+        androidx.compose.foundation.text.BasicText("分", style = RemType.text12.copy(color = colors.textTertiary))
+        RemIconButton(IconName.ChevronRight, "加五分钟", onClick = { minute = (minute + 5) % 60 }, size = 14.dp)
+        Spacer(Modifier.width(8.dp))
+        RemButton("清除时间", onClick = { onPickTime(-1, -1) })
+    }
 }

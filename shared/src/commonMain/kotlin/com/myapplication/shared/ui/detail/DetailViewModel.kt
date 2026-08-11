@@ -11,8 +11,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
+import com.myapplication.shared.util.todayDate
 
 class DetailViewModel(
     private val repository: TodoRepository,
@@ -40,6 +43,23 @@ class DetailViewModel(
         viewModelScope.launch {
             repository.setDueDate(todoId, due?.toInstant(TimeZone.currentSystemDefault()))
         }
+    }
+
+    fun setTime(hour: Int, minute: Int) {
+        val current = todo.value ?: return
+        val base = current.dueDate
+            ?.toLocalDateTime(TimeZone.currentSystemDefault())
+            ?: LocalDateTime(todayDate(), LocalTime(hour, minute))
+        val ldt = LocalDateTime(base.date, LocalTime(hour, minute))
+        viewModelScope.launch { repository.setDueDate(todoId, ldt.toInstant(TimeZone.currentSystemDefault())) }
+    }
+
+    fun setTimeNull() {
+        val current = todo.value ?: return
+        if (current.dueDate == null) return
+        val ldt = current.dueDate.toLocalDateTime(TimeZone.currentSystemDefault())
+        val noTime = LocalDateTime(ldt.date, LocalTime(0, 0))
+        viewModelScope.launch { repository.setDueDate(todoId, noTime.toInstant(TimeZone.currentSystemDefault())) }
     }
 
     fun moveToList(listId: Long) {
