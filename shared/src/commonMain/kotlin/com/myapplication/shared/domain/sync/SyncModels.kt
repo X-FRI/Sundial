@@ -1,5 +1,6 @@
 package com.myapplication.shared.domain.sync
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 sealed interface SyncMode {
@@ -20,32 +21,32 @@ enum class SyncAction { UPSERT, DELETE }
 
 @Serializable
 data class TodoRowDto(
-    val id: Long,
-    val listId: Long,
-    val title: String,
-    val note: String,
-    val dueDate: Long?,
-    val isCompleted: Boolean,
-    val completedAt: Long?,
-    val isTrashed: Boolean,
-    val trashedAt: Long?,
-    val parentId: Long?,
-    val sortPosition: Double,
-    val flag: Boolean,
-    val createdAt: Long,
-    val updatedAt: Long,
-    val updatedBy: String,
+    @SerialName("id") val id: Long,
+    @SerialName("list_id") val listId: Long,
+    @SerialName("title") val title: String,
+    @SerialName("note") val note: String,
+    @SerialName("due_date") val dueDate: Long?,
+    @SerialName("is_completed") val isCompleted: Boolean,
+    @SerialName("completed_at") val completedAt: Long?,
+    @SerialName("is_trashed") val isTrashed: Boolean,
+    @SerialName("trashed_at") val trashedAt: Long?,
+    @SerialName("parent_id") val parentId: Long?,
+    @SerialName("sort_position") val sortPosition: Double,
+    @SerialName("flag") val flag: Boolean,
+    @SerialName("created_at") val createdAt: Long,
+    @SerialName("updated_at") val updatedAt: Long,
+    @SerialName("updated_by") val updatedBy: String,
 )
 
 @Serializable
 data class ListRowDto(
-    val id: Long,
-    val name: String,
-    val colorKey: String,
-    val position: Int,
-    val createdAt: Long,
-    val updatedAt: Long,
-    val updatedBy: String,
+    @SerialName("id") val id: Long,
+    @SerialName("name") val name: String,
+    @SerialName("color_key") val colorKey: String,
+    @SerialName("position") val position: Int,
+    @SerialName("created_at") val createdAt: Long,
+    @SerialName("updated_at") val updatedAt: Long,
+    @SerialName("updated_by") val updatedBy: String,
 )
 
 data class SyncRow(

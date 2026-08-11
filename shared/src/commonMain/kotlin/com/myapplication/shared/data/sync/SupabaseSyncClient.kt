@@ -64,15 +64,27 @@ class SupabaseSyncClient(
     private suspend fun pushUpserts(rows: List<SyncRow>) {
         rows.groupBy { it.table }.forEach { (table, group) ->
             when (table) {
-                "todo" -> client.from("todo").upsert(group.map { Json.decodeFromString<TodoRowDto>(it.payload ?: "") })
-                "reminder_list" -> client.from("reminder_list").upsert(group.map { Json.decodeFromString<ListRowDto>(it.payload ?: "") })
+                "todo" -> client.from("todo").upsert(group.map { row ->
+                    if (row.payload == null) {
+                        throw IllegalStateException("UPSERT payload missing for row ${row.rowId}")
+                    }
+                    Json.decodeFromString<TodoRowDto>(row.payload)
+                })
+                "reminder_list" -> client.from("reminder_list").upsert(group.map { row ->
+                    if (row.payload == null) {
+                        throw IllegalStateException("UPSERT payload missing for row ${row.rowId}")
+                    }
+                    Json.decodeFromString<ListRowDto>(row.payload)
+                })
             }
         }
     }
 
     private suspend fun pushDeletes(rows: List<SyncRow>) {
         rows.forEach { row ->
-            client.from(row.table).delete { filter { eq("id", row.rowId) } }
+            when (row.table) {
+                "todo", "reminder_list" -> client.from(row.table).delete { filter { eq("id", row.rowId) } }
+            }
         }
     }
 
