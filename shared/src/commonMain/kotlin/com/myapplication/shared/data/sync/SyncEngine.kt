@@ -8,13 +8,14 @@ import com.myapplication.shared.domain.sync.SyncCoordinator
 import com.myapplication.shared.domain.sync.SyncError
 import com.myapplication.shared.domain.sync.SyncStatus
 import kotlin.time.Clock
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -52,28 +53,33 @@ class SyncEngine(
         remoteJob?.cancel()
         pushJob = null
         remoteJob = null
-        scope.launch { runCatching { client.close() } }
+        val old = client
         client = NoopSyncClient()
         coordinator = null
+        scope.launch { runCatching { old.close() } }
     }
 
     private fun startPushLoop() {
         pushJob = scope.launch {
             while (isActive) {
-                when (val result = runCatching { coordinator?.drainOutbox() }.getOrNull()) {
-                    is Either.Left -> _status.value = _status.value.copy(
-                        connected = false,
-                        lastError = result.value.message(),
-                    )
-                    is Either.Right -> if (result.value > 0) {
-                        _status.value = _status.value.copy(
+                try {
+                    when (val result = coordinator?.drainOutbox()) {
+                        null -> Unit
+                        is Either.Left -> _status.value = _status.value.copy(
+                            connected = false,
+                            lastError = result.value.message(),
+                        )
+                        is Either.Right -> _status.value = _status.value.copy(
                             connected = true,
                             pendingCount = repository.observeOutboxCount().first(),
                             lastSyncAt = clock.now().toEpochMilliseconds(),
                             lastError = null,
                         )
                     }
-                    null -> Unit
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _status.value = _status.value.copy(connected = false, lastError = "同步失败: ${e.message}")
                 }
                 delay(2_000)
             }
@@ -83,19 +89,24 @@ class SyncEngine(
     private fun startRemoteLoop() {
         remoteJob = scope.launch {
             client.observeRemoteChanges()
-                .catch { e -> _status.value = _status.value.copy(connected = false, lastError = "实时订阅断开: ${e.message}") }
+                .retryWhen { cause, _ ->
+                    if (cause is CancellationException) throw cause
+                    _status.value = _status.value.copy(connected = false, lastError = "实时订阅断开: ${cause.message}")
+                    delay(2_000)
+                    true
+                }
                 .collect { row ->
                     try {
                         when (val result = coordinator?.applyRemote(row)) {
+                            null -> Unit
                             is Either.Left -> _status.value = _status.value.copy(lastError = "应用远端变更失败: ${result.value.message()}")
                             is Either.Right -> _status.value = _status.value.copy(
                                 connected = true,
                                 lastError = null,
                                 pendingCount = repository.observeOutboxCount().first(),
                             )
-                            null -> Unit
                         }
-                    } catch (e: kotlinx.coroutines.CancellationException) {
+                    } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
                         _status.value = _status.value.copy(lastError = "应用远端变更失败: ${e.message}")

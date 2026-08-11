@@ -19,7 +19,6 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -42,8 +41,6 @@ class SupabaseSyncClient(
         install(Realtime)
     }
 
-    private val connectionStatus = MutableStateFlow(false)
-
     override suspend fun push(rows: List<SyncRow>): Either<SyncError, Unit> =
         try {
             rows.groupBy { it.action }.forEach { (action, group) ->
@@ -52,12 +49,10 @@ class SupabaseSyncClient(
                     SyncAction.DELETE -> pushDeletes(group)
                 }
             }
-            connectionStatus.value = true
             Unit.right()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            connectionStatus.value = false
             SyncError.Transport(e.message ?: "同步失败").left()
         }
 
@@ -107,8 +102,6 @@ class SupabaseSyncClient(
             channels.forEach { (channel, _) -> runCatching { channel.unsubscribe() } }
         }
     }
-
-    override fun observeConnectionStatus(): Flow<Boolean> = connectionStatus
 
     override suspend fun close() {
         runCatching { client.close() }
