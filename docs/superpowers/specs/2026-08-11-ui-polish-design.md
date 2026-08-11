@@ -12,12 +12,15 @@
 
 ## 2. 数据模型改动（最小）
 
-`todo` 表加两列（直接改 schema，无迁移）：
+`todo` 表加三列（直接改 schema，无迁移）：
 
 - `flag INTEGER NOT NULL DEFAULT 0` —— 旗标（0/1）
 - `completedAt INTEGER` —— 完成时间（可空，epoch millis；null = 未完成）
+- `dueTime INTEGER` —— 到期时间（可空，分钟数：0-1439；null = 无时间）
 
-UI 改动：TodoItem 增加 `flag: Boolean`、`completedAt: Instant?`。完成时写 completedAt，取消完成时置 null。视图层只读展示。
+UI 改动：TodoItem 增加 `flag: Boolean`、`completedAt: Instant?`、`dueTime: Int?`。完成时写 completedAt，取消完成时置 null。视图层只读展示。
+
+**时间来源**：quick-add 已解析"15:00"（DateParser 支持），现补写 dueTime；RemDatePicker 增加时间选择（见 §6）。
 
 ## 3. 行内元数据（双行式，已确认）
 
@@ -33,6 +36,7 @@ UI 改动：TodoItem 增加 `flag: Boolean`、`completedAt: Instant?`。完成�
   - 今天：`#FFD60A` 20% 底 / `#B25000` 字（亮色）；暗色 `#FFD60A` 25% 底 / `#FFD60A` 字
   - 明天：中性灰 `#C7C7CC` 20% 底 / 系统灰字
   - 已过期：`#FF3B30` 15% 底 / `#FF3B30` 字 + "逾期"文案（如"昨天 · 逾期"）
+  - 有 dueTime 时显示"今天 15:00"格式，仅日期时显示"今天"
 - **旗标**：标题行右端、时间徽章左侧，`#FF9500` 填充旗形图标（复用 RemIcons 新增 FlagIcon），宽 16dp
 - **子任务计数**：第二行右端，`⌄ 3` 样式，`#C7C7CC`（暗色 `#48484A`），无子任务时不显示
 - **完成时间**：已完成的条目勾选圈实心 + 标题划线置灰（现有），其第二行显示"已完成 今天 15:00"（完成时间），代替备注预览
@@ -77,7 +81,7 @@ UI 改动：TodoItem 增加 `flag: Boolean`、`completedAt: Instant?`。完成�
 [备注块：灰字 #8E8E93 13sp，浅灰底 #F8F8FA 圆角 6dp，点击进入编辑态]
 ───────────────────────────────（1px 分隔线）
 [⚑ 旗标]  （点击切换，选中态 #FF9500 实心）
-[🗓 日期行] 今天 15:00 · 点击修改（RemDatePicker 复用）→ 显示"今天 15:00"
+[🗓 日期行] 今天 15:00 · 点击修改（RemDatePicker 复用，弹窗底部加时间行：时/分步进器 + "无时间"选项，选完写 dueDate+dueTime）→ 显示"今天 15:00"
 [▤ 列表行]  工作 →（现有切换列表对话框）
 [☑ 子任务] ⌄ 3（折叠显示行数；点击展开子任务区）
 [✓ 完成时间]（已完成条目显示）
@@ -109,8 +113,8 @@ UI 改动：TodoItem 增加 `flag: Boolean`、`completedAt: Instant?`。完成�
 
 ## 9. 测试
 
-- MainViewModel：flag 切换、completedAt 写入/清除（2 个新测试）
-- TodoRepositoryImpl：flag/completedAt 持久化（2 个新测试）
+- MainViewModel：flag 切换、completedAt 写入/清除、dueTime 写入/清除（3 个新测试）
+- TodoRepositoryImpl：flag/completedAt/dueTime 持久化（3 个新测试）
 - DateParser：不变
 - 现有 50 测试保持全绿
 
@@ -118,5 +122,5 @@ UI 改动：TodoItem 增加 `flag: Boolean`、`completedAt: Instant?`。完成�
 
 - 键盘快捷键（用户指定）
 - 拖拽排序 / 右键菜单 / 撤销
-- 通知、重复规则、到期时间字段（时间徽章仅展示现有 dueDate 的时间部分；quick-add 已解析时间但数据模型无 time 字段——本轮仅展示）
+- 通知、重复规则（时间/旗标/完成时间仅做展示与存储，不触发系统行为）
 - 移动端窄屏重设计（保持现状）
