@@ -97,6 +97,8 @@ object RemSpacing {
 
 object RemRadii {
     val r2 = 2.dp
+    val r3 = 16.dp
+    val r4 = 8.dp
 }
 
 val LocalRemColors = staticCompositionLocalOf { LightRemColors }

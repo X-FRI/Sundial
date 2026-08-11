@@ -111,7 +111,7 @@ class TodoRepositoryImpl(private val db: TodoDb) : TodoRepository {
         db.todoDbQueries.deleteList(listId)
     }
 
-    override suspend fun addTodo(listId: Long?, title: String, note: String, dueDate: Instant?, parentId: Long?) {
+    override suspend fun addTodo(listId: Long?, title: String, note: String, dueDate: Instant?, parentId: Long?, flag: Boolean) {
         val now = Clock.System.now().toEpochMilliseconds()
         val targetList = parentId
             ?.let { pid -> db.todoDbQueries.selectById(pid).executeAsOneOrNull()?.list_id }
@@ -120,13 +120,13 @@ class TodoRepositoryImpl(private val db: TodoDb) : TodoRepository {
                 ensureInbox()
                 db.todoDbQueries.selectLists().executeAsList().first().id
             }
-        db.todoDbQueries.insertTodo(targetList, title, note, dueDate?.toEpochMilliseconds(), parentId, 0.0, now)
+        db.todoDbQueries.insertTodo(targetList, title, note, dueDate?.toEpochMilliseconds(), parentId, 0.0, flag, now)
     }
 
     override suspend fun addSubTask(parentId: Long, title: String) {
         val parent = db.todoDbQueries.selectById(parentId).executeAsOneOrNull()
             ?: return
-        db.todoDbQueries.insertTodo(parent.list_id, title, "", null, parentId, 0.0, Clock.System.now().toEpochMilliseconds())
+        db.todoDbQueries.insertTodo(parent.list_id, title, "", null, parentId, 0.0, false, Clock.System.now().toEpochMilliseconds())
     }
 
     override suspend fun setCompleted(id: Long, completed: Boolean) {

@@ -51,7 +51,7 @@ private class FakeRepository : TodoRepository {
 
     override suspend fun addList(name: String, colorKey: String) = Unit
     override suspend fun deleteList(listId: Long) = Unit
-    override suspend fun addTodo(listId: Long?, title: String, note: String, dueDate: Instant?, parentId: Long?) {
+    override suspend fun addTodo(listId: Long?, title: String, note: String, dueDate: Instant?, parentId: Long?, flag: Boolean) {
         addedTitle = title
         addedListId = listId
         addedDue = dueDate

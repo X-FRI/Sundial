@@ -61,14 +61,15 @@ fun RemButton(
         tween(200),
         label = "btn-fg",
     )
+    val shape = RoundedCornerShape(RemRadii.r4)
     Box(
         modifier
-            .clip(RoundedCornerShape(RemRadii.r2))
+            .clip(shape)
             .background(bg)
-            .border(if (variant == RemButtonVariant.Danger) 1.dp else 0.dp, colors.border, RoundedCornerShape(RemRadii.r2))
+            .border(if (variant == RemButtonVariant.Danger) 1.dp else 0.dp, colors.border, shape)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .height(29.dp)
-            .padding(horizontal = 12.dp),
+            .height(32.dp)
+            .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.foundation.text.BasicText(

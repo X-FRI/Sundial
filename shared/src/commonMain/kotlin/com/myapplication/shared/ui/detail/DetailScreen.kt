@@ -1,11 +1,8 @@
 package com.myapplication.shared.ui.detail
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,6 +42,7 @@ import com.myapplication.shared.ui.components.RemEmptyState
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemIconButton
 import com.myapplication.shared.ui.components.RemTextField
+import com.myapplication.shared.ui.components.rememberHoverBackground
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.theme.ListColorOf
 import com.myapplication.shared.ui.theme.LocalRemColors
@@ -149,12 +147,7 @@ fun DetailScreen(
         Spacer(Modifier.height(4.dp))
 
         val dateInteraction = remember { MutableInteractionSource() }
-        val dateHovered by dateInteraction.collectIsHoveredAsState()
-        val dateBg by animateColorAsState(
-            if (dateHovered) colors.bgSecondary else Color.Transparent,
-            tween(200),
-            label = "date-row-bg",
-        )
+        val dateBg = rememberHoverBackground(dateInteraction)
         Row(
             Modifier
                 .fillMaxWidth()
@@ -185,12 +178,7 @@ fun DetailScreen(
         }
 
         val flagInteraction = remember { MutableInteractionSource() }
-        val flagHovered by flagInteraction.collectIsHoveredAsState()
-        val flagBg by animateColorAsState(
-            if (flagHovered) colors.bgSecondary else Color.Transparent,
-            tween(200),
-            label = "flag-row-bg",
-        )
+        val flagBg = rememberHoverBackground(flagInteraction)
         Row(
             Modifier
                 .fillMaxWidth()
@@ -211,12 +199,7 @@ fun DetailScreen(
 
         val currentList = lists.firstOrNull { it.id == current.listId }
         val listInteraction = remember { MutableInteractionSource() }
-        val listHovered by listInteraction.collectIsHoveredAsState()
-        val listBg by animateColorAsState(
-            if (listHovered) colors.bgSecondary else Color.Transparent,
-            tween(200),
-            label = "list-row-bg",
-        )
+        val listBg = rememberHoverBackground(listInteraction)
         Row(
             Modifier
                 .fillMaxWidth()

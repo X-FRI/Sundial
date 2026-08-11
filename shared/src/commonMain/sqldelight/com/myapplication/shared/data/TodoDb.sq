@@ -42,8 +42,8 @@ trashTodosInList:
 UPDATE todo SET is_trashed = 1, trashed_at = ? WHERE list_id = ? AND is_trashed = 0;
 
 insertTodo:
-INSERT INTO todo(list_id, title, note, due_date, is_completed, is_trashed, parent_id, sort_position, created_at)
-VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?);
+INSERT INTO todo(list_id, title, note, due_date, is_completed, is_trashed, parent_id, sort_position, flag, created_at)
+VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?);
 
 selectAllActive:
 SELECT * FROM todo WHERE is_trashed = 0 ORDER BY is_completed, due_date IS NULL, due_date, sort_position, id;

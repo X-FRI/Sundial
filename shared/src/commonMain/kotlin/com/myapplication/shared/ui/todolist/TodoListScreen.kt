@@ -1,7 +1,5 @@
 package com.myapplication.shared.ui.todolist
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -48,6 +46,7 @@ import com.myapplication.shared.ui.components.RemCheckbox
 import com.myapplication.shared.ui.components.RemEmptyState
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemTextField
+import com.myapplication.shared.ui.components.rememberHoverBackground
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Scope
 import com.myapplication.shared.ui.theme.LocalRemColors
@@ -70,6 +69,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
     val todos by mainVm.todos.collectAsState()
     val scope by mainVm.scope.collectAsState()
     val query by mainVm.searchQuery.collectAsState()
+    val lists by mainVm.lists.collectAsState()
     var quickAddFocus by remember { mutableStateOf(0) }
     var showCreate by remember { mutableStateOf(false) }
 
@@ -136,9 +136,11 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
 
     if (showCreate) {
         TodoFormDialog(
+            lists = lists,
+            defaultListId = (scope as? Scope.List)?.listId,
             onDismiss = { showCreate = false },
-            onConfirm = { title, note, due ->
-                mainVm.createTodo(title, note, due)
+            onConfirm = { title, note, due, flag, listId ->
+                mainVm.createTodo(title, note, due, flag, listId)
                 showCreate = false
             },
         )
@@ -387,12 +389,7 @@ fun TodoRow(
 ) {
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
-    val hovered by interactionSource.collectIsHoveredAsState()
-    val hoverBg by animateColorAsState(
-        if (hovered) colors.bgSecondary else Color.Transparent,
-        tween(200),
-        label = "row-hover",
-    )
+    val hoverBg = rememberHoverBackground(interactionSource)
     Row(
         Modifier
             .fillMaxWidth()

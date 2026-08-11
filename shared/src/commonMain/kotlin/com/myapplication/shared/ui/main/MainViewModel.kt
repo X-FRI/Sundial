@@ -105,13 +105,12 @@ class MainViewModel(private val repository: TodoRepository) : ViewModel() {
         }
     }
 
-    fun createTodo(title: String, note: String, due: LocalDateTime?) {
+    fun createTodo(title: String, note: String, due: LocalDateTime?, flag: Boolean = false, listId: Long? = null) {
         val trimmed = title.trim()
         if (trimmed.isEmpty()) return
-        val listId = (scope.value as? Scope.List)?.listId
         val instant = due?.toInstant(TimeZone.currentSystemDefault())
         viewModelScope.launch {
-            repository.addTodo(listId, trimmed, note.trim(), instant, null)
+            repository.addTodo(listId, trimmed, note.trim(), instant, null, flag)
         }
     }
 
