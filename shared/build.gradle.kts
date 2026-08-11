@@ -56,7 +56,7 @@ kotlin {
                 api("androidx.activity:activity-compose:1.13.0")
                 api("androidx.appcompat:appcompat:1.7.1")
                 api("androidx.core:core-ktx:1.16.0")
-                implementation("app.cash.sqldelight:sqlite-android:$sqlDelightVersion")
+                implementation("app.cash.sqldelight:android-driver:$sqlDelightVersion")
                 implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
             }
         }
