@@ -101,7 +101,7 @@ fun AppRoot(graph: AppGraph) {
                 DetailScreen(mainVm, graph, selectedId, Modifier.fillMaxSize())
             }
             else -> {
-                Column(Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxSize().background(colors.bgPrimary)) {
                     NarrowTopBar(mainVm)
                     TodoListScreen(mainVm, Modifier.weight(1f))
                     NarrowBottomNav(mainVm)

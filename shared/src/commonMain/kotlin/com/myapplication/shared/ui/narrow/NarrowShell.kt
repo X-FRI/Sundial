@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -22,6 +24,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -48,6 +52,10 @@ fun NarrowTopBar(mainVm: MainViewModel, modifier: Modifier = Modifier) {
         modifier
             .fillMaxWidth()
             .background(colors.bgPrimary)
+            .drawBehind {
+                drawLine(colors.border, Offset(0f, size.height), Offset(size.width, size.height), 1f)
+            }
+            .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         if (searching) {
@@ -90,7 +98,11 @@ fun NarrowBottomNav(mainVm: MainViewModel, modifier: Modifier = Modifier) {
         modifier
             .fillMaxWidth()
             .height(56.dp)
-            .background(colors.bgPrimary),
+            .background(colors.bgPrimary)
+            .drawBehind {
+                drawLine(colors.border, Offset(0f, 0f), Offset(size.width, 0f), 1f)
+            }
+            .navigationBarsPadding(),
     ) {
         NavItem(IconName.Today, "今天", scope == Scope.Today, Modifier.weight(1f)) { mainVm.selectScope(Scope.Today) }
         NavItem(IconName.Scheduled, "计划", scope == Scope.Scheduled, Modifier.weight(1f)) { mainVm.selectScope(Scope.Scheduled) }
@@ -114,7 +126,7 @@ private fun NavItem(icon: IconName, label: String, selected: Boolean, modifier: 
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        RemIcon(icon, tint, Modifier.size(20.dp))
+        RemIcon(icon, tint, Modifier.size(16.dp))
         Spacer(Modifier.height(2.dp))
         androidx.compose.foundation.text.BasicText(
             label,
