@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -36,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.myapplication.shared.di.AppGraph
@@ -59,9 +62,14 @@ fun DetailScreen(mainVm: MainViewModel, graph: AppGraph, todoId: Long) {
     val subtasks by detailVm.subtasks.collectAsState()
     val lists by detailVm.lists.collectAsState()
     val current = todo
+    val currentId = current?.id
+    var titleText by remember(currentId) { mutableStateOf(current?.title ?: "") }
+    var noteText by remember(currentId) { mutableStateOf(current?.note ?: "") }
     var showDatePicker by remember { mutableStateOf(false) }
     var showListMenu by remember { mutableStateOf(false) }
-    val datePickerState = if (showDatePicker) rememberDatePickerState() else null
+    val datePickerState = if (showDatePicker) {
+        rememberDatePickerState(initialSelectedDateMillis = current?.dueDate?.toEpochMilliseconds())
+    } else null
 
     Column(
         Modifier
@@ -79,15 +87,21 @@ fun DetailScreen(mainVm: MainViewModel, graph: AppGraph, todoId: Long) {
             return@Column
         }
         OutlinedTextField(
-            value = current.title,
-            onValueChange = detailVm::setTitle,
+            value = titleText,
+            onValueChange = {
+                titleText = it
+                detailVm.setTitle(it)
+            },
             modifier = Modifier.fillMaxWidth(),
             textStyle = MaterialTheme.typography.titleLarge,
         )
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
-            value = current.note,
-            onValueChange = detailVm::setNote,
+            value = noteText,
+            onValueChange = {
+                noteText = it
+                detailVm.setNote(it)
+            },
             placeholder = { Text("备注…（阶段二将支持 Markdown 富文本与图片）") },
             minLines = 4,
             modifier = Modifier.fillMaxWidth(),
@@ -174,6 +188,11 @@ fun DetailScreen(mainVm: MainViewModel, graph: AppGraph, todoId: Long) {
             placeholder = { Text("＋ 添加子任务…") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                detailVm.addSubTask(newSub)
+                newSub = ""
+            }),
             trailingIcon = {
                 TextButton(onClick = {
                     detailVm.addSubTask(newSub)
