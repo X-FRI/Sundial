@@ -2117,7 +2117,7 @@ Expected: 命中 `androidx.compose.material3.Text` 的 import 与用法、Theme.
 
 涉及文件：Sidebar.kt、TodoListScreen.kt、DetailScreen.kt、NarrowShell.kt、RemBadge.kt、RemButton.kt、RemTextField.kt、RemDialog.kt、RemEmptyState.kt、RemDatePicker.kt。
 
-`Theme.kt` 最终版：
+`Theme.kt` 最终版（注意：`androidx.compose.ui.platform.LocalTextStyle` 在此 CMP 版本不存在——Task 1 已验证，唯一可用的 material3.LocalTextStyle 随外壳一并移除；默认文字样式由各 Text 调用点显式传入，无需 provider）：
 
 ```kotlin
 package com.myapplication.shared.ui.theme
@@ -2125,14 +2125,12 @@ package com.myapplication.shared.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalTextStyle
 
 @Composable
 fun RemindersTheme(content: @Composable () -> Unit) {
     val colors = if (isSystemInDarkTheme()) DarkRemColors else LightRemColors
     CompositionLocalProvider(
         LocalRemColors provides colors,
-        LocalTextStyle provides RemType.text13.copy(color = colors.textPrimary),
     ) {
         content()
     }
