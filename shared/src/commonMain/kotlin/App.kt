@@ -103,7 +103,7 @@ fun AppRoot(graph: AppGraph) {
             else -> {
                 Column(Modifier.fillMaxSize().background(colors.bgPrimary)) {
                     NarrowTopBar(mainVm)
-                    TodoListScreen(mainVm, Modifier.weight(1f))
+                    TodoListScreen(mainVm, Modifier.weight(1f), showHeader = false)
                     NarrowBottomNav(mainVm)
                 }
             }

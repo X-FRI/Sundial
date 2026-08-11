@@ -64,7 +64,7 @@ import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.toLocalDateTime
 
 @Composable
-fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
+fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHeader: Boolean = true) {
     val colors = LocalRemColors.current
     val todos by mainVm.todos.collectAsState()
     val scope by mainVm.scope.collectAsState()
@@ -74,38 +74,40 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
     Column(modifier.background(colors.bgSecondary).remGrid(colors)) {
         val today = todayDate()
         val activeCount = todos.count { !it.isCompleted }
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, top = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            androidx.compose.foundation.text.BasicText(
-                scopeTitle(scope, query),
-                style = RemType.title18.copy(color = colors.textHigh),
-                modifier = Modifier.weight(1f),
-            )
-            val count = if (scope == Scope.Completed) todos.size else activeCount
-            if (count > 0) {
-                RemBadge(
-                    label = "$count 项",
-                    monospace = true,
-                    color = if (scope == Scope.Today) colors.error else null,
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            val plusInteraction = remember { MutableInteractionSource() }
-            val plusHovered by plusInteraction.collectIsHoveredAsState()
-            Box(
+        if (showHeader) {
+            Row(
                 Modifier
-                    .size(26.dp)
-                    .clip(RoundedCornerShape(RemRadii.r2))
-                    .background(if (plusHovered) colors.bgSecondary else Color.Transparent)
-                    .clickable(interactionSource = plusInteraction, indication = null) { quickAddFocus++ }
-                    .semantics { contentDescription = "新建待办" },
-                contentAlignment = Alignment.Center,
+                    .fillMaxWidth()
+                    .padding(start = 20.dp, end = 16.dp, top = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                RemIcon(IconName.Plus, colors.textHigh, Modifier.size(14.dp))
+                androidx.compose.foundation.text.BasicText(
+                    scopeTitle(scope, query),
+                    style = RemType.title18.copy(color = colors.textHigh),
+                    modifier = Modifier.weight(1f),
+                )
+                val count = if (scope == Scope.Completed) todos.size else activeCount
+                if (count > 0) {
+                    RemBadge(
+                        label = "$count 项",
+                        monospace = true,
+                        color = if (scope == Scope.Today) colors.error else null,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                val plusInteraction = remember { MutableInteractionSource() }
+                val plusHovered by plusInteraction.collectIsHoveredAsState()
+                Box(
+                    Modifier
+                        .size(26.dp)
+                        .clip(RoundedCornerShape(RemRadii.r2))
+                        .background(if (plusHovered) colors.bgSecondary else Color.Transparent)
+                        .clickable(interactionSource = plusInteraction, indication = null) { quickAddFocus++ }
+                        .semantics { contentDescription = "新建待办" },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    RemIcon(IconName.Plus, colors.textHigh, Modifier.size(14.dp))
+                }
             }
         }
         androidx.compose.foundation.text.BasicText(
@@ -114,7 +116,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
                 color = colors.textLow,
                 fontFamily = if (scope == Scope.Today || scope == Scope.Scheduled) FontFamily.Default else FontFamily.Monospace,
             ),
-            modifier = Modifier.padding(start = 20.dp, top = 4.dp, bottom = 8.dp),
+            modifier = Modifier.padding(start = 20.dp, top = if (showHeader) 4.dp else 10.dp, bottom = 8.dp),
         )
         if (scope != Scope.Trash) {
             QuickAddRow(mainVm, focusRequested = quickAddFocus)
