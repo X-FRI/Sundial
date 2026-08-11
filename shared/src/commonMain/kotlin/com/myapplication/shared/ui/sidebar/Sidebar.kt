@@ -2,9 +2,11 @@ package com.myapplication.shared.ui.sidebar
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +34,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.domain.model.TodoList
@@ -73,7 +76,7 @@ fun Sidebar(mainVm: MainViewModel) {
     ) {
         androidx.compose.foundation.text.BasicText(
             "提醒事项",
-            style = RemType.title18.copy(color = colors.textHigh),
+            style = RemType.text16.copy(fontWeight = FontWeight.SemiBold, color = colors.textHigh),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
         )
         Spacer(Modifier.height(RemSpacing.s12))
@@ -112,12 +115,18 @@ fun Sidebar(mainVm: MainViewModel) {
             }
         }
         Spacer(Modifier.weight(1f))
+        val addListSource = remember { MutableInteractionSource() }
+        val addListHovered by addListSource.collectIsHoveredAsState()
         Row(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp)
                 .clip(RoundedCornerShape(RemRadii.r2))
-                .clickable { showAddList = true }
+                .background(
+                    if (addListHovered) colors.bgSecondary.copy(alpha = 0.4f) else Color.Transparent,
+                    RoundedCornerShape(RemRadii.r2),
+                )
+                .clickable(interactionSource = addListSource, indication = null) { showAddList = true }
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -142,6 +151,7 @@ private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolea
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
+    val focused by interactionSource.collectIsFocusedAsState()
     Row(
         Modifier
             .fillMaxWidth()
@@ -150,10 +160,11 @@ private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolea
             .background(
                 when {
                     selected -> colors.bgSecondary
-                    hovered -> colors.bgSecondary.copy(alpha = 0.6f)
+                    hovered -> colors.bgSecondary.copy(alpha = 0.4f)
                     else -> Color.Transparent
                 },
             )
+            .border(if (focused) 1.dp else 0.dp, colors.focusRing, RoundedCornerShape(RemRadii.r2))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -164,7 +175,7 @@ private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolea
             label,
             style = RemType.text14.copy(
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                color = colors.textHigh,
+                color = if (selected) colors.textHigh else colors.textNormal,
             ),
             modifier = Modifier.weight(1f),
         )
@@ -195,6 +206,11 @@ private fun ListRow(
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
+    val focused by interactionSource.collectIsFocusedAsState()
+    val plusSource = remember { MutableInteractionSource() }
+    val plusHovered by plusSource.collectIsHoveredAsState()
+    val trashSource = remember { MutableInteractionSource() }
+    val trashHovered by trashSource.collectIsHoveredAsState()
     var confirmDelete by remember { mutableStateOf(false) }
     Row(
         Modifier
@@ -204,10 +220,11 @@ private fun ListRow(
             .background(
                 when {
                     selected -> colors.bgSecondary
-                    hovered -> colors.bgSecondary.copy(alpha = 0.6f)
+                    hovered -> colors.bgSecondary.copy(alpha = 0.4f)
                     else -> Color.Transparent
                 },
             )
+            .border(if (focused) 1.dp else 0.dp, colors.focusRing, RoundedCornerShape(RemRadii.r2))
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -217,15 +234,18 @@ private fun ListRow(
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(10.dp).background(ListColorOf[list.colorKey] ?: Color.Gray, CircleShape))
+        Box(Modifier.size(8.dp).background(ListColorOf[list.colorKey] ?: Color.Gray, CircleShape))
         Spacer(Modifier.width(8.dp))
         androidx.compose.foundation.text.BasicText(
             list.name,
-            style = RemType.text14.copy(color = colors.textHigh),
+            style = RemType.text12.copy(color = if (selected) colors.textHigh else colors.textNormal),
             modifier = Modifier.weight(1f),
         )
         if (count > 0) {
-            androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = colors.textLow))
+            androidx.compose.foundation.text.BasicText(
+                count.toString(),
+                style = RemType.text12.copy(color = colors.textLow, fontFamily = FontFamily.Monospace),
+            )
         }
         if (hovered) {
             Spacer(Modifier.width(4.dp))
@@ -233,7 +253,11 @@ private fun ListRow(
                 Modifier
                     .size(16.dp)
                     .clip(RoundedCornerShape(RemRadii.r2))
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect() }
+                    .background(
+                        if (plusHovered) colors.bgSecondary else Color.Transparent,
+                        RoundedCornerShape(RemRadii.r2),
+                    )
+                    .clickable(interactionSource = plusSource, indication = null) { onSelect() }
                     .semantics { contentDescription = "跳转到${list.name}" },
                 contentAlignment = Alignment.Center,
             ) {
@@ -245,12 +269,15 @@ private fun ListRow(
                     Modifier
                         .size(16.dp)
                         .clip(RoundedCornerShape(RemRadii.r2))
-                        .background(colors.bgSecondary, RoundedCornerShape(RemRadii.r2))
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { confirmDelete = true }
+                        .background(
+                            if (trashHovered) colors.bgSecondary else Color.Transparent,
+                            RoundedCornerShape(RemRadii.r2),
+                        )
+                        .clickable(interactionSource = trashSource, indication = null) { confirmDelete = true }
                         .semantics { contentDescription = "删除列表" },
                     contentAlignment = Alignment.Center,
                 ) {
-                    RemIcon(IconName.Trash, colors.textLow, Modifier.size(12.dp))
+                    RemIcon(IconName.Trash, if (trashHovered) colors.error else colors.textLow, Modifier.size(12.dp))
                 }
             }
         }

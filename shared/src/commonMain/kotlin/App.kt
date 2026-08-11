@@ -17,6 +17,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -79,7 +81,17 @@ fun AppRoot(graph: AppGraph) {
                         visible = selectedId != null,
                         enter = fadeIn(tween(150)) + slideInHorizontally(initialOffsetX = { it / 8 }),
                         exit = fadeOut(tween(100)),
-                        modifier = Modifier.width(340.dp),
+                        modifier = Modifier
+                            .width(340.dp)
+                            .background(colors.bgPrimary)
+                            .drawBehind {
+                                drawLine(
+                                    colors.border,
+                                    Offset(0f, 0f),
+                                    Offset(0f, size.height),
+                                    1f,
+                                )
+                            },
                     ) {
                         selectedId?.let { DetailScreen(mainVm, graph, it) }
                     }
