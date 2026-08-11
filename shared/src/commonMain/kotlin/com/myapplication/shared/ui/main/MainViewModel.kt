@@ -78,6 +78,7 @@ class MainViewModel(private val repository: TodoRepository) : ViewModel() {
     fun selectScope(s: Scope) {
         scope.value = s
         searchQuery.value = ""
+        back()
     }
 
     fun setSearch(q: String) {

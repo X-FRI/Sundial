@@ -163,4 +163,12 @@ class MainViewModelTest {
         advanceUntilIdle()
         assertEquals(Scope.All, vm.scope.value)
     }
+
+    @Test
+    fun selectScopeClosesDetail() {
+        val vm = MainViewModel(FakeRepository())
+        vm.openDetail(3)
+        vm.selectScope(Scope.Today)
+        assertEquals(Route.Main, vm.route.value)
+    }
 }
