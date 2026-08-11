@@ -49,6 +49,7 @@ import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemSpacing
 import com.myapplication.shared.ui.theme.RemType
+import com.myapplication.shared.ui.uiMessage
 import com.myapplication.shared.util.formatDueDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -63,7 +64,7 @@ fun DetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val detailVm: DetailViewModel = viewModel(key = "detail-$todoId") {
-        DetailViewModel(graph.repository, todoId)
+        DetailViewModel(graph.repository, graph.addSubTask, todoId)
     }
     val colors = LocalRemColors.current
     val todo by detailVm.todo.collectAsState()
@@ -332,6 +333,21 @@ fun DetailScreen(
                         }
                     }
                 }
+            },
+        )
+    }
+
+    val detailError by detailVm.lastError.collectAsState()
+    val detailErrorMsg = detailError?.uiMessage()
+    if (detailErrorMsg != null) {
+        RemDialog(
+            title = "出错了",
+            onDismiss = detailVm::dismissError,
+            confirmText = "知道了",
+            onConfirm = detailVm::dismissError,
+            showButtons = false,
+            content = {
+                androidx.compose.foundation.text.BasicText(detailErrorMsg, style = RemType.text14.copy(color = colors.textNormal))
             },
         )
     }

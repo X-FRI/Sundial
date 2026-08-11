@@ -1,10 +1,16 @@
 package com.myapplication.shared.data
 
 import app.cash.sqldelight.coroutines.asFlow
+import arrow.core.Either
+import arrow.core.left
+import arrow.core.right
+import arrow.core.raise.either
+import com.myapplication.shared.domain.error.TodoError
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.repository.TodoRepository
 import kotlin.time.Clock
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.DateTimeUnit
@@ -14,7 +20,11 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 
-class TodoRepositoryImpl(private val db: TodoDb) : TodoRepository {
+class TodoRepositoryImpl(
+    private val db: TodoDb,
+    private val clock: Clock = Clock.System,
+    private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
+) : TodoRepository {
 
     private fun Todo.toDomain() = TodoItem(
         id = id,
@@ -56,10 +66,24 @@ class TodoRepositoryImpl(private val db: TodoDb) : TodoRepository {
         createdAt = Instant.fromEpochMilliseconds(created_at),
     )
 
-    override suspend fun ensureInbox() {
-        if (db.todoDbQueries.selectLists().executeAsList().isEmpty()) {
-            db.todoDbQueries.insertList("收件箱", "blue", 0, Clock.System.now().toEpochMilliseconds())
+    private inline fun <A> guard(block: () -> A): Either<TodoError, A> =
+        try {
+            block().right()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            TodoError.Persistence(e.message ?: "数据库操作失败").left()
         }
+
+    override suspend fun ensureInbox(): Either<TodoError, Long> = either {
+        val lists = guard { db.todoDbQueries.selectLists().executeAsList() }.bind()
+        if (lists.isEmpty()) {
+            guard {
+                db.todoDbQueries.insertList("收件箱", "blue", 0, clock.now().toEpochMilliseconds())
+            }.bind()
+        }
+        guard { db.todoDbQueries.selectLists().executeAsList().firstOrNull()?.id }.bind()
+            ?: raise(TodoError.InboxNotFound)
     }
 
     override fun observeLists(): Flow<List<TodoList>> =
@@ -72,10 +96,9 @@ class TodoRepositoryImpl(private val db: TodoDb) : TodoRepository {
         db.todoDbQueries.selectByList(listId).asFlow().map { it.executeAsList() }.map { todos -> todos.map { it.toDomain() } }
 
     override fun observeToday(): Flow<List<TodoItem>> {
-        val tz = TimeZone.currentSystemDefault()
-        val today = Clock.System.now().toLocalDateTime(tz).date
-        val start = today.atStartOfDayIn(tz).toEpochMilliseconds()
-        val end = today.plus(1, DateTimeUnit.DAY).atStartOfDayIn(tz).toEpochMilliseconds()
+        val today = clock.now().toLocalDateTime(timeZone).date
+        val start = today.atStartOfDayIn(timeZone).toEpochMilliseconds()
+        val end = today.plus(1, DateTimeUnit.DAY).atStartOfDayIn(timeZone).toEpochMilliseconds()
         return db.todoDbQueries.selectToday(start, end).asFlow().map { it.executeAsList() }.map { todos -> todos.map { it.toDomain() } }
     }
 
@@ -101,67 +124,71 @@ class TodoRepositoryImpl(private val db: TodoDb) : TodoRepository {
             .map { todos -> todos.map { it.toDomain() } }
     }
 
-    override suspend fun addList(name: String, colorKey: String) {
+    override suspend fun findById(id: Long): Either<TodoError, TodoItem?> =
+        guard { db.todoDbQueries.selectById(id).executeAsOneOrNull()?.toDomain() }
+
+    override suspend fun addList(name: String, colorKey: String): Either<TodoError, Unit> = guard {
         val position = db.todoDbQueries.selectLists().executeAsList().size
-        db.todoDbQueries.insertList(name, colorKey, position.toLong(), Clock.System.now().toEpochMilliseconds())
+        db.todoDbQueries.insertList(name, colorKey, position.toLong(), clock.now().toEpochMilliseconds())
     }
 
-    override suspend fun deleteList(listId: Long) {
-        db.todoDbQueries.trashTodosInList(Clock.System.now().toEpochMilliseconds(), listId)
-        db.todoDbQueries.deleteList(listId)
-    }
-
-    override suspend fun addTodo(listId: Long?, title: String, note: String, dueDate: Instant?, parentId: Long?, flag: Boolean) {
-        val now = Clock.System.now().toEpochMilliseconds()
-        val targetList = parentId
-            ?.let { pid -> db.todoDbQueries.selectById(pid).executeAsOneOrNull()?.list_id }
-            ?: listId
-            ?: run {
-                ensureInbox()
-                db.todoDbQueries.selectLists().executeAsList().first().id
+    override suspend fun deleteList(listId: Long): Either<TodoError, Unit> = either {
+        try {
+            db.transaction {
+                db.todoDbQueries.trashTodosInList(clock.now().toEpochMilliseconds(), listId)
+                db.todoDbQueries.deleteList(listId)
             }
-        db.todoDbQueries.insertTodo(targetList, title, note, dueDate?.toEpochMilliseconds(), parentId, 0.0, flag, now)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            raise(TodoError.Persistence(e.message ?: "删除列表失败"))
+        }
     }
 
-    override suspend fun addSubTask(parentId: Long, title: String) {
-        val parent = db.todoDbQueries.selectById(parentId).executeAsOneOrNull()
-            ?: return
-        db.todoDbQueries.insertTodo(parent.list_id, title, "", null, parentId, 0.0, false, Clock.System.now().toEpochMilliseconds())
+    override suspend fun insertTodo(
+        listId: Long,
+        title: String,
+        note: String,
+        dueDate: Instant?,
+        parentId: Long?,
+        flag: Boolean,
+    ): Either<TodoError, Unit> = guard {
+        db.todoDbQueries.insertTodo(listId, title, note, dueDate?.toEpochMilliseconds(), parentId, 0.0, flag, clock.now().toEpochMilliseconds())
     }
 
-    override suspend fun setCompleted(id: Long, completed: Boolean) {
-        db.todoDbQueries.updateCompleted(completed, if (completed) Clock.System.now().toEpochMilliseconds() else null, id)
+    override suspend fun setCompleted(id: Long, completed: Boolean): Either<TodoError, Unit> = guard {
+        db.todoDbQueries.updateCompleted(completed, if (completed) clock.now().toEpochMilliseconds() else null, id)
     }
 
-    override suspend fun setFlag(id: Long, flag: Boolean) {
+    override suspend fun setFlag(id: Long, flag: Boolean): Either<TodoError, Unit> = guard {
         db.todoDbQueries.updateFlag(flag, id)
     }
 
-    override suspend fun setTitle(id: Long, title: String) {
+    override suspend fun setTitle(id: Long, title: String): Either<TodoError, Unit> = guard {
         db.todoDbQueries.updateTitle(title, id)
     }
 
-    override suspend fun setNote(id: Long, note: String) {
+    override suspend fun setNote(id: Long, note: String): Either<TodoError, Unit> = guard {
         db.todoDbQueries.updateNote(note, id)
     }
 
-    override suspend fun setDueDate(id: Long, dueDate: Instant?) {
+    override suspend fun setDueDate(id: Long, dueDate: Instant?): Either<TodoError, Unit> = guard {
         db.todoDbQueries.updateDueDate(dueDate?.toEpochMilliseconds(), id)
     }
 
-    override suspend fun moveToList(id: Long, listId: Long) {
+    override suspend fun moveToList(id: Long, listId: Long): Either<TodoError, Unit> = guard {
         db.todoDbQueries.moveToList(listId, id)
     }
 
-    override suspend fun trash(id: Long) {
-        db.todoDbQueries.trashTodo(Clock.System.now().toEpochMilliseconds(), id)
+    override suspend fun trash(id: Long): Either<TodoError, Unit> = guard {
+        db.todoDbQueries.trashTodo(clock.now().toEpochMilliseconds(), id)
     }
 
-    override suspend fun restore(id: Long) {
+    override suspend fun restore(id: Long): Either<TodoError, Unit> = guard {
         db.todoDbQueries.restoreTodo(id)
     }
 
-    override suspend fun deleteForever(id: Long) {
+    override suspend fun deleteForever(id: Long): Either<TodoError, Unit> = guard {
         db.todoDbQueries.deleteTodo(id)
     }
 }

@@ -33,7 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.myapplication.shared.di.AppGraph
 import com.myapplication.shared.di.createAppGraph
+import com.myapplication.shared.domain.error.TodoError
 import com.myapplication.shared.ui.PlatformBackHandler
+import com.myapplication.shared.ui.components.RemDialog
 import com.myapplication.shared.ui.detail.DetailScreen
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Route
@@ -41,9 +43,11 @@ import com.myapplication.shared.ui.narrow.NarrowBottomNav
 import com.myapplication.shared.ui.narrow.NarrowTopBar
 import com.myapplication.shared.ui.sidebar.Sidebar
 import com.myapplication.shared.ui.theme.LocalRemColors
+import com.myapplication.shared.ui.theme.RemType
 import com.myapplication.shared.ui.theme.RemindersTheme
 import com.myapplication.shared.ui.todolist.TodoFAB
 import com.myapplication.shared.ui.todolist.TodoListScreen
+import com.myapplication.shared.ui.uiMessage
 
 @Composable
 fun App() {
@@ -56,7 +60,7 @@ fun App() {
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun AppRoot(graph: AppGraph) {
-    val mainVm: MainViewModel = viewModel { MainViewModel(graph.repository) }
+    val mainVm: MainViewModel = viewModel { MainViewModel(graph.repository, graph.addTodo, graph.clock, graph.timeZone) }
     val route by mainVm.route.collectAsState()
     val colors = LocalRemColors.current
 
@@ -132,5 +136,20 @@ fun AppRoot(graph: AppGraph) {
                 }
             }
         }
+    }
+
+    val error by mainVm.lastError.collectAsState()
+    val errorMsg = error?.uiMessage()
+    if (errorMsg != null) {
+        RemDialog(
+            title = "出错了",
+            onDismiss = mainVm::dismissError,
+            confirmText = "知道了",
+            onConfirm = mainVm::dismissError,
+            showButtons = false,
+            content = {
+                androidx.compose.foundation.text.BasicText(errorMsg, style = RemType.text14.copy(color = colors.textNormal))
+            },
+        )
     }
 }

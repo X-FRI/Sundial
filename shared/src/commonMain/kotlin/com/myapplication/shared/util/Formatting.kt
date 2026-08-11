@@ -13,6 +13,9 @@ enum class DueBucket { OVERDUE, TODAY, TOMORROW, THIS_WEEK, LATER }
 fun todayDate(): LocalDate =
     Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 
+fun todayDate(clock: Clock, timeZone: TimeZone): LocalDate =
+    clock.now().toLocalDateTime(timeZone).date
+
 fun bucketOf(due: LocalDate, today: LocalDate): DueBucket {
     val diff = today.daysUntil(due)
     return when {

@@ -2,9 +2,13 @@ package com.myapplication.shared.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.myapplication.shared.domain.error.TodoError
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.repository.TodoRepository
+import com.myapplication.shared.domain.usecase.AddTodoInput
+import com.myapplication.shared.domain.usecase.AddTodoUseCase
+import kotlin.time.Clock
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,11 +38,17 @@ sealed interface Scope {
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class MainViewModel(private val repository: TodoRepository) : ViewModel() {
+class MainViewModel(
+    private val repository: TodoRepository,
+    private val addTodo: AddTodoUseCase,
+    private val clock: Clock = Clock.System,
+    private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
+) : ViewModel() {
 
     val scope = MutableStateFlow<Scope>(Scope.All)
     val searchQuery = MutableStateFlow("")
     val route = MutableStateFlow<Route>(Route.Main)
+    val lastError = MutableStateFlow<TodoError?>(null)
 
     val lists: StateFlow<List<TodoList>> = repository.observeLists()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -71,7 +81,11 @@ class MainViewModel(private val repository: TodoRepository) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
     init {
-        viewModelScope.launch { repository.ensureInbox() }
+        viewModelScope.launch { repository.ensureInbox().onLeft { lastError.value = it } }
+    }
+
+    fun dismissError() {
+        lastError.value = null
     }
 
     fun selectScope(s: Scope) {
@@ -93,42 +107,46 @@ class MainViewModel(private val repository: TodoRepository) : ViewModel() {
     }
 
     fun createTodo(title: String, note: String, due: LocalDateTime?, flag: Boolean = false, listId: Long? = null) {
-        val trimmed = title.trim()
-        if (trimmed.isEmpty()) return
-        val instant = due?.toInstant(TimeZone.currentSystemDefault())
         viewModelScope.launch {
-            repository.addTodo(listId, trimmed, note.trim(), instant, null, flag)
+            addTodo(
+                AddTodoInput(
+                    listId = listId,
+                    parentId = null,
+                    title = title,
+                    note = note,
+                    dueDate = due?.toInstant(timeZone),
+                    flag = flag,
+                ),
+            ).onLeft { lastError.value = it }
         }
     }
 
     fun toggleCompleted(item: TodoItem) {
-        viewModelScope.launch { repository.setCompleted(item.id, !item.isCompleted) }
+        viewModelScope.launch { repository.setCompleted(item.id, !item.isCompleted).onLeft { lastError.value = it } }
     }
 
     fun toggleFlag(item: TodoItem) {
-        viewModelScope.launch { repository.setFlag(item.id, !item.flag) }
+        viewModelScope.launch { repository.setFlag(item.id, !item.flag).onLeft { lastError.value = it } }
     }
 
     fun trash(item: TodoItem) {
-        viewModelScope.launch { repository.trash(item.id) }
+        viewModelScope.launch { repository.trash(item.id).onLeft { lastError.value = it } }
     }
 
     fun restore(item: TodoItem) {
-        viewModelScope.launch { repository.restore(item.id) }
+        viewModelScope.launch { repository.restore(item.id).onLeft { lastError.value = it } }
     }
 
     fun deleteForever(item: TodoItem) {
-        viewModelScope.launch { repository.deleteForever(item.id) }
+        viewModelScope.launch { repository.deleteForever(item.id).onLeft { lastError.value = it } }
     }
 
     fun addList(name: String, colorKey: String) {
-        val trimmed = name.trim()
-        if (trimmed.isEmpty()) return
-        viewModelScope.launch { repository.addList(trimmed, colorKey) }
+        viewModelScope.launch { repository.addList(name, colorKey).onLeft { lastError.value = it } }
     }
 
     fun deleteList(list: TodoList) {
-        viewModelScope.launch { repository.deleteList(list.id) }
+        viewModelScope.launch { repository.deleteList(list.id).onLeft { lastError.value = it } }
         if (scope.value == Scope.List(list.id)) scope.value = Scope.All
     }
 }
