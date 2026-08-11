@@ -24,8 +24,22 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "Reminders"
+            packageName = "Sundial"
             packageVersion = "1.0.0"
+            macOS {
+                iconFile.set(file("src/jvmMain/resources/icon.icns"))
+                bundleID = "com.sundial.app"
+                infoPlist {
+                    extraKeysRawXml = "<key>CFBundleShortVersionString</key><string>0.0.1</string>"
+                }
+            }
+        }
+        buildTypes {
+            release {
+                proguard {
+                    isEnabled.set(false)
+                }
+            }
         }
     }
 }

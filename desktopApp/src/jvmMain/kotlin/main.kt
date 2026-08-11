@@ -7,7 +7,7 @@ import java.awt.Dimension
 fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
-        title = "提醒事项",
+        title = "Sundial",
         state = rememberWindowState(width = 1000.dp, height = 680.dp),
     ) {
         window.minimumSize = Dimension(720, 500)

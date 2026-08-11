@@ -16,6 +16,16 @@ kotlin {
 
     jvm("desktop")
 
+    iosArm64()
+    iosSimulatorArm64()
+
+    listOf(iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+        }
+    }
+
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -46,6 +56,18 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.2")
             }
         }
+        val iosMain by creating {
+            dependsOn(commonMain)
+            dependencies {
+                implementation(compose.runtime)
+                implementation(compose.foundation)
+                @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+                implementation(compose.components.resources)
+                implementation("app.cash.sqldelight:native-driver:$sqlDelightVersion")
+            }
+        }
+        iosArm64().compilations.getByName("main").defaultSourceSet.dependsOn(iosMain)
+        iosSimulatorArm64().compilations.getByName("main").defaultSourceSet.dependsOn(iosMain)
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))

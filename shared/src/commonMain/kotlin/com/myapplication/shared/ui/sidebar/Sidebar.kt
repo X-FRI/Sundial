@@ -32,8 +32,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -57,6 +61,31 @@ import com.myapplication.shared.ui.theme.RemSpacing
 import com.myapplication.shared.ui.theme.RemType
 
 @Composable
+private fun SidebarLogo(modifier: Modifier = Modifier) {
+    val colors = LocalRemColors.current
+    androidx.compose.foundation.Canvas(modifier.size(20.dp)) {
+        val w = size.minDimension
+        val stroke = w * 0.05f
+        val dotR = w * 0.08f
+        drawRoundRect(
+            color = colors.brand,
+            cornerRadius = CornerRadius(w * 0.24f, w * 0.24f),
+            style = Stroke(width = stroke),
+        )
+        listOf(0.22f, 0.5f, 0.78f).forEachIndexed { i, cy ->
+            drawCircle(colors.brand, dotR, center = Offset(w * 0.15f, w * cy))
+            drawLine(
+                colors.brand,
+                Offset(w * 0.32f, w * cy),
+                Offset(w * (0.85f - i * 0.12f), w * cy),
+                strokeWidth = stroke,
+                cap = StrokeCap.Round,
+            )
+        }
+    }
+}
+
+@Composable
 fun Sidebar(mainVm: MainViewModel) {
     val colors = LocalRemColors.current
     val lists by mainVm.lists.collectAsState()
@@ -78,11 +107,14 @@ fun Sidebar(mainVm: MainViewModel) {
             .background(colors.bgPrimary)
             .padding(vertical = RemSpacing.s16, horizontal = 10.dp),
     ) {
-        androidx.compose.foundation.text.BasicText(
-            "提醒事项",
-            style = RemType.text16.copy(fontWeight = FontWeight.SemiBold, color = colors.textHigh),
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+            SidebarLogo()
+            Spacer(Modifier.width(6.dp))
+            androidx.compose.foundation.text.BasicText(
+                "Sundial",
+                style = RemType.text16.copy(fontWeight = FontWeight.SemiBold, color = colors.textHigh),
+            )
+        }
         Spacer(Modifier.height(RemSpacing.s12))
         RemTextField(value = query, onValueChange = mainVm::setSearch, placeholder = "搜索", leadingIcon = IconName.Search)
         Spacer(Modifier.height(RemSpacing.s12))
