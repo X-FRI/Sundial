@@ -36,7 +36,9 @@ class AddSubTaskUseCaseTest {
     @Test
     fun blankTitleReturnsEmptyTitleError() = runTest {
         val (repo, parentId) = repoWithParent()
+        val todoCount = repo.todosState.value.size
         val result = AddSubTaskUseCase(repo)(parentId, "  ")
         assertEquals(TodoError.EmptyTitle, result.leftOrNull())
+        assertEquals(todoCount, repo.todosState.value.size)
     }
 }

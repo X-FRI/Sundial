@@ -26,10 +26,14 @@ class AddTodoUseCaseTest {
 
     @Test
     fun addsTodoToExplicitList() = runTest {
-        val repo = repoWithInbox()
-        val result = AddTodoUseCase(repo)(input(listId = 1, title = "交报告"))
+        val repo = FakeTodoRepository()
+        repo.addList("收件箱", "blue")
+        repo.addList("项目", "red")
+        val listId = repo.listsState.value.first { it.name == "项目" }.id
+        val result = AddTodoUseCase(repo)(input(listId = listId, title = "交报告"))
         assertTrue(result.isRight())
-        assertEquals(1L, repo.lastInserted?.listId)
+        assertEquals(listId, repo.lastInserted?.listId)
+        assertEquals(0, repo.ensureInboxCalls)
         assertEquals("交报告", repo.lastInserted?.title)
     }
 
@@ -75,6 +79,19 @@ class AddTodoUseCaseTest {
         val repo = repoWithInbox()
         val result = AddTodoUseCase(repo)(input(parentId = 999L, title = "孤儿"))
         assertEquals(TodoError.ParentNotFound, result.leftOrNull())
+    }
+
+    @Test
+    fun parentListWinsOverExplicitList() = runTest {
+        val repo = repoWithInbox()
+        repo.addList("项目", "red")
+        val listId = repo.listsState.value.first { it.name == "项目" }.id
+        repo.insertTodo(listId, "父任务", "", null, null, false)
+        val parentId = repo.lastInserted!!.id
+        val result = AddTodoUseCase(repo)(input(listId = 1, parentId = parentId, title = "子任务"))
+        assertTrue(result.isRight())
+        assertEquals(listId, repo.lastInserted?.listId)
+        assertEquals(parentId, repo.lastInserted?.parentId)
     }
 
     @Test
