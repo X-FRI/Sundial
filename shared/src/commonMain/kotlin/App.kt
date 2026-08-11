@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.myapplication.shared.di.AppGraph
 import com.myapplication.shared.di.createAppGraph
+import com.myapplication.shared.ui.detail.DetailScreen
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Route
 import com.myapplication.shared.ui.sidebar.Sidebar
@@ -70,6 +71,3 @@ fun NarrowTopBar(mainVm: MainViewModel) {
 fun NarrowBottomNav(mainVm: MainViewModel) {
     Text("")
 }
-
-@Composable
-fun DetailScreen(mainVm: MainViewModel, graph: AppGraph, todoId: Long) = Text("")
