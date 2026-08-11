@@ -1,5 +1,6 @@
 plugins {
     kotlin("multiplatform")
+    kotlin("plugin.serialization")
     id("com.android.library")
     id("org.jetbrains.compose")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -11,6 +12,9 @@ val kotlinxDatetimeVersion = findProperty("kotlinxDatetime.version") as String
 val lifecycleVersion = findProperty("lifecycle.version") as String
 val coroutinesTestVersion = findProperty("coroutinesTest.version") as String
 val arrowVersion = findProperty("arrow.version") as String
+val supabaseVersion = findProperty("supabase.version") as String
+val ktorVersion = findProperty("ktor.version") as String
+val serializationVersion = findProperty("serialization.version") as String
 
 kotlin {
     androidTarget()
@@ -41,6 +45,10 @@ kotlin {
                 implementation("app.cash.sqldelight:runtime:$sqlDelightVersion")
                 implementation("app.cash.sqldelight:coroutines-extensions:$sqlDelightVersion")
                 implementation("io.arrow-kt:arrow-core:$arrowVersion")
+                implementation(project.dependencies.platform("io.github.jan-tennert.supabase:bom:$supabaseVersion"))
+                implementation("io.github.jan-tennert.supabase:postgrest-kt")
+                implementation("io.github.jan-tennert.supabase:realtime-kt")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
             }
         }
         val androidMain by getting {
@@ -49,6 +57,7 @@ kotlin {
                 api("androidx.appcompat:appcompat:1.7.1")
                 api("androidx.core:core-ktx:1.16.0")
                 implementation("app.cash.sqldelight:android-driver:$sqlDelightVersion")
+                implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
             }
         }
         val desktopMain by getting {
@@ -56,6 +65,7 @@ kotlin {
                 implementation(compose.desktop.common)
                 implementation("app.cash.sqldelight:sqlite-driver:$sqlDelightVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.2")
+                implementation("io.ktor:ktor-client-cio:$ktorVersion")
             }
         }
         val iosMain by creating {
@@ -66,6 +76,7 @@ kotlin {
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 implementation(compose.components.resources)
                 implementation("app.cash.sqldelight:native-driver:$sqlDelightVersion")
+                implementation("io.ktor:ktor-client-darwin:$ktorVersion")
             }
         }
         iosArm64().compilations.getByName("main").defaultSourceSet.dependsOn(iosMain)
@@ -108,6 +119,7 @@ sqldelight {
     databases {
         create("TodoDb") {
             packageName.set("com.myapplication.shared.data")
+            dialect("app.cash.sqldelight:sqlite-3-38-dialect:$sqlDelightVersion")
         }
     }
 }
