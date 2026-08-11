@@ -75,13 +75,10 @@ fun RemDialog(
                     Modifier
                         .widthIn(max = 360.dp)
                         .shadow(
-                            elevation = if (isSystemInDarkTheme()) 24.dp else 16.dp,
+                            elevation = if (isSystemInDarkTheme()) 12.dp else 8.dp,
                             shape = RoundedCornerShape(RemRadii.r3),
-                            ambientColor = if (isSystemInDarkTheme()) Color(0x80000000) else Color(0x26000000),
-                            spotColor = if (isSystemInDarkTheme()) Color(0x80000000) else Color(0x26000000),
-                            clip = false,
+                            clip = true,
                         )
-                        .clip(RoundedCornerShape(RemRadii.r3))
                         .background(if (isSystemInDarkTheme()) Color(0xFF2A2A2E) else Color(0xFFFEFEFE))
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                         .padding(20.dp),

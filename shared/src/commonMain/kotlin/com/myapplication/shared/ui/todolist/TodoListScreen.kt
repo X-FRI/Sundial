@@ -405,11 +405,7 @@ fun TodoRow(
         Spacer(Modifier.width(10.dp))
         Column(
             Modifier
-                .weight(1f)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) { mainVm.openDetail(item.id) },
+                .weight(1f),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.text.BasicText(
