@@ -1245,7 +1245,7 @@ private fun AddListDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> 
         onConfirm = {
             if (name.isNotBlank()) onConfirm(name.trim(), colorKey)
         },
-    ) {
+        content = {
         RemTextField(value = name, onValueChange = { name = it }, placeholder = "列表名称")
         Spacer(Modifier.height(12.dp))
         Row {
@@ -1265,7 +1265,8 @@ private fun AddListDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> 
                 }
             }
         }
-    }
+        },
+    )
 }
 ```
 
@@ -1789,7 +1790,7 @@ fun DetailScreen(
             confirmText = "确定",
             onConfirm = { showListDialog = false },
             showButtons = false,
-        ) {
+            content = {
             lists.forEach { list ->
                 Row(
                     Modifier
@@ -1814,7 +1815,8 @@ fun DetailScreen(
                     }
                 }
             }
-        }
+            },
+        )
     }
 }
 ```
