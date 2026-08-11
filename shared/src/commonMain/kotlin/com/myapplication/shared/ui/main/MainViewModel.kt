@@ -126,5 +126,6 @@ class MainViewModel(private val repository: TodoRepository) : ViewModel() {
 
     fun deleteList(list: TodoList) {
         viewModelScope.launch { repository.deleteList(list.id) }
+        if (scope.value == Scope.List(list.id)) scope.value = Scope.All
     }
 }

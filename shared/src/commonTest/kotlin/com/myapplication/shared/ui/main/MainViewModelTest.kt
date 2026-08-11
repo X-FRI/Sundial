@@ -144,4 +144,15 @@ class MainViewModelTest {
         vm.back()
         assertEquals(Route.Main, vm.route.value)
     }
+
+    @Test
+    fun deleteSelectedListResetsScopeToAll() = runTest(dispatcher) {
+        val repo = FakeRepository()
+        val vm = MainViewModel(repo)
+        collect(vm)
+        vm.selectScope(Scope.List(7))
+        vm.deleteList(TodoList(7, "x", "blue", 1, Instant.fromEpochMilliseconds(0)))
+        advanceUntilIdle()
+        assertEquals(Scope.All, vm.scope.value)
+    }
 }

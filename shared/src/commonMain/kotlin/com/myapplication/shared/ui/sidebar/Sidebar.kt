@@ -2,6 +2,7 @@ package com.myapplication.shared.ui.sidebar
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -83,6 +84,7 @@ fun Sidebar(mainVm: MainViewModel) {
                 list = list,
                 count = listCounts[list.id] ?: 0,
                 selected = scope == Scope.List(list.id),
+                canDelete = list.position != 0,
                 onSelect = { mainVm.selectScope(Scope.List(list.id)) },
                 onDelete = { mainVm.deleteList(list) },
             )
@@ -131,17 +133,19 @@ private fun ListRow(
     list: TodoList,
     count: Int,
     selected: Boolean,
+    canDelete: Boolean,
     onSelect: () -> Unit,
     onDelete: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
     Box {
         Row(
             Modifier
                 .fillMaxWidth()
                 .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
                 .padding(horizontal = 8.dp, vertical = 6.dp)
-                .combinedClickable(onClick = onSelect, onLongClick = { menuOpen = true }),
+                .combinedClickable(onClick = onSelect, onLongClick = if (canDelete) { { menuOpen = true } } else null),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
@@ -156,12 +160,30 @@ private fun ListRow(
                 Text(count.toString(), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            DropdownMenuItem(text = { Text("删除列表") }, onClick = {
-                menuOpen = false
-                onDelete()
-            })
+        if (canDelete) {
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(text = { Text("删除列表") }, onClick = {
+                    menuOpen = false
+                    confirmDelete = true
+                })
+            }
         }
+    }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("删除列表") },
+            text = { Text("确定删除列表「${list.name}」？该列表的所有待办将移入垃圾箱。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    onDelete()
+                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text("取消") }
+            },
+        )
     }
 }
 
@@ -191,6 +213,11 @@ private fun AddListDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> 
                                 .background(
                                     ListColorOf[key] ?: Color.Gray,
                                     CircleShape,
+                                )
+                                .border(
+                                    width = 2.dp,
+                                    color = if (key == colorKey) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                    shape = CircleShape,
                                 )
                                 .combinedClickable(onClick = { colorKey = key }, onLongClick = {}),
                         )
