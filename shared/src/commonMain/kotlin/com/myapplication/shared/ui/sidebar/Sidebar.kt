@@ -88,23 +88,40 @@ private fun SidebarLogo(modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * 侧边栏（宽屏三栏布局的最左栏）：Logo、搜索框、智能列表九宫格、自定义列表、设置入口。
+ *
+ * 布局结构（自上而下）：
+ * 1. 品牌区（Logo + 名称）与搜索框；
+ * 2. 「智能列表」[SmartGrid]：今天 / 计划 / 全部 / 已完成 / 垃圾箱 五张卡片；
+ * 3. 「我的列表」：可展开/收起，每行一个自定义列表（带计数、hover 快捷操作、长按删除）；
+ * 4. 底部固定：添加列表入口 + 设置入口（带同步状态指示灯与摘要文案）。
+ *
+ * 交互要点：
+ * - 列表展开状态 [listsExpanded] 是本地 remember 状态，仅影响本栏显示；
+ * - 添加列表弹窗的显隐 [showAddList] 同样为本地状态，确认后回调 mainVm.addList；
+ * - 所有 hover 背景用 animateColorAsState 做 200ms 过渡，减少生硬跳变。
+ */
 @Composable
 fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) {
     val colors = LocalRemColors.current
     val lists by mainVm.lists.collectAsState()
     val scope by mainVm.scope.collectAsState()
     val query by mainVm.searchQuery.collectAsState()
+    // 智能列表计数：全部来自 mainVm 的独立计数流，避免在此订阅完整列表。
     val todayCount by mainVm.todayCount.collectAsState()
     val scheduledCount by mainVm.scheduledCount.collectAsState()
     val allCount by mainVm.allCount.collectAsState()
     val completedCount by mainVm.completedCount.collectAsState()
     val trashCount by mainVm.trashCount.collectAsState()
     val listCounts by mainVm.listCounts.collectAsState()
+    // 设置入口右侧的同步摘要文案：本地模式 / 已同步 / 同步中断 + 待同步条数。
     val syncSummary = when (syncStatus.mode) {
         SyncMode.Local -> "本地模式"
         else -> (if (syncStatus.connected) "已同步" else "同步中断") + if (syncStatus.pendingCount > 0) " · 待同步 ${syncStatus.pendingCount}" else ""
     }
     var showAddList by remember { mutableStateOf(false) }
+    // 「我的列表」默认展开；用户点击头部可折叠。
     var listsExpanded by remember { mutableStateOf(true) }
 
     Column(
@@ -115,6 +132,7 @@ fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) 
             .statusBarsPadding()
             .padding(vertical = RemSpacing.s16, horizontal = 10.dp),
     ) {
+        // 1. 品牌区：Canvas 绘制的太阳钟 Logo + 应用名。
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
             SidebarLogo()
             Spacer(Modifier.width(6.dp))
@@ -124,6 +142,7 @@ fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) 
             )
         }
         Spacer(Modifier.height(RemSpacing.s12))
+        // 2. 搜索框：直接写回 mainVm.searchQuery，触发主列表切换到搜索查询。
         RemTextField(value = query, onValueChange = mainVm::setSearch, placeholder = "搜索", leadingIcon = IconName.Search)
         Spacer(Modifier.height(RemSpacing.s12))
         androidx.compose.foundation.text.BasicText(
@@ -131,6 +150,7 @@ fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) 
             style = RemType.label10.copy(color = colors.textLow),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
         )
+        // 3. 智能列表网格：5 张卡片，选中态由 scope 决定。
         SmartGrid(
             todayCount = todayCount,
             scheduledCount = scheduledCount,
@@ -141,6 +161,7 @@ fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) 
             onSelect = mainVm::selectScope,
         )
         Spacer(Modifier.height(RemSpacing.s8))
+        // 4. 「我的列表」折叠头：点击切换展开/收起，箭头随状态旋转 90°。
         Row(
             Modifier
                 .fillMaxWidth()
@@ -159,6 +180,7 @@ fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) 
             Spacer(Modifier.width(4.dp))
             androidx.compose.foundation.text.BasicText("我的列表", style = RemType.label10.copy(color = colors.textLow))
         }
+        // 5. 展开状态下逐行渲染自定义列表（收件箱 position==0 不可删除）。
         if (listsExpanded) {
             lists.forEach { list ->
                 ListRow(
@@ -172,6 +194,7 @@ fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) 
             }
         }
         Spacer(Modifier.weight(1f))
+        // 6. 底部「添加列表」：hover 背景动画，点击弹出 AddListDialog。
         val addListSource = remember { MutableInteractionSource() }
         val addListHovered by addListSource.collectIsHoveredAsState()
         val addListBg by animateColorAsState(
@@ -194,6 +217,7 @@ fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) 
             androidx.compose.foundation.text.BasicText("添加列表", style = RemType.label12.copy(color = colors.brand))
         }
         Spacer(Modifier.height(RemSpacing.s8))
+        // 7. 设置入口：同步状态指示灯（本地灰 / 已连接绿 / 断开黄）+ 摘要文案。
         val settingsSource = remember { MutableInteractionSource() }
         val settingsHovered by settingsSource.collectIsHoveredAsState()
         val settingsBg by animateColorAsState(
@@ -224,6 +248,7 @@ fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) 
         }
     }
 
+    // 添加列表弹窗：确认后回调 mainVm.addList 并关闭本弹窗。
     if (showAddList) {
         AddListDialog(
             onDismiss = { showAddList = false },
@@ -261,6 +286,12 @@ private fun SmartIcon(icon: IconName, base: Color, size: Dp = 44.dp, iconSize: D
 
 private fun darken(c: Color, f: Float): Color = Color(c.red * (1f - f), c.green * (1f - f), c.blue * (1f - f), c.alpha)
 
+/**
+ * 智能列表九宫格：五行两列的卡片网格（垃圾箱独占一行）。
+ *
+ * 布局：两行 2×2（今天/计划，全部/已完成）+ 最后一行 1 格（垃圾箱），
+ * 每张卡片等宽（weight(1f)），行内用 8dp 间隔。
+ */
 @Composable
 private fun SmartGrid(
     todayCount: Int,
@@ -367,6 +398,15 @@ private fun SmartCard(
     }
 }
 
+/**
+ * 自定义列表行：选中高亮 + hover 快捷操作 + 长按删除。
+ *
+ * 交互：
+ * - 单击选中该列表；有子任务的展开逻辑不在此列（列表本身无层级）；
+ * - 长按弹出删除确认（仅 [canDelete] 为 true 时，即收件箱不可删）；
+ * - hover 时右侧浮现两个 16dp 小按钮：「跳转」（等价于单击）与「删除」，
+ *   删除同样需要二次确认，避免误触。
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ListRow(
@@ -479,6 +519,11 @@ private fun ListRow(
     }
 }
 
+/**
+ * 新建列表对话框：名称输入 + 8 色色板单选。
+ *
+ * 色板默认选中 ListColorKeys 第一项；确认时名称为空则忽略（不回调）。
+ */
 @Composable
 private fun AddListDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
     val colorNames = mapOf("blue" to "蓝色", "red" to "红色", "orange" to "橙色", "yellow" to "黄色", "green" to "绿色", "teal" to "青色", "purple" to "紫色")

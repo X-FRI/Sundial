@@ -10,6 +10,16 @@ import com.myapplication.shared.domain.sync.TodoRowDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Instant
 
+/**
+ * 待办仓库接口：UI 与同步引擎访问数据的唯一入口。
+ *
+ * 设计要点：
+ * - 查询用 [Flow] 实现响应式（SQLDelight asFlow 推送变更），不包装成 Either；
+ * - 命令返回 Either<TodoError, Unit>，校验/持久化失败走 Left；
+ * - 所有本地写命令都会在事务内「更新行 + 写 outbox」，供同步引擎推送远端；
+ *   而 applyRemote* 系列（远端应用）刻意不写 outbox，防止本机改动又被推回远端
+ *   造成 ping-pong 循环。
+ */
 interface TodoRepository {
     // Queries — 数据流保持 Flow，不包装
     fun observeLists(): Flow<List<TodoList>>
@@ -39,14 +49,32 @@ interface TodoRepository {
     suspend fun restore(id: Long): Either<TodoError, Unit>
     suspend fun deleteForever(id: Long): Either<TodoError, Unit>
 
-    // Sync support
+    // Sync support — 由 SyncCoordinator 驱动，不写 outbox（防 ping-pong）
+    /**
+     * 读取 outbox 中待推送的行，按 seq 升序，最多 [limit] 条。
+     * 返回的 [SyncRow] 由 coordinator 推送后按 seq 水位线清理（见 clearOutbox）。
+     */
     suspend fun readOutbox(limit: Int): Either<TodoError, List<SyncRow>>
+    /**
+     * 删除 seq <= [upToSeq] 的 outbox 行——即确认这些行已成功推送（水位线清除）。
+     */
     suspend fun clearOutbox(upToSeq: Long): Either<TodoError, Unit>
+    /** 待推送条数，用于同步状态卡片展示 pendingCount。 */
     fun observeOutboxCount(): Flow<Int>
+    /**
+     * 应用远端推送的待办行（LWW：本地行不更新，不写 outbox）。
+     * 见 TodoRepositoryImpl.applyRemoteUpsert 的双语句 LWW 说明。
+     */
     suspend fun applyRemoteUpsert(row: TodoRowDto): Either<TodoError, Unit>
+    /** 应用远端推送的列表行，语义同 applyRemoteUpsert。 */
     suspend fun applyRemoteUpsertList(row: ListRowDto): Either<TodoError, Unit>
+    /**
+     * 应用远端删除：仅当本地行 updated_at <= [updatedAt] 才删（LWW），
+     * 防止旧设备的删除吞掉本机更新。
+     */
     suspend fun applyRemoteDelete(table: String, rowId: Long, updatedAt: Long): Either<TodoError, Unit>
     suspend fun getSetting(key: String): Either<TodoError, String?>
+    /** 写本地设置（同步 token 等）。setSetting 不经过 outbox。 */
     suspend fun setSetting(key: String, value: String): Either<TodoError, Unit>
     suspend fun getSettings(): Either<TodoError, Map<String, String>>
 }

@@ -24,6 +24,15 @@ import androidx.compose.ui.unit.dp
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemType
 
+/**
+ * 空状态占位视图：居中显示标题 + 可选副标题 + 可选装饰图标。
+ *
+ * 设计要点：
+ * - [icon] 为 null 时跳过 Canvas 图形，仅显示文字（省去不必要的绘制）；
+ * - 装饰图形不是现成图标，而是用 Canvas 手绘一张"斜放的待办卡片"：
+ *   卡片外框 + 两条正文线 + 右上角品牌色对勾，暗示"任务已完成、列表为空"；
+ * - 所有坐标按画布尺寸 s 的比例硬编码，随 [Modifier.size(96.dp)] 等比缩放。
+ */
 @Composable
 fun RemEmptyState(
     title: String,
@@ -41,10 +50,12 @@ fun RemEmptyState(
             Canvas(Modifier.size(96.dp)) {
                 val s = size.minDimension
                 val st = 2.dp.toPx()
+                // 卡片线稿用弱化文字色，整体绕中心旋转 -6° 呈现"待办堆叠"的轻松感
                 val cardColor = colors.textLow.copy(alpha = 0.35f)
                 withTransform({
                     rotate(-6f, pivot = Offset(s / 2, s / 2))
                 }) {
+                    // 卡片外框（描边）
                     drawRoundRect(
                         color = cardColor,
                         topLeft = Offset(s * 0.18f, s * 0.22f),
@@ -52,6 +63,7 @@ fun RemEmptyState(
                         cornerRadius = CornerRadius(s * 0.02f),
                         style = Stroke(width = st),
                     )
+                    // 两条"正文行"（实心圆角条）
                     drawRoundRect(
                         color = colors.textLow.copy(alpha = 0.5f),
                         topLeft = Offset(s * 0.30f, s * 0.34f),
@@ -64,6 +76,7 @@ fun RemEmptyState(
                         size = Size(s * 0.28f, s * 0.08f),
                         cornerRadius = CornerRadius(s * 0.04f),
                     )
+                    // 对勾：品牌色描边折线，圆角端帽
                     val p = Path().apply {
                         moveTo(s * 0.34f, s * 0.74f)
                         lineTo(s * 0.42f, s * 0.82f)

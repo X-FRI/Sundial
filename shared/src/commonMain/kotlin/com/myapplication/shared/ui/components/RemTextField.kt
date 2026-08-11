@@ -32,6 +32,17 @@ import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
 
+/**
+ * 通用文本输入框（BasicTextField 自绘，不依赖 Material）。
+ *
+ * 设计要点：
+ * - 焦点态反馈：onFocusChanged 记录焦点，边框颜色随之在 brand/border 间切换；
+ *   [bordered] 为 false 时边框恒为 0dp（无宽度变化，不引起布局跳动）；
+ * - placeholder 通过 decorationBox 在值为空时叠加显示，不占用布局空间；
+ * - [onEnter] 非空时把键盘 IME 设为 Done 并拦截确认键（桌面端回车、移动端键盘完成键）；
+ * - [trailing] 为右侧可点击文字（如"清除"），颜色恒为品牌色；
+ * - 光标颜色为品牌色，文字颜色固定 textHigh。
+ */
 @Composable
 fun RemTextField(
     value: String,
@@ -53,6 +64,7 @@ fun RemTextField(
         modifier
             .clip(RoundedCornerShape(RemRadii.r2))
             .background(colors.inputBg)
+            // 焦点时边框变品牌色；bordered=false 时保持 0dp 无边框
             .border(
                 if (bordered) {
                     1.dp
@@ -65,6 +77,7 @@ fun RemTextField(
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // 可选前置图标（如搜索），弱化文字色，固定 14dp
         if (leadingIcon != null) {
             RemIcon(leadingIcon, colors.textLow, Modifier.width(14.dp).height(14.dp))
             Spacer(Modifier.width(6.dp))
@@ -80,9 +93,11 @@ fun RemTextField(
             cursorBrush = SolidColor(colors.brand),
             singleLine = singleLine,
             minLines = minLines,
+            // 有 onEnter 才声明 Done 动作，否则保持默认键盘
             keyboardOptions = if (onEnter != null) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
             keyboardActions = if (onEnter != null) KeyboardActions(onDone = { onEnter() }) else KeyboardActions.Default,
             decorationBox = { inner ->
+                // 值为空且有 placeholder 时先画占位文字，再画真正的输入内容
                 if (value.isEmpty() && placeholder.isNotEmpty()) {
                     androidx.compose.foundation.text.BasicText(placeholder, style = style.copy(color = colors.textLow))
                 }

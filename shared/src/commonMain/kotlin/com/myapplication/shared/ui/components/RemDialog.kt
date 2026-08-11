@@ -47,6 +47,20 @@ import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
 
+/**
+ * 通用模态对话框，基于 [Popup] 自绘（跨平台一致，不依赖 Material Dialog）。
+ *
+ * 设计要点：
+ * - 遮罩：全屏黑色半透明层，点遮罩即 [onDismiss]；对话框面板自身用一个
+ *   空 clickable 吞掉点击事件，防止误触把对话框当成遮罩关掉；
+ * - 键盘：Popup 设为 focusable，桌面端按 Esc（KeyUp）触发 [onDismiss]；
+ * - 动效：首次挂载后把 visible 置 true，触发 fadeIn + 95%→100% scaleIn，
+ *   关闭时 fadeOut，避免初次显示闪跳；
+ * - 面板配色不取自 token，而是按 isSystemInDarkTheme 硬编码近白/近黑面板色，
+ *   保证与遮罩视觉一致性；
+ * - [confirmDanger] 控制底部确认按钮为 Danger 变体（删除类操作）；[showButtons]
+ *   为 false 时隐藏底部按钮（如日期选择器）。
+ */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun RemDialog(
@@ -60,6 +74,7 @@ fun RemDialog(
     showButtons: Boolean = true,
 ) {
     val colors = LocalRemColors.current
+    // 初始 false 再置 true，让入场动画从隐藏状态开始
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
     Popup(
@@ -69,8 +84,11 @@ fun RemDialog(
         Box(
             Modifier
                 .fillMaxSize()
+                // 遮罩透明度：深色主题更黑更实，浅色主题稍淡
                 .background(Color.Black.copy(alpha = if (isSystemInDarkTheme()) 0.6f else 0.45f))
+                // 点遮罩关闭；indication = null 去掉点击水波
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss)
+                // 桌面端 Esc 关闭（KeyUp 避免长按重复触发）
                 .onPreviewKeyEvent { event ->
                     if (event.type == KeyEventType.KeyUp && event.key == Key.Escape) {
                         onDismiss()
@@ -92,6 +110,7 @@ fun RemDialog(
                         .clip(RoundedCornerShape(RemRadii.r3))
                         .background(if (isSystemInDarkTheme()) Color(0xFF2A2A2E) else Color(0xFFFEFEFE))
                         .border(1.dp, colors.border, RoundedCornerShape(RemRadii.r3))
+                        // 空 clickable：消费点击，防止穿透到遮罩触发关闭
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                         .padding(20.dp),
                 ) {
@@ -104,6 +123,7 @@ fun RemDialog(
                     if (showButtons) {
                         Spacer(Modifier.height(20.dp))
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            // 取消（Ghost）在左，确认（Default/Danger）在右
                             RemButton(dismissText, onDismiss)
                             Spacer(Modifier.width(8.dp))
                             RemButton(confirmText, onConfirm, variant = if (confirmDanger) RemButtonVariant.Danger else RemButtonVariant.Default)

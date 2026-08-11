@@ -8,8 +8,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/**
+ * 设计令牌（Design Tokens）定义：全应用配色/字体/间距/圆角均从这里取值，
+ * 组件内部不得出现魔法数字颜色。
+ *
+ * 分层结构：
+ * 1. 列表颜色（ListColorKeys / ListColorOf）：7 种 iOS 风格列表主题色，
+ *    以字符串 key 存储进数据库（列表模型只存 key，颜色映射集中在此）；
+ * 2. 语义颜色（[RemColors]）：按"用途"命名（bg/text/border/brand/status），
+ *    与具体色值解耦，组件只消费语义名；
+ * 3. 明暗两套实例（[LightRemColors] / [DarkRemColors]）由 [RemindersTheme] 切换，
+ *    经 [LocalRemColors]（CompositionLocal）向下分发；
+ * 4. 排版/间距/圆角（[RemType] / [RemSpacing] / [RemRadii]）：小步长离散值，
+ *    保证界面节奏统一。
+ */
+
+// 列表颜色 key 集合：与数据库存储的 colorKey 对应，顺序即"颜色选择器"的展示顺序
 val ListColorKeys = listOf("blue", "red", "orange", "yellow", "green", "teal", "purple")
 
+// 列表颜色 key → 具体色值；深浅色主题共用同一套色（品牌色除外）
 val ListColorOf = mapOf(
     "blue" to Color(0xFF0A84FF),
     "red" to Color(0xFFFF3B30),
@@ -20,6 +37,17 @@ val ListColorOf = mapOf(
     "purple" to Color(0xFFAF52DE),
 )
 
+/**
+ * 语义颜色表（供组件消费的完整契约）。
+ *
+ * 命名规则：
+ * - bg*：背景层级（bgPrimary 页面底 / bgSecondary hover 反馈 / bgPanel 面板）；
+ * - text*：文字层级（textHigh 标题 / textNormal 正文 / textLow 次要与占位）；
+ * - border / inputBg：边框与输入框底色；
+ * - brand*：品牌主色及 hover/次级派生色（brandHover 由 Light 品牌色派生）；
+ * - error / success / warning / info：状态色；
+ * - focusRing：键盘焦点描边色（预留，无障碍导航用）。
+ */
 data class RemColors(
     val bgPrimary: Color,
     val bgSecondary: Color,
@@ -39,6 +67,10 @@ data class RemColors(
     val focusRing: Color,
 )
 
+/**
+ * 浅色主题：白底 + 浅灰层次，品牌橙 #EA7A2A；
+ * 深色主题：近黑底 + 深灰层次，品牌色保持同色以保证识别度（仅 hover 亮化）。
+ */
 val LightRemColors = RemColors(
     bgPrimary = Color(0xFFFFFFFF),
     bgSecondary = Color(0xFFF2F2F2),
@@ -77,6 +109,11 @@ val DarkRemColors = RemColors(
     focusRing = Color(0xFFE79255),
 )
 
+/**
+ * 排版令牌：text10~text16 为正文阶梯，title18 为标题（半粗），
+ * label10/label12 为标签/按钮文字（半粗）。字体统一系统默认，
+ * 等宽场景（如徽章数字）由调用方覆盖 FontFamily。
+ */
 object RemType {
     val text10 = TextStyle(fontFamily = FontFamily.Default, fontSize = 10.sp)
     val text12 = TextStyle(fontFamily = FontFamily.Default, fontSize = 12.sp)
@@ -87,6 +124,7 @@ object RemType {
     val label12 = TextStyle(fontFamily = FontFamily.Default, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
 }
 
+/** 间距令牌：4 档幂级步长（2/4/8/12/16），组件间距应从这里取。 */
 object RemSpacing {
     val s2 = 2.dp
     val s4 = 4.dp
@@ -95,10 +133,15 @@ object RemSpacing {
     val s16 = 16.dp
 }
 
+/**
+ * 圆角令牌：r2 用于小元素（徽章/输入框），r4 用于按钮，
+ * r3 = 16dp 是对话框的大圆角（命名沿袭早期版本，数值与命名顺序无关）。
+ */
 object RemRadii {
     val r2 = 2.dp
     val r3 = 16.dp
     val r4 = 8.dp
 }
 
+// 主题分发点：RemindersTheme 通过 CompositionLocalProvider 注入当前明暗色表
 val LocalRemColors = staticCompositionLocalOf { LightRemColors }

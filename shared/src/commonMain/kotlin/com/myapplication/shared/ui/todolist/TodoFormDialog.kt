@@ -45,6 +45,17 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 
+/**
+ * 新建待办表单对话框：标题 / 备注 / 日期 / 旗标 / 所属列表。
+ *
+ * 设计要点：
+ * - 表单状态全部是对话框级本地 state，确认时一次性回传给上层（onConfirm），
+ *   因此本组件与具体数据源解耦，列表页 FAB 与侧栏都能复用；
+ * - 日期分「日期」与「时间」两个字段维护（dueDate / dueTime），确认时拼成
+ *   LocalDateTime；未选时间默认 9:00；
+ * - 打开即自动聚焦标题输入框（FocusRequester + LaunchedEffect）；
+ * - 标题为空时确认无效（直接 return，不回调）。
+ */
 @Composable
 fun TodoFormDialog(
     lists: List<TodoList>,
@@ -53,14 +64,17 @@ fun TodoFormDialog(
     onConfirm: (title: String, note: String, due: LocalDateTime?, flag: Boolean, listId: Long?) -> Unit,
 ) {
     val colors = LocalRemColors.current
+    // 表单字段：日期/时间分离保存，只在确认时合并。
     var title by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var dueDate by remember { mutableStateOf<LocalDate?>(null) }
     var dueTime by remember { mutableStateOf<LocalTime?>(null) }
     var flag by remember { mutableStateOf(false) }
+    // 默认列表：来自调用方（FAB 在列表范围内时预选该列表，否则为收件箱 null）。
     var listId by remember { mutableStateOf(defaultListId) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showListPicker by remember { mutableStateOf(false) }
+    // 自动聚焦标题输入框，打开即可直接打字。
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
@@ -69,6 +83,7 @@ fun TodoFormDialog(
         onDismiss = onDismiss,
         confirmText = "添加",
         onConfirm = {
+            // 标题必填；组装完整参数后一次性回调。
             if (title.isBlank()) return@RemDialog
             onConfirm(
                 title.trim(),
@@ -79,6 +94,7 @@ fun TodoFormDialog(
             )
         },
         content = {
+            // 标题输入（自动聚焦）与备注输入。
             RemTextField(
                 value = title,
                 onValueChange = { title = it },
@@ -99,6 +115,7 @@ fun TodoFormDialog(
             )
             Spacer(Modifier.height(12.dp))
 
+            // 日期行：已选时显示徽标 + 清除；未选显示「无」。
             FormOptionRow(
                 icon = IconName.Calendar,
                 label = "日期",
@@ -127,6 +144,7 @@ fun TodoFormDialog(
                 onClick = { showDatePicker = true },
             )
 
+            // 旗标行：点击切换标记状态。
             FormOptionRow(
                 icon = IconName.Flag,
                 label = "旗标",
@@ -135,6 +153,7 @@ fun TodoFormDialog(
                 onClick = { flag = !flag },
             )
 
+            // 列表行：显示当前所选列表（默认「收件箱」），点击打开列表选择。
             FormOptionRow(
                 icon = IconName.Tray,
                 label = "列表",
@@ -152,6 +171,8 @@ fun TodoFormDialog(
         },
     )
 
+    // 日期选择器：只选日期时若尚无时间，默认补 9:00；
+    // onPickTime(h=-1,m=-1) 表示清除时间（保留日期）。
     if (showDatePicker) {
         RemDatePicker(
             initialDate = dueDate,
@@ -171,6 +192,7 @@ fun TodoFormDialog(
         )
     }
 
+    // 列表选择弹窗：点击行即选中（当前选中项带勾选标记）。
     if (showListPicker) {
         RemDialog(
             title = "选择列表",
@@ -210,6 +232,7 @@ fun TodoFormDialog(
     }
 }
 
+/** 表单行容器：图标 + 标签 + 右侧内容（value 或自定义 trailing），整行可点击。 */
 @Composable
 private fun FormOptionRow(
     icon: IconName,

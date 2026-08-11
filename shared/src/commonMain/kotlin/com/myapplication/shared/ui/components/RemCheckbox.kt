@@ -28,6 +28,17 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.ui.theme.LocalRemColors
 
+/**
+ * 圆形复选框，用 Canvas 手绘而非图片资源，保证任意平台缩放清晰。
+ *
+ * 设计要点：
+ * - 可访问性：通过 toggleable + Role.Checkbox 暴露给无障碍框架，
+ *   onToggle 统一承接所有点击/键盘切换；
+ * - 交互反馈：按压时整体缩放至 85%（150ms），选中填充用弹簧动画
+ *   （低阻尼 0.6 + 高刚度 400），手感更"弹"；
+ * - 描边颜色三态：选中=品牌色，hover=高对比文字色，否则=弱文字色；
+ * - 外层热区比视觉尺寸大 10dp，降低小目标的点击难度。
+ */
 @Composable
 fun RemCheckbox(
     checked: Boolean,
@@ -39,7 +50,9 @@ fun RemCheckbox(
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
     val pressed by interactionSource.collectIsPressedAsState()
+    // 按压缩放动画：按 85%，松开弹回 1f
     val scale by animateFloatAsState(if (pressed) 0.85f else 1f, tween(150), label = "cb-scale")
+    // 填充色：选中为品牌色实心，取消时透明；弹簧动画使勾选/取消过渡自然
     val fill by animateColorAsState(
         if (checked) colors.brand else Color.Transparent,
         spring(dampingRatio = 0.6f, stiffness = 400f),
@@ -62,7 +75,9 @@ fun RemCheckbox(
         Canvas(Modifier.size(size)) {
             val d = this.size.minDimension
             val r = d / 2f
+            // 第一层：选中时的品牌色实心圆
             drawCircle(fill)
+            // 第二层：描边圆，颜色随 hover/选中状态切换；线宽 = 半径的 18%
             drawCircle(
                 color = when {
                     checked -> colors.brand
@@ -71,6 +86,7 @@ fun RemCheckbox(
                 },
                 style = Stroke(width = r * 0.18f),
             )
+            // 第三层：选中时白色对勾，坐标按直径比例硬编码（24%→78% 区间）
             if (checked) {
                 val p = Path().apply {
                     moveTo(d * 0.24f, d * 0.52f)

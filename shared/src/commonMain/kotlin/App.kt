@@ -49,6 +49,14 @@ import com.myapplication.shared.ui.todolist.TodoFAB
 import com.myapplication.shared.ui.todolist.TodoListScreen
 import com.myapplication.shared.ui.uiMessage
 
+/**
+ * 应用入口：包一层主题与依赖图（AppGraph），再交给 [AppRoot] 做响应式布局路由。
+ *
+ * 设计要点：
+ * - AppGraph 用 `remember` 创建一次，随组合生命周期存续，避免重复初始化数据库与同步引擎；
+ * - 所有界面（Sidebar / 列表 / 详情 / 设置）都由 [MainViewModel] 的 [Route] 状态机驱动，
+ *   本文件只负责「根据路由与屏宽决定画什么」，不持有业务状态。
+ */
 @Composable
 fun App() {
     RemindersTheme {
@@ -57,6 +65,15 @@ fun App() {
     }
 }
 
+/**
+ * 应用根容器：单一 `when` 路由状态机 + 900dp 宽度断点的响应式布局。
+ *
+ * 路由四分支（按优先级）：
+ * 1. 设置页全屏覆盖（任何屏宽下优先）；
+ * 2. 宽屏三栏：Sidebar + 列表 + 右侧详情（AnimatedVisibility 控制详情栏滑入滑出）；
+ * 3. 窄屏且选中详情：详情页占满整屏（手机/平板竖屏的二级页面）；
+ * 4. 窄屏主列表：顶栏 + 列表 + FAB + 底部分栏导航。
+ */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun AppRoot(graph: AppGraph) {
@@ -65,11 +82,14 @@ fun AppRoot(graph: AppGraph) {
     val syncStatus by graph.engine.status.collectAsState()
     val colors = LocalRemColors.current
 
+    // 平台返回键：仅在非主路由时拦截（主路由返回应直接退出应用，交还给系统处理）。
+    // Android 走 BackHandler 实现，桌面/桌面 Escape 由下方 onPreviewKeyEvent 负责。
     PlatformBackHandler(enabled = route != Route.Main) { mainVm.back() }
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
             .background(colors.bgSecondary)
+            // 桌面端没有系统返回键，这里统一把 Escape 映射为 back()；KeyUp 避免按住 Esc 时重复触发。
             .onPreviewKeyEvent { event ->
                 if (event.type == KeyEventType.KeyUp && event.key == Key.Escape) {
                     mainVm.back()
@@ -79,17 +99,23 @@ fun AppRoot(graph: AppGraph) {
                 }
             },
     ) {
+        // 900dp 宽度断点：大于等于为桌面宽屏三栏布局，否则走窄屏（手机）两页式布局。
         val wide = maxWidth >= 900.dp
+        // 从路由中提取当前选中的待办 id；宽屏下详情栏靠它决定可见性。
         val selectedId = (route as? Route.Detail)?.todoId
         when {
+            // 分支 1：设置页全屏覆盖（不参与宽/窄分屏）。
             route == Route.Settings -> SettingsScreen(
                 viewModel { graph.settingsViewModelFactory() },
                 onBack = mainVm::back,
             )
+            // 分支 2：宽屏三栏——Sidebar / 列表 / 详情。
             wide -> {
                 Row(Modifier.fillMaxSize()) {
                     Sidebar(mainVm, syncStatus)
                     TodoListScreen(mainVm, Modifier.weight(1f).background(colors.bgSecondary))
+                    // 详情栏固定 340dp 宽；visible 跟随路由，进入/退出各有动画。
+                    // statusBarsPadding 仅对刘海/状态栏区域做避让，drawBehind 画左侧分隔线。
                     AnimatedVisibility(
                         visible = selectedId != null,
                         enter = fadeIn(tween(150)) + slideInHorizontally(initialOffsetX = { it / 8 }),
@@ -111,6 +137,7 @@ fun AppRoot(graph: AppGraph) {
                     }
                 }
             }
+            // 分支 3：窄屏详情页占满全屏（视为独立页面，可返回）。
             selectedId != null -> {
                 DetailScreen(
                     mainVm,
@@ -123,11 +150,13 @@ fun AppRoot(graph: AppGraph) {
                         .navigationBarsPadding(),
                 )
             }
+            // 分支 4：窄屏主列表（顶栏 + 列表 + FAB + 底部分栏）。
             else -> {
                 Column(Modifier.fillMaxSize().background(colors.bgPrimary)) {
                     NarrowTopBar(mainVm)
                     Box(Modifier.weight(1f)) {
                         TodoListScreen(mainVm, Modifier.fillMaxSize(), showHeader = false)
+                        // FAB 叠在列表右下角。
                         TodoFAB(
                             mainVm,
                             Modifier
@@ -141,6 +170,8 @@ fun AppRoot(graph: AppGraph) {
         }
     }
 
+    // 全局错误提示：MainViewModel 的命令失败统一经 lastError 通道上报，这里映射成中文弹窗。
+    // 详情页错误由 DetailScreen 自己消费，不走这里。
     val error by mainVm.lastError.collectAsState()
     val errorMsg = error?.uiMessage()
     if (errorMsg != null) {

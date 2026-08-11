@@ -25,6 +25,22 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/**
+ * MainViewModel 的契约测试。
+ *
+ * 测试策略：
+ * - 用 StandardTestDispatcher 接管 Dispatchers.Main（@BeforeTest/@AfterTest 成对
+ *   设置/还原），所有协程确定性推进；
+ * - [collect] 在 backgroundScope 启动流收集，使 ViewModel 内部挂起的流管道
+ *   跑起来，配合 advanceUntilIdle 把待执行任务全部执行完再断言；
+ * - 无协程参与的纯状态操作（openDetail/selectScope 等）不套 runTest。
+ *
+ * 覆盖契约：
+ * - createTodo 正确委派（含日期/备注/列表/错误路径）；
+ * - toggleCompleted / toggleFlag 委派到仓库；
+ * - 导航（openDetail/back）与 scope 切换的副作用（清搜索词、关详情、
+ *   删除列表后回退到 All）。
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModelTest {
 
@@ -40,6 +56,7 @@ class MainViewModelTest {
         Dispatchers.resetMain()
     }
 
+    // 在后台作用域收集 UI 状态流：不收集则 vm 内部的流管道不会执行
     private fun TestScope.collect(vm: MainViewModel) {
         backgroundScope.launch { vm.todos.collect {} }
         backgroundScope.launch { vm.lists.collect {} }
@@ -57,6 +74,7 @@ class MainViewModelTest {
         val due = LocalDateTime(2026, 8, 12, 15, 0)
         vm.createTodo("交报告", "备注内容", due)
         advanceUntilIdle()
+        // 标题/备注/日期全部落到仓库；非子任务 → parentId 为 null
         assertEquals("交报告", repo.lastInserted?.title)
         assertNotNull(repo.lastInserted?.dueDate)
         assertNull(repo.lastInserted?.parentId)
@@ -80,6 +98,7 @@ class MainViewModelTest {
         collect(vm)
         vm.createTodo("   ", "", null)
         advanceUntilIdle()
+        // 空标题：错误进入 lastError，仓库零写入
         assertEquals(TodoError.EmptyTitle, vm.lastError.value)
         assertNull(repo.lastInserted)
     }
@@ -93,11 +112,13 @@ class MainViewModelTest {
         collect(vm)
         vm.createTodo("写不了", "", null)
         advanceUntilIdle()
+        // 仓库持久化失败 → 原样暴露 Persistence（UI 可据此提示）
         assertTrue(vm.lastError.value is TodoError.Persistence)
     }
 
     @Test
     fun dismissErrorClearsLastError() {
+        // 纯同步状态操作，无需协程调度器
         val repo = FakeTodoRepository()
         val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
         vm.lastError.value = TodoError.EmptyTitle
@@ -111,6 +132,7 @@ class MainViewModelTest {
         repo.ensureInbox()
         val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
         collect(vm)
+        // 构造一个内存 item（id=5）触发切换，验证只转发 id + 目标值
         val item = TodoItem(5, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
         vm.toggleCompleted(item)
         advanceUntilIdle()
@@ -133,6 +155,7 @@ class MainViewModelTest {
 
     @Test
     fun openDetailAndBack() {
+        // 导航是同步路由切换：open → Detail(3)，back → 主界面
         val vm = vm(FakeTodoRepository())
         vm.openDetail(3)
         assertEquals(Route.Detail(3), vm.route.value)
@@ -142,6 +165,7 @@ class MainViewModelTest {
 
     @Test
     fun selectScopeClearsSearchQuery() = runTest(dispatcher) {
+        // 切 scope 时清空搜索词，避免跨列表残留过滤条件
         val vm = vm(FakeTodoRepository())
         vm.setSearch("牛奶")
         vm.selectScope(Scope.Today)
@@ -155,6 +179,7 @@ class MainViewModelTest {
         val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
         collect(vm)
         vm.selectScope(Scope.List(7))
+        // 当前 scope 对应的列表被删 → scope 回退到 All，避免指向不存在的列表
         vm.deleteList(TodoList(7, "x", "blue", 1, Instant.fromEpochMilliseconds(0)))
         advanceUntilIdle()
         assertEquals(Scope.All, vm.scope.value)
@@ -162,6 +187,7 @@ class MainViewModelTest {
 
     @Test
     fun selectScopeClosesDetail() {
+        // 切 scope 同时关闭详情页，保证详情与列表状态不脱节
         val vm = vm(FakeTodoRepository())
         vm.openDetail(3)
         vm.selectScope(Scope.Today)

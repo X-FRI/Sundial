@@ -28,8 +28,24 @@ import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
 
+/**
+ * 按钮视觉变体：
+ * - Default：品牌色实底按钮（主操作，白字）；
+ * - Ghost：无背景的次操作按钮，hover 时浮现次级背景；
+ * - Danger：危险操作，红色文字 + 1dp 边框，hover 时叠加红色低透明度背景。
+ */
 enum class RemButtonVariant { Default, Ghost, Danger }
 
+/**
+ * 通用文字按钮（32dp 高）。
+ *
+ * 设计要点：
+ * - 自绘交互状态：通过 [MutableInteractionSource] 收集 hover/pressed，
+ *   背景与前景色均用 animateColorAsState 做 200ms 过渡；
+ * - 关闭默认 indication（水波纹），风格统一为纯色渐变；
+ * - 禁用态按变体处理：Default 变灰的品牌色，其余变体完全透明 + 弱化文字；
+ * - Danger 变体仅画边框，底色靠 hover 叠加，避免常驻红色块过重。
+ */
 @Composable
 fun RemButton(
     text: String,
@@ -42,6 +58,7 @@ fun RemButton(
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
     val pressed by interactionSource.collectIsPressedAsState()
+    // 背景色状态机：禁用 > 变体主色 > hover 反馈 > 透明兜底
     val bg by animateColorAsState(
         when {
             !enabled && variant == RemButtonVariant.Default -> colors.brand.copy(alpha = 0.4f)
@@ -55,6 +72,7 @@ fun RemButton(
         tween(200),
         label = "btn-bg",
     )
+    // 前景色状态机：禁用态弱化、Default 恒白字、Danger 恒红字
     val fg by animateColorAsState(
         when {
             !enabled && variant == RemButtonVariant.Default -> Color.White.copy(alpha = 0.7f)
@@ -82,6 +100,7 @@ fun RemButton(
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
+        // 按压时前景再降 20% 透明度，模拟"按下去"的反馈
         androidx.compose.foundation.text.BasicText(
             text,
             style = RemType.label12.copy(color = if (pressed) fg.copy(alpha = 0.8f) else fg),
@@ -89,6 +108,13 @@ fun RemButton(
     }
 }
 
+/**
+ * 图标按钮：默认 14dp 图标、点击热区为图标 + 8dp 内边距。
+ *
+ * 与 [RemButton] 相同的交互自绘思路：hover 浮现 bgSecondary，pressed 时
+ * 图标透明度降为 80%。contentDescription 通过 semantics 暴露给无障碍层，
+ * 传 null 时该按钮对屏幕阅读器完全不可见（纯装饰图标用）。
+ */
 @Composable
 fun RemIconButton(
     icon: IconName,

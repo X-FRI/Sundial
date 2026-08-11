@@ -37,6 +37,17 @@ import kotlinx.datetime.number
 import kotlinx.datetime.onDay
 import kotlinx.datetime.plusMonth
 
+/**
+ * 自绘月历日期选择器（悬浮在 [RemDialog] 中），支持日期 + 时间 + 清除时间。
+ *
+ * 设计要点：
+ * - 采用"即点即用"模型：点日期即回调 [onPick] 并关闭，底部按钮隐藏
+ *   （showButtons = false），确定按钮不存在；时间通过 [onPickTime] 单独回调，
+ *   与日期解耦，因此界面无"确认"动作；
+ * - 时间行默认值来自 [initialTime]，清除时间用 (-1, -1) 哨兵值表达"删除时间"；
+ * - 日历按周网格绘制：周一开始（ISO），由当月 1 号的星期偏移量推算前导空格；
+ * - 今天与已选日期高亮：今天=品牌色文字，已选=品牌色实底白字。
+ */
 @Composable
 fun RemDatePicker(
     initialDate: LocalDate?,
@@ -47,6 +58,7 @@ fun RemDatePicker(
 ) {
     val colors = LocalRemColors.current
     val today = todayDate()
+    // 当前展示的月份：有初始日期则从该日期起，否则从今天所在月起步
     var month by remember {
         mutableStateOf(
             initialDate?.let { YearMonth(it.year, it.month.number) }
@@ -60,6 +72,7 @@ fun RemDatePicker(
         onConfirm = onDismiss,
         showButtons = false,
         content = {
+            // 月份标题行：上月/下月切换按钮 + 居中"YYYY 年 M 月"
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 RemIconButton(IconName.ChevronBack, "上个月", onClick = { month = month.minusMonth() }, size = 14.dp)
                 androidx.compose.foundation.text.BasicText(
@@ -74,6 +87,7 @@ fun RemDatePicker(
                 RemIconButton(IconName.ChevronRight, "下个月", onClick = { month = month.plusMonth() }, size = 14.dp)
             }
             Spacer(Modifier.height(12.dp))
+            // 计算网格布局：当月 1 号是星期几 → 前导空格数；总周数 = 上行
             val offset = month.onDay(1).dayOfWeek.isoDayNumber - 1 // ISO 周一=1
             val daysInMonth = month.numberOfDays
             val weeks = (offset + daysInMonth + 6) / 7
@@ -87,6 +101,7 @@ fun RemDatePicker(
                     )
                 }
             }
+            // 逐格填充日期：前导空格期或月末之后补 Spacer，保持 7 列网格对齐
             var day = 1
             for (w in 0 until weeks) {
                 Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
@@ -131,14 +146,24 @@ fun RemDatePicker(
         })
 }
 
+/**
+ * 时间调节行：小时/分钟各两个步进按钮，与日期选择解耦。
+ *
+ * 步进值约定：
+ * - 小时 ±1（环形 0~23），分钟 ±5（环形 0~59）；
+ * - [onPickTime] 每次步进立即回调（实时生效，无确认按钮）；
+ * - "清除时间"回调 (-1, -1)，由调用方解释为删除时间。
+ */
 @Composable
 private fun TimePickerRow(initialTime: LocalTime?, onPickTime: (Int, Int) -> Unit) {
     val colors = LocalRemColors.current
+    // 默认 9:00；若已有初始时间则沿用
     var hour by remember { mutableStateOf(initialTime?.hour ?: 9) }
     var minute by remember { mutableStateOf(initialTime?.minute ?: 0) }
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.foundation.text.BasicText("时间", style = RemType.text14.copy(color = colors.textNormal))
         Spacer(Modifier.weight(1f))
+        // 小时步进：+23 再取模等价于 -1，实现 0→23 环形回绕
         RemIconButton(IconName.ChevronBack, "减一小时", onClick = {
             hour = (hour + 23) % 24
             onPickTime(hour, minute)
@@ -152,6 +177,7 @@ private fun TimePickerRow(initialTime: LocalTime?, onPickTime: (Int, Int) -> Uni
             onPickTime(hour, minute)
         }, size = 14.dp)
         Spacer(Modifier.width(4.dp))
+        // 分钟步进：+55 取模等价于 -5，实现 0→55 环形回绕
         RemIconButton(IconName.ChevronBack, "减五分钟", onClick = {
             minute = (minute + 55) % 60
             onPickTime(hour, minute)

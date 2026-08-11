@@ -43,6 +43,15 @@ import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
 import com.myapplication.shared.ui.todolist.scopeTitle
 
+/**
+ * 窄屏（<900dp）导航壳：顶部栏 + 底部五格导航。
+ *
+ * - [NarrowTopBar]：标题 / 搜索两种模式互斥切换（本地 searching 状态），
+ *   标题随 scope 与搜索词动态变化；
+ * - [NarrowBottomNav]：今天 / 计划 / 全部 / 已完成 / 垃圾箱 五个常驻入口，
+ *   是桌面 Sidebar 智能列表在窄屏的等价物——切页只是改 mainVm.scope，
+ *   不改变路由（详情/设置仍是全屏二级页面）。
+ */
 @Composable
 fun NarrowTopBar(mainVm: MainViewModel, modifier: Modifier = Modifier) {
     val colors = LocalRemColors.current
@@ -60,6 +69,7 @@ fun NarrowTopBar(mainVm: MainViewModel, modifier: Modifier = Modifier) {
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         if (searching) {
+            // 搜索模式：输入框 + 退出按钮（退出时同步清空搜索词，避免残留）。
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RemTextField(
                     value = query,
@@ -79,6 +89,7 @@ fun NarrowTopBar(mainVm: MainViewModel, modifier: Modifier = Modifier) {
                 )
             }
         } else {
+            // 标题模式：当前范围标题 + 设置 / 搜索两个入口。
             Row(verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.text.BasicText(
                     scopeTitle(scope, query),
@@ -93,6 +104,9 @@ fun NarrowTopBar(mainVm: MainViewModel, modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * 窄屏底部导航：五个智能范围常驻入口，与 Sidebar 的 SmartGrid 同源（同一 scope 状态机）。
+ */
 @Composable
 fun NarrowBottomNav(mainVm: MainViewModel, modifier: Modifier = Modifier) {
     val colors = LocalRemColors.current
@@ -115,6 +129,7 @@ fun NarrowBottomNav(mainVm: MainViewModel, modifier: Modifier = Modifier) {
     }
 }
 
+/** 单个导航项：图标 + 文字，选中态用品牌色与背景高亮。 */
 @Composable
 private fun NavItem(icon: IconName, label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val colors = LocalRemColors.current

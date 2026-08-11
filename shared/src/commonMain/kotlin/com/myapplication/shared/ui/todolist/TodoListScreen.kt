@@ -62,6 +62,21 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.toLocalDateTime
 
+/**
+ * 主列表屏：按 scope 渲染不同分组形态，并承载新建待办入口。
+ *
+ * 渲染分支（when 优先级从上到下）：
+ * 1. 搜索中无结果 / 列表为空 → 两个不同文案的空状态；
+ * 2. Today → [TodayGrouped]（逾期/今天/以后 三桶）；
+ * 3. Scheduled → [ScheduledGrouped]（逾期/今天/明天/本周/以后 五桶）；
+ * 4. Trash → [TrashList]（恢复 / 彻底删除）；
+ * 5. 其余（All / Completed / List）→ [PlainList]（未完成在前、已完成折叠区）。
+ *
+ * 其他要点：
+ * - [showHeader] 为 false 时是窄屏嵌入形态（标题交给 NarrowTopBar），
+ *   宽屏（三栏布局）与窄屏复用同一组件；
+ * - 新建表单与 FAB 同一套 TodoFormDialog，defaultListId 取自当前 scope。
+ */
 @Composable
 fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHeader: Boolean = true) {
     val colors = LocalRemColors.current
@@ -74,6 +89,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
     Column(modifier.background(colors.bgSecondary).remGrid(colors)) {
         val today = todayDate()
         val activeCount = todos.count { !it.isCompleted }
+        // 宽屏专属页头：范围标题 + 计数徽标 + 新建按钮。
         if (showHeader) {
             Row(
                 Modifier
@@ -87,6 +103,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
                     style = RemType.title18.copy(color = colors.textHigh),
                     modifier = Modifier.weight(1f),
                 )
+                // 计数：已完成范围显示总数，其余范围显示「未完成数」。
                 val count = if (scope == Scope.Completed) todos.size else activeCount
                 if (count > 0) {
                     RemBadge(
@@ -96,6 +113,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
                     )
                 }
                 Spacer(Modifier.width(8.dp))
+                // 宽屏下的「＋」新建入口（窄屏用右下角 FAB）。
                 val plusInteraction = remember { MutableInteractionSource() }
                 val plusHovered by plusInteraction.collectIsHoveredAsState()
                 Box(
@@ -111,6 +129,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
                 }
             }
         }
+        // 副标题行：今天/计划显示日期 + 星期，其余显示计数摘要。
         androidx.compose.foundation.text.BasicText(
             if (scope == Scope.Today || scope == Scope.Scheduled) "${today.monthNumber} 月 ${today.dayOfMonth} 日 · 星期${"一二三四五六日"[today.dayOfWeek.isoDayNumber - 1]}" else if (scope == Scope.Completed) "${todos.size} 项" else "$activeCount 项未完成",
             style = RemType.text12.copy(
@@ -119,6 +138,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
             ),
             modifier = Modifier.padding(start = 20.dp, top = if (showHeader) 4.dp else 10.dp, bottom = 8.dp),
         )
+        // 核心渲染分支：空态 → 分组形态（见类注释）。
         when {
             todos.isEmpty() && query.isNotBlank() -> RemEmptyState("没有找到结果", "换个关键词试试", IconName.Search)
             todos.isEmpty() -> RemEmptyState("没有待办", "点击 ＋ 或输入框添加", IconName.Tray)
@@ -129,6 +149,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
         }
     }
 
+    // 新建待办表单：确认后走 mainVm.createTodo 落库。
     if (showCreate) {
         TodoFormDialog(
             lists = lists,
@@ -142,6 +163,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
     }
 }
 
+/** 顶栏/页头标题：搜索词非空时统一显示「搜索」，否则按范围取标题。 */
 fun scopeTitle(scope: Scope, query: String): String = when {
     query.isNotBlank() -> "搜索"
     scope == Scope.Today -> "今天"
@@ -172,6 +194,12 @@ private fun SectionHeader(title: String, count: Int, overdue: Boolean) {
     }
 }
 
+/**
+ * 「今天」视图：按时间桶分组（逾期 / 今天 / 以后）。
+ *
+ * 实现说明：所有条目先按 bucketOf 分桶，再按固定桶序渲染 LazyColumn——
+ * 空桶整组跳过（连标题一起），保证跨条目聚合（如逾期数量）随数据流自动更新。
+ */
 @Composable
 private fun TodayGrouped(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, mainVm: MainViewModel) {
     val colors = LocalRemColors.current
@@ -202,6 +230,15 @@ private fun TodayGrouped(todos: List<TodoItem>, today: kotlinx.datetime.LocalDat
     }
 }
 
+/**
+ * 普通列表视图（全部 / 已完成 / 自定义列表）：未完成在上，已完成折叠在下。
+ *
+ * 结构：
+ * - 活跃区：父任务逐行渲染，有子任务时显示展开箭头（共享一个全局 expanded 状态），
+ *   展开后子任务以缩进行紧随父任务；
+ * - 已完成区：独立折叠头部 + 卡片，[completedExpanded] 控制显示；
+ * - LazyColumn 用稳定 key（active-card / completed-header 等）最小化重组。
+ */
 @Composable
 private fun PlainList(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, mainVm: MainViewModel) {
     val colors = LocalRemColors.current
@@ -268,6 +305,9 @@ private fun PlainList(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, 
     }
 }
 
+/**
+ * 「计划」视图：五桶分组（逾期 / 今天 / 明天 / 本周 / 以后），比今天视图多两个桶。
+ */
 @Composable
 private fun ScheduledGrouped(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, mainVm: MainViewModel) {
     val colors = LocalRemColors.current
@@ -304,6 +344,10 @@ private fun ScheduledGrouped(todos: List<TodoItem>, today: kotlinx.datetime.Loca
     }
 }
 
+/**
+ * 垃圾箱视图：每行提供「恢复」与「彻底删除」两个操作。
+ * 注意这里恢复/删除不经过详情页，直接调用 mainVm 命令。
+ */
 @Composable
 private fun TrashList(todos: List<TodoItem>, mainVm: MainViewModel) {
     val colors = LocalRemColors.current
@@ -328,6 +372,9 @@ private fun TrashList(todos: List<TodoItem>, mainVm: MainViewModel) {
     }
 }
 
+/**
+ * 截止日期徽标：按时间桶着色（逾期红 / 今天黄 / 其他中性色）。
+ */
 @Composable
 private fun TodoBadge(item: TodoItem, today: kotlinx.datetime.LocalDate) {
     val colors = LocalRemColors.current
@@ -349,6 +396,14 @@ private fun TodoBadge(item: TodoItem, today: kotlinx.datetime.LocalDate) {
     )
 }
 
+/**
+ * 单行待办：勾选 + 标题/备注/子任务计数 + 旗标 + 截止日期徽标。
+ *
+ * 交互约定：
+ * - 有子任务的父任务（showChevron=true）点击整行 = 展开/收起；
+ * - 其余行点击 = 进入详情页（openDetail）；
+ * - 行内其余控件（勾选框、徽标）各自可点，不冲突。
+ */
 @Composable
 fun TodoRow(
     item: TodoItem,

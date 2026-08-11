@@ -15,8 +15,28 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 
+/**
+ * 全部图标名称的枚举；与 [RemIcon] 的 when 分支一一对应。
+ *
+ * 新增图标流程：在此加枚举值 → 在 RemIcon 的 when 中补绘制分支 →
+ * 调用方通过 contentDescription 提供无障碍文案。
+ */
 enum class IconName { Calendar, Today, Scheduled, Tray, CheckCircle, Trash, Search, Plus, Close, ChevronBack, ChevronRight, ChevronDown, Flag, DotsThree, Cloud, Server, Device, Key, Settings }
 
+/**
+ * 矢量手绘图标组件（Canvas 绘制，不依赖图片资源）。
+ *
+ * 坐标系约定（所有图标必须遵守）：
+ * - 设计网格固定为 24×24 虚拟单位，绘制时以 `u = size / 24f` 缩放，
+ *   保证任意尺寸下图标比例一致；
+ * - 描边线宽 = 1.8 个网格单位（st = 1.8f * u），全部线帽/连接处为圆角；
+ * - 坐标均为"网格坐标"（如 box(3.5f, 5f, 17f, 15f) = 左上角 (3.5,5)、
+ *   宽 17、高 15），修改图标时保持 24 网格内布局并留出描边边距。
+ *
+ * 辅助绘制函数（局部函数，闭包捕获 tint/u/st）：
+ * - [line]：两点连线；[circle]：圆（可选实心）；[box]：圆角矩形描边；
+ * - [poly]：折线/多边形（可选实心）。
+ */
 @Composable
 fun RemIcon(
     name: IconName,
@@ -26,7 +46,9 @@ fun RemIcon(
 ) {
     Canvas(modifier.semantics { if (contentDescription != null) this.contentDescription = contentDescription }) {
         val s = size.minDimension
+        // 网格换算：1 网格单位 = 画布边长 / 24
         val u = s / 24f
+        // 标准描边宽度：1.8 网格单位
         val st = 1.8f * u
         fun line(x1: Float, y1: Float, x2: Float, y2: Float) =
             drawLine(tint, Offset(x1 * u, y1 * u), Offset(x2 * u, y2 * u), strokeWidth = st, cap = StrokeCap.Round)
@@ -51,6 +73,7 @@ fun RemIcon(
             }
             drawPath(p, tint, style = if (filled) Fill else Stroke(width = st, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
+        // 各图标绘制：均为 24 网格内的几何组合，参数为网格坐标
         when (name) {
             IconName.Calendar -> {
                 box(3.5f, 5f, 17f, 15f)

@@ -26,6 +26,13 @@ import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Scope
 import com.myapplication.shared.ui.theme.LocalRemColors
 
+/**
+ * 悬浮新建按钮（仅窄屏主列表右下角使用）。
+ *
+ * 行为：点击弹出 [TodoFormDialog]；若当前范围是某个自定义列表
+ * （Scope.List），对话框默认选中该列表——用户在列表页里新建的待办
+ * 自动归入该列表。
+ */
 @Composable
 fun TodoFAB(mainVm: MainViewModel, modifier: Modifier = Modifier) {
     val colors = LocalRemColors.current
@@ -35,6 +42,7 @@ fun TodoFAB(mainVm: MainViewModel, modifier: Modifier = Modifier) {
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
 
+    // FAB 本体：56dp 圆形按钮，hover 时加深品牌色。
     Box(
         modifier
             .size(56.dp)
@@ -48,6 +56,7 @@ fun TodoFAB(mainVm: MainViewModel, modifier: Modifier = Modifier) {
         RemIcon(IconName.Plus, androidx.compose.ui.graphics.Color.White, Modifier.size(22.dp))
     }
 
+    // 表单对话框：确认后交给 mainVm.createTodo 落库并关闭。
     if (showCreate) {
         TodoFormDialog(
             lists = lists,
