@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 
@@ -101,6 +102,16 @@ class MainViewModel(private val repository: TodoRepository) : ViewModel() {
         val due = parsed.dueDate?.toInstant(TimeZone.currentSystemDefault())
         viewModelScope.launch {
             repository.addTodo(listId, parsed.title, "", due, null)
+        }
+    }
+
+    fun createTodo(title: String, note: String, due: LocalDateTime?) {
+        val trimmed = title.trim()
+        if (trimmed.isEmpty()) return
+        val listId = (scope.value as? Scope.List)?.listId
+        val instant = due?.toInstant(TimeZone.currentSystemDefault())
+        viewModelScope.launch {
+            repository.addTodo(listId, trimmed, note.trim(), instant, null)
         }
     }
 

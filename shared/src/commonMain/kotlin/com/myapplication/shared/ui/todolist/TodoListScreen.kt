@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -70,6 +71,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
     val scope by mainVm.scope.collectAsState()
     val query by mainVm.searchQuery.collectAsState()
     var quickAddFocus by remember { mutableStateOf(0) }
+    var showCreate by remember { mutableStateOf(false) }
 
     Column(modifier.background(colors.bgSecondary).remGrid(colors)) {
         val today = todayDate()
@@ -78,6 +80,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(start = 20.dp, end = 16.dp, top = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -102,7 +105,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
                         .size(26.dp)
                         .clip(RoundedCornerShape(RemRadii.r2))
                         .background(if (plusHovered) colors.bgSecondary else Color.Transparent)
-                        .clickable(interactionSource = plusInteraction, indication = null) { quickAddFocus++ }
+                        .clickable(interactionSource = plusInteraction, indication = null) { showCreate = true }
                         .semantics { contentDescription = "新建待办" },
                     contentAlignment = Alignment.Center,
                 ) {
@@ -129,6 +132,16 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
             scope == Scope.Trash -> TrashList(todos, mainVm)
             else -> PlainList(todos, today, mainVm)
         }
+    }
+
+    if (showCreate) {
+        TodoFormDialog(
+            onDismiss = { showCreate = false },
+            onConfirm = { title, note, due ->
+                mainVm.createTodo(title, note, due)
+                showCreate = false
+            },
+        )
     }
 }
 

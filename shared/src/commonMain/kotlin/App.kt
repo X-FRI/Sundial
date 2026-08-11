@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -84,6 +86,7 @@ fun AppRoot(graph: AppGraph) {
                         modifier = Modifier
                             .width(340.dp)
                             .background(colors.bgPrimary)
+                            .statusBarsPadding()
                             .drawBehind {
                                 drawLine(
                                     colors.border,
@@ -98,7 +101,16 @@ fun AppRoot(graph: AppGraph) {
                 }
             }
             selectedId != null -> {
-                DetailScreen(mainVm, graph, selectedId, Modifier.fillMaxSize())
+                DetailScreen(
+                    mainVm,
+                    graph,
+                    selectedId,
+                    Modifier
+                        .fillMaxSize()
+                        .background(colors.bgPrimary)
+                        .statusBarsPadding()
+                        .navigationBarsPadding(),
+                )
             }
             else -> {
                 Column(Modifier.fillMaxSize().background(colors.bgPrimary)) {
