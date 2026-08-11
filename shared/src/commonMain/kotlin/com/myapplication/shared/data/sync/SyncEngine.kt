@@ -6,6 +6,7 @@ import com.myapplication.shared.domain.sync.SyncClient
 import com.myapplication.shared.domain.sync.SyncConfig
 import com.myapplication.shared.domain.sync.SyncCoordinator
 import com.myapplication.shared.domain.sync.SyncError
+import com.myapplication.shared.domain.sync.SyncMode
 import com.myapplication.shared.domain.sync.SyncStatus
 import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
@@ -34,6 +35,7 @@ class SyncEngine(
 
     fun configure(newConfig: SyncConfig) {
         stopCurrent()
+        _status.value = _status.value.copy(mode = newConfig.mode, connected = false)
         SyncClientFactory.create(newConfig).fold(
             ifLeft = { error ->
                 client = NoopSyncClient()
@@ -41,9 +43,13 @@ class SyncEngine(
             },
             ifRight = { newClient ->
                 client = newClient
-                coordinator = SyncCoordinator(repository, newClient, newConfig.deviceId)
-                startPushLoop()
-                startRemoteLoop()
+                if (newConfig.mode == SyncMode.Local) {
+                    coordinator = null
+                } else {
+                    coordinator = SyncCoordinator(repository, newClient, newConfig.deviceId)
+                    startPushLoop()
+                    startRemoteLoop()
+                }
             },
         )
     }

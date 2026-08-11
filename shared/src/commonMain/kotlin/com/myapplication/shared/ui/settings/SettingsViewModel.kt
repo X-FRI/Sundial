@@ -32,6 +32,8 @@ class SettingsViewModel(
     private val _form = MutableStateFlow(SettingsForm())
     val form: StateFlow<SettingsForm> = _form
 
+    private var formLoaded = false
+
     init {
         viewModelScope.launch {
             val settings = repository.getSettings().getOrNull() ?: emptyMap()
@@ -41,6 +43,7 @@ class SettingsViewModel(
                 supabaseKey = settings["sync.supabase.key"] ?: "",
                 sundialUrl = settings["sync.sundial.url"] ?: "",
             )
+            formLoaded = true
         }
     }
 
@@ -57,6 +60,7 @@ class SettingsViewModel(
     }
 
     fun save() {
+        if (!formLoaded) return
         val f = _form.value
         if (f.mode == SyncMode.Supabase && (f.supabaseUrl.isBlank() || f.supabaseKey.isBlank())) return
         viewModelScope.launch {
