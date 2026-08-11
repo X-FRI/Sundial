@@ -45,6 +45,7 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.common)
                 implementation("app.cash.sqldelight:sqlite-driver:$sqlDelightVersion")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.2")
             }
         }
         val commonTest by getting {
