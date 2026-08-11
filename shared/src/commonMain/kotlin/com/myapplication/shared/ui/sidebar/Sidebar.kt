@@ -84,11 +84,17 @@ fun Sidebar(mainVm: MainViewModel) {
         Spacer(Modifier.height(RemSpacing.s12))
         RemTextField(value = query, onValueChange = mainVm::setSearch, placeholder = "搜索", leadingIcon = IconName.Search)
         Spacer(Modifier.height(RemSpacing.s8))
-        ScopeRow(IconName.Today, "今天", todayCount, scope == Scope.Today, countBadge = true) { mainVm.selectScope(Scope.Today) }
-        ScopeRow(IconName.Scheduled, "计划", scheduledCount, scope == Scope.Scheduled) { mainVm.selectScope(Scope.Scheduled) }
-        ScopeRow(IconName.Tray, "全部待办", allCount, scope == Scope.All) { mainVm.selectScope(Scope.All) }
-        ScopeRow(IconName.CheckCircle, "已完成", completedCount, scope == Scope.Completed) { mainVm.selectScope(Scope.Completed) }
-        ScopeRow(IconName.Trash, "垃圾箱", trashCount, scope == Scope.Trash) { mainVm.selectScope(Scope.Trash) }
+        androidx.compose.foundation.text.BasicText(
+            "智能列表",
+            style = RemType.label10.copy(color = colors.textLow),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+        ScopeRow(IconName.Today, "今天", todayCount, scope == Scope.Today, iconBg = colors.error, countBadge = true) { mainVm.selectScope(Scope.Today) }
+        ScopeRow(IconName.Scheduled, "计划", scheduledCount, scope == Scope.Scheduled, iconBg = colors.warning) { mainVm.selectScope(Scope.Scheduled) }
+        ScopeRow(IconName.Tray, "全部待办", allCount, scope == Scope.All, iconBg = colors.textNormal) { mainVm.selectScope(Scope.All) }
+        ScopeRow(IconName.CheckCircle, "已完成", completedCount, scope == Scope.Completed, iconBg = colors.success) { mainVm.selectScope(Scope.Completed) }
+        ScopeRow(IconName.Trash, "垃圾箱", trashCount, scope == Scope.Trash, iconBg = colors.textLow) { mainVm.selectScope(Scope.Trash) }
+        Spacer(Modifier.height(RemSpacing.s8))
         Row(
             Modifier
                 .fillMaxWidth()
@@ -154,7 +160,20 @@ fun Sidebar(mainVm: MainViewModel) {
 }
 
 @Composable
-private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolean, countBadge: Boolean = false, onClick: () -> Unit) {
+private fun SmartIcon(icon: IconName, bg: Color, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(22.dp)
+            .clip(RoundedCornerShape(RemRadii.r2))
+            .background(bg),
+        contentAlignment = Alignment.Center,
+    ) {
+        RemIcon(icon, Color.White, Modifier.size(12.dp))
+    }
+}
+
+@Composable
+private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolean, iconBg: Color, countBadge: Boolean = false, onClick: () -> Unit) {
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
@@ -170,16 +189,16 @@ private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolea
     )
     Row(
         Modifier
-            .fillMaxWidth()
-            .height(28.dp)
-            .clip(RoundedCornerShape(RemRadii.r2))
-            .background(bg)
-            .border(if (focused) 1.dp else 0.dp, colors.focusRing, RoundedCornerShape(RemRadii.r2))
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .padding(horizontal = 8.dp),
+        .fillMaxWidth()
+        .height(30.dp)
+        .clip(RoundedCornerShape(RemRadii.r2))
+        .background(bg)
+        .border(if (focused) 1.dp else 0.dp, colors.focusRing, RoundedCornerShape(RemRadii.r2))
+        .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+        .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RemIcon(icon, if (selected) colors.brand else colors.textLow, Modifier.size(14.dp))
+        SmartIcon(icon, iconBg)
         Spacer(Modifier.width(8.dp))
         androidx.compose.foundation.text.BasicText(
             label,
