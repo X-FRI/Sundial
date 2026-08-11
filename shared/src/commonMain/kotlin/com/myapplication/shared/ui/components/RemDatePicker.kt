@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.ui.theme.LocalRemColors
@@ -63,7 +64,11 @@ fun RemDatePicker(
                 RemIconButton(IconName.ChevronBack, "上个月", onClick = { month = month.minusMonth() }, size = 14.dp)
                 androidx.compose.foundation.text.BasicText(
                     "${month.year} 年 ${month.month.number} 月",
-                    style = RemType.text16.copy(color = colors.textHigh, textAlign = TextAlign.Center),
+                    style = RemType.text14.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.textHigh,
+                        textAlign = TextAlign.Center,
+                    ),
                     modifier = Modifier.weight(1f),
                 )
                 RemIconButton(IconName.ChevronRight, "下个月", onClick = { month = month.plusMonth() }, size = 14.dp)

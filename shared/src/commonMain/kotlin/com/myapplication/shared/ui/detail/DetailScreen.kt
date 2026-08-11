@@ -3,6 +3,7 @@ package com.myapplication.shared.ui.detail
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -94,7 +96,7 @@ fun DetailScreen(
                     titleText = it
                     detailVm.setTitle(it)
                 },
-                style = RemType.text16,
+                style = RemType.text16.copy(fontWeight = FontWeight.SemiBold),
                 modifier = Modifier.weight(1f),
             )
             if (current.dueDate != null) {
@@ -125,7 +127,7 @@ fun DetailScreen(
         Box(
             Modifier
                 .fillMaxWidth()
-                .background(colors.bgPrimary, RoundedCornerShape(RemRadii.r2))
+                .background(colors.inputBg, RoundedCornerShape(RemRadii.r2))
                 .padding(4.dp),
         ) {
             RemTextField(
@@ -142,19 +144,22 @@ fun DetailScreen(
         }
         Spacer(Modifier.height(4.dp))
 
+        val dateInteraction = remember { MutableInteractionSource() }
+        val dateHovered by dateInteraction.collectIsHoveredAsState()
         Row(
             Modifier
                 .fillMaxWidth()
+                .background(if (dateHovered) colors.bgSecondary.copy(alpha = 0.4f) else Color.Transparent)
                 .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = dateInteraction,
                     indication = null,
                 ) { showDatePicker = true }
-                .padding(vertical = 10.dp),
+                .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RemIcon(IconName.Calendar, colors.textLow, Modifier.size(14.dp))
             Spacer(Modifier.width(8.dp))
-            androidx.compose.foundation.text.BasicText("日期", style = RemType.text14.copy(color = colors.textNormal))
+            androidx.compose.foundation.text.BasicText("日期", style = RemType.text12.copy(color = colors.textNormal))
             Spacer(Modifier.weight(1f))
             if (current.dueDate != null) {
                 RemBadge(
@@ -170,43 +175,49 @@ fun DetailScreen(
             }
         }
 
+        val flagInteraction = remember { MutableInteractionSource() }
+        val flagHovered by flagInteraction.collectIsHoveredAsState()
         Row(
             Modifier
                 .fillMaxWidth()
+                .background(if (flagHovered) colors.bgSecondary.copy(alpha = 0.4f) else Color.Transparent)
                 .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = flagInteraction,
                     indication = null,
                 ) { mainVm.toggleFlag(current) }
-                .padding(vertical = 10.dp),
+                .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            androidx.compose.foundation.text.BasicText("旗标", style = RemType.text14.copy(color = colors.textNormal))
+            androidx.compose.foundation.text.BasicText("旗标", style = RemType.text12.copy(color = colors.textNormal))
             Spacer(Modifier.weight(1f))
-            RemIcon(IconName.Flag, if (current.flag) colors.warning else colors.textLow, Modifier.size(16.dp))
+            RemIcon(IconName.Flag, if (current.flag) colors.warning else colors.textLow, Modifier.size(14.dp))
             Spacer(Modifier.width(4.dp))
-            androidx.compose.foundation.text.BasicText(if (current.flag) "已标记" else "未标记", style = RemType.text14.copy(color = if (current.flag) colors.textHigh else colors.textLow))
+            androidx.compose.foundation.text.BasicText(if (current.flag) "已标记" else "未标记", style = RemType.text12.copy(color = if (current.flag) colors.warning else colors.textLow))
         }
 
         val currentList = lists.firstOrNull { it.id == current.listId }
+        val listInteraction = remember { MutableInteractionSource() }
+        val listHovered by listInteraction.collectIsHoveredAsState()
         Row(
             Modifier
                 .fillMaxWidth()
+                .background(if (listHovered) colors.bgSecondary.copy(alpha = 0.4f) else Color.Transparent)
                 .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = listInteraction,
                     indication = null,
                 ) { showListDialog = true }
-                .padding(vertical = 10.dp),
+                .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RemIcon(IconName.Tray, colors.textLow, Modifier.size(14.dp))
             Spacer(Modifier.width(8.dp))
-            androidx.compose.foundation.text.BasicText("列表", style = RemType.text14.copy(color = colors.textNormal))
+            androidx.compose.foundation.text.BasicText("列表", style = RemType.text12.copy(color = colors.textNormal))
             Spacer(Modifier.weight(1f))
             Box(Modifier.size(10.dp).background(ListColorOf[currentList?.colorKey] ?: Color.Gray, CircleShape))
             Spacer(Modifier.width(6.dp))
             androidx.compose.foundation.text.BasicText(
                 currentList?.name ?: "未知列表",
-                style = RemType.text14.copy(color = colors.textHigh),
+                style = RemType.text12.copy(color = colors.textHigh),
             )
         }
         Spacer(Modifier.height(16.dp))
