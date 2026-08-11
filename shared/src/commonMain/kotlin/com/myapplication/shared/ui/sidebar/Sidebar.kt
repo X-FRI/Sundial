@@ -241,7 +241,8 @@ private fun ListRow(
                 Modifier
                     .size(16.dp)
                     .clip(RoundedCornerShape(RemRadii.r4))
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect() },
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect() }
+                    .semantics { contentDescription = "跳转到${list.name}" },
                 contentAlignment = Alignment.Center,
             ) {
                 RemIcon(IconName.Plus, colors.textTertiary, Modifier.size(12.dp))
@@ -253,7 +254,8 @@ private fun ListRow(
                         .size(16.dp)
                         .clip(RoundedCornerShape(RemRadii.r4))
                         .background(colors.hoverActionBg, RoundedCornerShape(RemRadii.r4))
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { confirmDelete = true },
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { confirmDelete = true }
+                        .semantics { contentDescription = "删除列表" },
                     contentAlignment = Alignment.Center,
                 ) {
                     RemIcon(IconName.Trash, colors.textTertiary, Modifier.size(12.dp))
