@@ -12,23 +12,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,27 +23,45 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.myapplication.shared.di.AppGraph
+import com.myapplication.shared.ui.components.IconName
+import com.myapplication.shared.ui.components.RemBadge
+import com.myapplication.shared.ui.components.RemButton
+import com.myapplication.shared.ui.components.RemCheckbox
+import com.myapplication.shared.ui.components.RemDatePicker
+import com.myapplication.shared.ui.components.RemDialog
+import com.myapplication.shared.ui.components.RemEmptyState
+import com.myapplication.shared.ui.components.RemIcon
+import com.myapplication.shared.ui.components.RemIconButton
+import com.myapplication.shared.ui.components.RemTextField
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.theme.ListColorOf
+import com.myapplication.shared.ui.theme.LocalRemColors
+import com.myapplication.shared.ui.theme.RemSpacing
+import com.myapplication.shared.ui.theme.RemType
 import com.myapplication.shared.util.formatDueDate
-import kotlinx.datetime.Instant
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetailScreen(mainVm: MainViewModel, graph: AppGraph, todoId: Long) {
+fun DetailScreen(
+    mainVm: MainViewModel,
+    graph: AppGraph,
+    todoId: Long,
+    modifier: Modifier = Modifier,
+) {
     val detailVm: DetailViewModel = viewModel(key = "detail-$todoId") {
         DetailViewModel(graph.repository, todoId)
     }
+    val colors = LocalRemColors.current
     val todo by detailVm.todo.collectAsState()
     val subtasks by detailVm.subtasks.collectAsState()
     val lists by detailVm.lists.collectAsState()
@@ -65,174 +69,182 @@ fun DetailScreen(mainVm: MainViewModel, graph: AppGraph, todoId: Long) {
     val currentId = current?.id
     var titleText by remember(currentId) { mutableStateOf(current?.title ?: "") }
     var noteText by remember(currentId) { mutableStateOf(current?.note ?: "") }
+    var newSub by remember(currentId) { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
-    var showListMenu by remember { mutableStateOf(false) }
-    val datePickerState = if (showDatePicker) {
-        rememberDatePickerState(initialSelectedDateMillis = current?.dueDate?.toEpochMilliseconds())
-    } else null
+    var showListDialog by remember { mutableStateOf(false) }
 
     Column(
-        Modifier
+        modifier
             .fillMaxSize()
-            .widthIn(max = 420.dp)
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(vertical = RemSpacing.s16, horizontal = 14.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = mainVm::back) { Text("‹ 返回") }
-            Spacer(Modifier.weight(1f))
-        }
         if (current == null) {
-            Text("待办不存在或已删除", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            RemEmptyState("待办不存在或已删除")
             return@Column
         }
-        OutlinedTextField(
-            value = titleText,
-            onValueChange = {
-                titleText = it
-                detailVm.setTitle(it)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = MaterialTheme.typography.titleLarge,
-        )
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RemCheckbox(current.isCompleted, { mainVm.toggleCompleted(current) })
+            Spacer(Modifier.width(10.dp))
+            RemTextField(
+                value = titleText,
+                onValueChange = {
+                    titleText = it
+                    detailVm.setTitle(it)
+                },
+                style = RemType.title15,
+                filled = false,
+                modifier = Modifier.weight(1f),
+            )
+            RemIconButton(IconName.Close, "关闭详情", onClick = mainVm::back, size = 16.dp)
+        }
+        Spacer(Modifier.height(10.dp))
+        RemTextField(
             value = noteText,
             onValueChange = {
                 noteText = it
                 detailVm.setNote(it)
             },
-            placeholder = { Text("备注…（阶段二将支持 Markdown 富文本与图片）") },
-            minLines = 4,
+            placeholder = "备注…",
+            singleLine = false,
+            minLines = 3,
+            filled = false,
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(4.dp))
 
         Row(
             Modifier
                 .fillMaxWidth()
                 .clickable { showDatePicker = true }
-                .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium)
-                .padding(12.dp),
+                .drawBehind { drawLine(colors.rowDivider, Offset(0f, size.height), Offset(size.width, size.height), 1f) }
+                .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("📅 日期", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            androidx.compose.material3.Text("日期", style = RemType.text13, color = colors.textSecondary)
             Spacer(Modifier.weight(1f))
-            Text(if (current.dueDate != null) formatDueDate(current.dueDate) else "无")
             if (current.dueDate != null) {
-                TextButton(onClick = { detailVm.setDueDate(null) }) { Text("清除") }
+                RemBadge(
+                    label = formatDueDate(current.dueDate),
+                    icon = { RemIcon(IconName.Calendar, colors.textTertiary, Modifier.size(10.dp)) },
+                )
+                Spacer(Modifier.width(8.dp))
+                RemButton("清除", onClick = { detailVm.setDueDate(null) })
+            } else {
+                androidx.compose.material3.Text("无", style = RemType.text12, color = colors.textTertiary)
             }
         }
-        Spacer(Modifier.height(8.dp))
 
-        Box {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable { showListMenu = true }
-                    .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.medium)
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("🗂 列表", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.weight(1f))
-                val currentList = lists.firstOrNull { it.id == current.listId }
-                Box(
-                    Modifier
-                        .size(10.dp)
-                        .background(ListColorOf[currentList?.colorKey] ?: Color.Gray, CircleShape),
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(currentList?.name ?: "未知列表")
-            }
-            DropdownMenu(expanded = showListMenu, onDismissRequest = { showListMenu = false }) {
-                lists.forEach { list ->
-                    DropdownMenuItem(
-                        text = { Text(list.name) },
-                        onClick = {
-                            showListMenu = false
-                            detailVm.moveToList(list.id)
-                        },
-                    )
-                }
-            }
+        val currentList = lists.firstOrNull { it.id == current.listId }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable { showListDialog = true }
+                .drawBehind { drawLine(colors.rowDivider, Offset(0f, size.height), Offset(size.width, size.height), 1f) }
+                .padding(vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            androidx.compose.material3.Text("列表", style = RemType.text13, color = colors.textSecondary)
+            Spacer(Modifier.weight(1f))
+            Box(Modifier.size(10.dp).background(ListColorOf[currentList?.colorKey] ?: Color.Gray, CircleShape))
+            Spacer(Modifier.width(6.dp))
+            androidx.compose.material3.Text(
+                currentList?.name ?: "未知列表",
+                style = RemType.text13,
+                color = colors.textPrimary,
+            )
         }
         Spacer(Modifier.height(16.dp))
 
-        Text("子任务", style = MaterialTheme.typography.titleMedium)
+        androidx.compose.material3.Text("子任务", style = RemType.label13, color = colors.textTertiary)
+        Spacer(Modifier.height(6.dp))
         subtasks.forEach { sub ->
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    Modifier
-                        .size(16.dp)
-                        .background(
-                            if (sub.isCompleted) MaterialTheme.colorScheme.primary else Color.Transparent,
-                            CircleShape,
-                        )
-                        .clickable { detailVm.toggleSubTask(sub) },
-                ) {
-                    if (sub.isCompleted) Text("✓", color = MaterialTheme.colorScheme.onPrimary, fontSize = MaterialTheme.typography.bodySmall.fontSize)
-                }
+            Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                RemCheckbox(sub.isCompleted, { detailVm.toggleSubTask(sub) }, size = 12.dp)
                 Spacer(Modifier.width(8.dp))
-                Text(sub.title, Modifier.weight(1f))
-                TextButton(onClick = { detailVm.trashSubTask(sub) }) { Text("🗑") }
+                androidx.compose.material3.Text(
+                    sub.title,
+                    style = RemType.text13,
+                    color = if (sub.isCompleted) colors.textTertiary else colors.textPrimary,
+                    textDecoration = if (sub.isCompleted) TextDecoration.LineThrough else null,
+                    modifier = Modifier.weight(1f),
+                )
+                RemIconButton(IconName.Trash, "删除子任务", onClick = { detailVm.trashSubTask(sub) }, size = 14.dp)
             }
         }
-        var newSub by remember { mutableStateOf("") }
-        OutlinedTextField(
+        Spacer(Modifier.height(6.dp))
+        RemTextField(
             value = newSub,
             onValueChange = { newSub = it },
-            placeholder = { Text("＋ 添加子任务…") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = {
+            placeholder = "添加子任务…",
+            onEnter = {
                 detailVm.addSubTask(newSub)
                 newSub = ""
-            }),
-            trailingIcon = {
-                TextButton(onClick = {
-                    detailVm.addSubTask(newSub)
-                    newSub = ""
-                }) { Text("添加") }
             },
+            trailing = "添加" to {
+                detailVm.addSubTask(newSub)
+                newSub = ""
+            },
+            modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(16.dp))
-
-        OutlinedButton(
+        RemButton(
+            "移到垃圾箱",
             onClick = {
                 mainVm.trash(current)
                 mainVm.back()
             },
+            danger = true,
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("移到垃圾箱", color = MaterialTheme.colorScheme.error)
-        }
+        )
     }
 
     if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState?.selectedDateMillis?.let { ms ->
-                        val date = Instant.fromEpochMilliseconds(ms).toLocalDateTime(TimeZone.UTC).date
-                        val time = current?.dueDate
-                            ?.toLocalDateTime(TimeZone.currentSystemDefault())?.time
-                            ?: LocalTime(9, 0)
-                        detailVm.setDueDate(LocalDateTime(date, time))
+        RemDatePicker(
+            initialDate = current?.dueDate?.toLocalDateTime(TimeZone.currentSystemDefault())?.date,
+            onPick = { date ->
+                val time = current?.dueDate
+                    ?.toLocalDateTime(TimeZone.currentSystemDefault())?.time
+                    ?: LocalTime(9, 0)
+                detailVm.setDueDate(LocalDateTime(date, time))
+            },
+            onDismiss = { showDatePicker = false },
+        )
+    }
+
+    if (showListDialog) {
+        RemDialog(
+            title = "选择列表",
+            onDismiss = { showListDialog = false },
+            confirmText = "确定",
+            onConfirm = { showListDialog = false },
+            showButtons = false,
+            content = {
+                lists.forEach { list ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showListDialog = false
+                                detailVm.moveToList(list.id)
+                            }
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.size(10.dp).background(ListColorOf[list.colorKey] ?: Color.Gray, CircleShape))
+                        Spacer(Modifier.width(8.dp))
+                        androidx.compose.material3.Text(
+                            list.name,
+                            style = RemType.text13,
+                            color = colors.textPrimary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (list.id == current?.listId) {
+                            RemIcon(IconName.CheckCircle, colors.accent, Modifier.size(16.dp))
+                        }
                     }
-                    showDatePicker = false
-                }) { Text("确定") }
+                }
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("取消") }
-            },
-        ) {
-            DatePicker(state = datePickerState ?: rememberDatePickerState())
-        }
+        )
     }
 }
