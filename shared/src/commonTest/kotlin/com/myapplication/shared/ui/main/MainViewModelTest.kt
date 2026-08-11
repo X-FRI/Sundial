@@ -31,6 +31,8 @@ private class FakeRepository : TodoRepository {
     var addedParent: Long? = null
     var toggledId: Long? = null
     var toggledValue: Boolean? = null
+    var flaggedId: Long? = null
+    var flaggedValue: Boolean? = null
 
     override suspend fun ensureInbox() {
         listsState.value = listOf(TodoList(1, "收件箱", "blue", 0, Instant.fromEpochMilliseconds(0)))
@@ -62,7 +64,10 @@ private class FakeRepository : TodoRepository {
         toggledValue = completed
     }
 
-    override suspend fun setFlag(id: Long, flag: Boolean) = Unit
+    override suspend fun setFlag(id: Long, flag: Boolean) {
+        flaggedId = id
+        flaggedValue = flag
+    }
 
     override suspend fun setTitle(id: Long, title: String) = Unit
     override suspend fun setNote(id: Long, note: String) = Unit
@@ -136,6 +141,18 @@ class MainViewModelTest {
         advanceUntilIdle()
         assertEquals(5L, repo.toggledId)
         assertEquals(true, repo.toggledValue)
+    }
+
+    @Test
+    fun toggleFlagDelegates() = runTest(dispatcher) {
+        val repo = FakeRepository()
+        val vm = MainViewModel(repo)
+        collect(vm)
+        val item = TodoItem(6, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
+        vm.toggleFlag(item)
+        advanceUntilIdle()
+        assertEquals(6L, repo.flaggedId)
+        assertEquals(true, repo.flaggedValue)
     }
 
     @Test

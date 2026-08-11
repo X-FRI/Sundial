@@ -108,6 +108,10 @@ class MainViewModel(private val repository: TodoRepository) : ViewModel() {
         viewModelScope.launch { repository.setCompleted(item.id, !item.isCompleted) }
     }
 
+    fun toggleFlag(item: TodoItem) {
+        viewModelScope.launch { repository.setFlag(item.id, !item.flag) }
+    }
+
     fun trash(item: TodoItem) {
         viewModelScope.launch { repository.trash(item.id) }
     }
