@@ -12,15 +12,15 @@
 
 ## 2. 数据模型改动（最小）
 
-`todo` 表加三列（直接改 schema，无迁移）：
+`todo` 表加一列（直接改 schema，无迁移）：
 
 - `flag INTEGER NOT NULL DEFAULT 0` —— 旗标（0/1）
-- `completedAt INTEGER` —— 完成时间（可空，epoch millis；null = 未完成）
-- `dueTime INTEGER` —— 到期时间（可空，分钟数：0-1439；null = 无时间）
 
-UI 改动：TodoItem 增加 `flag: Boolean`、`completedAt: Instant?`、`dueTime: Int?`。完成时写 completedAt，取消完成时置 null。视图层只读展示。
+**已存在、无需新增**：`completedAt`（模型/表/测试均有，完成时写入、取消完成置 null）；时间——`due_date` 是完整 Instant，quick-add 解析的"15:00"已存入并显示（`formatDueDate` 输出"今天 15:00"），无需 dueTime 列。
 
-**时间来源**：quick-add 已解析"15:00"（DateParser 支持），现补写 dueTime；RemDatePicker 增加时间选择（见 §6）。
+UI 改动：TodoItem 增加 `flag: Boolean`。仓库新增 `setFlag(id, flag)`；MainViewModel 新增 `toggleFlag(item)`。
+
+**时间选择**：RemDatePicker 弹窗增加时间行（时/分步进器 + "无时间"选项），改 `due_date` 的时间部分（保留现有 date+time 语义，无时间 = 00:00，展示层不显示）。
 
 ## 3. 行内元数据（双行式，已确认）
 
@@ -81,7 +81,7 @@ UI 改动：TodoItem 增加 `flag: Boolean`、`completedAt: Instant?`、`dueTime
 [备注块：灰字 #8E8E93 13sp，浅灰底 #F8F8FA 圆角 6dp，点击进入编辑态]
 ───────────────────────────────（1px 分隔线）
 [⚑ 旗标]  （点击切换，选中态 #FF9500 实心）
-[🗓 日期行] 今天 15:00 · 点击修改（RemDatePicker 复用，弹窗底部加时间行：时/分步进器 + "无时间"选项，选完写 dueDate+dueTime）→ 显示"今天 15:00"
+[🗓 日期行] 今天 15:00 · 点击修改（RemDatePicker 弹窗底部加时间行：时/分步进器 + "无时间"选项，改 due_date 时间部分）→ 显示"今天 15:00"
 [▤ 列表行]  工作 →（现有切换列表对话框）
 [☑ 子任务] ⌄ 3（折叠显示行数；点击展开子任务区）
 [✓ 完成时间]（已完成条目显示）
@@ -113,9 +113,9 @@ UI 改动：TodoItem 增加 `flag: Boolean`、`completedAt: Instant?`、`dueTime
 
 ## 9. 测试
 
-- MainViewModel：flag 切换、completedAt 写入/清除、dueTime 写入/清除（3 个新测试）
-- TodoRepositoryImpl：flag/completedAt/dueTime 持久化（3 个新测试）
-- DateParser：不变
+- MainViewModel：toggleFlag 委托、flag 持久化（2 个新测试）
+- TodoRepositoryImpl：setFlag 持久化（1 个新测试）
+- DateParser：不变（quick-add 时间解析已有测试）
 - 现有 50 测试保持全绿
 
 ## 10. 不做（明确排除）
