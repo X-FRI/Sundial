@@ -62,6 +62,8 @@ private class FakeRepository : TodoRepository {
         toggledValue = completed
     }
 
+    override suspend fun setFlag(id: Long, flag: Boolean) = Unit
+
     override suspend fun setTitle(id: Long, title: String) = Unit
     override suspend fun setNote(id: Long, note: String) = Unit
     override suspend fun setDueDate(id: Long, dueDate: Instant?) = Unit
@@ -129,7 +131,7 @@ class MainViewModelTest {
         val repo = FakeRepository()
         val vm = MainViewModel(repo)
         collect(vm)
-        val item = TodoItem(5, 1, "x", "", null, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
+        val item = TodoItem(5, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
         vm.toggleCompleted(item)
         advanceUntilIdle()
         assertEquals(5L, repo.toggledId)

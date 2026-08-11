@@ -23,6 +23,7 @@ interface TodoRepository {
     suspend fun addTodo(listId: Long?, title: String, note: String, dueDate: Instant?, parentId: Long? = null)
     suspend fun addSubTask(parentId: Long, title: String)
     suspend fun setCompleted(id: Long, completed: Boolean)
+    suspend fun setFlag(id: Long, flag: Boolean)
     suspend fun setTitle(id: Long, title: String)
     suspend fun setNote(id: Long, note: String)
     suspend fun setDueDate(id: Long, dueDate: Instant?)

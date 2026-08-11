@@ -202,4 +202,17 @@ class TodoRepositoryImplTest {
         assertEquals(listOf("收件箱", "甲", "乙"), lists.map { it.name })
         assertTrue(lists[1].position < lists[2].position)
     }
+
+    @Test
+    fun setFlagPersistsAndDefaults() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        repo.addTodo(inbox, "带旗标", "", null, null)
+        val item = repo.observeAllActive().first().first()
+        assertFalse(item.flag)
+        repo.setFlag(item.id, true)
+        assertTrue(repo.observeTodo(item.id).first()?.flag == true)
+        repo.setFlag(item.id, false)
+        assertFalse(repo.observeTodo(item.id).first()?.flag ?: true)
+    }
 }

@@ -9,6 +9,7 @@ data class TodoItem(
     val note: String,
     val dueDate: Instant?,
     val isCompleted: Boolean,
+    val flag: Boolean,
     val completedAt: Instant?,
     val isTrashed: Boolean,
     val trashedAt: Instant?,

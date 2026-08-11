@@ -23,6 +23,7 @@ class TodoRepositoryImpl(private val db: TodoDb) : TodoRepository {
         note = note,
         dueDate = due_date?.let { Instant.fromEpochMilliseconds(it) },
         isCompleted = is_completed,
+        flag = flag,
         completedAt = completed_at?.let { Instant.fromEpochMilliseconds(it) },
         isTrashed = is_trashed,
         trashedAt = trashed_at?.let { Instant.fromEpochMilliseconds(it) },
@@ -38,6 +39,7 @@ class TodoRepositoryImpl(private val db: TodoDb) : TodoRepository {
         note = note,
         dueDate = Instant.fromEpochMilliseconds(due_date),
         isCompleted = is_completed,
+        flag = flag,
         completedAt = completed_at?.let { Instant.fromEpochMilliseconds(it) },
         isTrashed = is_trashed,
         trashedAt = trashed_at?.let { Instant.fromEpochMilliseconds(it) },
@@ -129,6 +131,10 @@ class TodoRepositoryImpl(private val db: TodoDb) : TodoRepository {
 
     override suspend fun setCompleted(id: Long, completed: Boolean) {
         db.todoDbQueries.updateCompleted(completed, if (completed) Clock.System.now().toEpochMilliseconds() else null, id)
+    }
+
+    override suspend fun setFlag(id: Long, flag: Boolean) {
+        db.todoDbQueries.updateFlag(flag, id)
     }
 
     override suspend fun setTitle(id: Long, title: String) {

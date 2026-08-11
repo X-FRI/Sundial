@@ -20,6 +20,7 @@ CREATE TABLE todo (
   trashed_at INTEGER,
   parent_id INTEGER,
   sort_position REAL NOT NULL DEFAULT 0,
+  flag INTEGER AS Boolean NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
 
@@ -95,3 +96,6 @@ UPDATE todo SET is_trashed = 0, trashed_at = NULL WHERE id = ?;
 
 deleteTodo:
 DELETE FROM todo WHERE id = ?;
+
+updateFlag:
+UPDATE todo SET flag = ? WHERE id = ?;
