@@ -31,6 +31,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
@@ -38,10 +40,10 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.ui.components.IconName
-import com.myapplication.shared.ui.components.RemBadge
 import com.myapplication.shared.ui.components.RemDialog
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemTextField
@@ -72,7 +74,7 @@ fun Sidebar(mainVm: MainViewModel) {
     Column(
         Modifier
             .fillMaxHeight()
-            .width(220.dp)
+            .width(232.dp)
             .background(colors.bgPrimary)
             .padding(vertical = RemSpacing.s16, horizontal = 10.dp),
     ) {
@@ -83,17 +85,21 @@ fun Sidebar(mainVm: MainViewModel) {
         )
         Spacer(Modifier.height(RemSpacing.s12))
         RemTextField(value = query, onValueChange = mainVm::setSearch, placeholder = "搜索", leadingIcon = IconName.Search)
-        Spacer(Modifier.height(RemSpacing.s8))
+        Spacer(Modifier.height(RemSpacing.s12))
         androidx.compose.foundation.text.BasicText(
             "智能列表",
             style = RemType.label10.copy(color = colors.textLow),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
         )
-        ScopeRow(IconName.Today, "今天", todayCount, scope == Scope.Today, iconBg = colors.error, countBadge = true) { mainVm.selectScope(Scope.Today) }
-        ScopeRow(IconName.Scheduled, "计划", scheduledCount, scope == Scope.Scheduled, iconBg = colors.warning) { mainVm.selectScope(Scope.Scheduled) }
-        ScopeRow(IconName.Tray, "全部待办", allCount, scope == Scope.All, iconBg = colors.textNormal) { mainVm.selectScope(Scope.All) }
-        ScopeRow(IconName.CheckCircle, "已完成", completedCount, scope == Scope.Completed, iconBg = colors.success) { mainVm.selectScope(Scope.Completed) }
-        ScopeRow(IconName.Trash, "垃圾箱", trashCount, scope == Scope.Trash, iconBg = colors.textLow) { mainVm.selectScope(Scope.Trash) }
+        SmartGrid(
+            todayCount = todayCount,
+            scheduledCount = scheduledCount,
+            allCount = allCount,
+            completedCount = completedCount,
+            trashCount = trashCount,
+            selectedScope = scope,
+            onSelect = mainVm::selectScope,
+        )
         Spacer(Modifier.height(RemSpacing.s8))
         Row(
             Modifier
@@ -160,63 +166,133 @@ fun Sidebar(mainVm: MainViewModel) {
 }
 
 @Composable
-private fun SmartIcon(icon: IconName, bg: Color, modifier: Modifier = Modifier) {
+private fun SmartIcon(icon: IconName, base: Color, size: Dp = 44.dp, iconSize: Dp = 22.dp, modifier: Modifier = Modifier) {    val shape = RoundedCornerShape(percent = 24)
+    val brush = remember(base) {
+        Brush.verticalGradient(
+            listOf(base, darken(base, 0.14f)),
+        )
+    }
     Box(
         modifier
-            .size(22.dp)
-            .clip(RoundedCornerShape(RemRadii.r2))
-            .background(bg),
+            .shadow(
+                elevation = 2.dp,
+                shape = shape,
+                clip = false,
+                ambientColor = Color.Black.copy(alpha = 0.20f),
+                spotColor = Color.Black.copy(alpha = 0.20f),
+            )
+            .size(size)
+            .clip(shape)
+            .background(brush),
         contentAlignment = Alignment.Center,
     ) {
-        RemIcon(icon, Color.White, Modifier.size(12.dp))
+        RemIcon(icon, Color.White, Modifier.size(iconSize))
+    }
+}
+
+private fun darken(c: Color, f: Float): Color = Color(c.red * (1f - f), c.green * (1f - f), c.blue * (1f - f), c.alpha)
+
+@Composable
+private fun SmartGrid(
+    todayCount: Int,
+    scheduledCount: Int,
+    allCount: Int,
+    completedCount: Int,
+    trashCount: Int,
+    selectedScope: Scope,
+    onSelect: (Scope) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth()) {
+            SmartCard(
+                IconName.Today, "今天", todayCount, selectedScope == Scope.Today, Color(0xFFFF3B30),
+                Modifier.weight(1f),
+            ) { onSelect(Scope.Today) }
+            Spacer(Modifier.width(8.dp))
+            SmartCard(
+                IconName.Scheduled, "计划", scheduledCount, selectedScope == Scope.Scheduled, Color(0xFFFF9500),
+                Modifier.weight(1f),
+            ) { onSelect(Scope.Scheduled) }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth()) {
+            SmartCard(
+                IconName.Tray, "全部", allCount, selectedScope == Scope.All, Color(0xFF8E8E93),
+                Modifier.weight(1f),
+            ) { onSelect(Scope.All) }
+            Spacer(Modifier.width(8.dp))
+            SmartCard(
+                IconName.CheckCircle, "已完成", completedCount, selectedScope == Scope.Completed, Color(0xFF34C759),
+                Modifier.weight(1f),
+            ) { onSelect(Scope.Completed) }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth()) {
+            SmartCard(
+                IconName.Trash, "垃圾箱", trashCount, selectedScope == Scope.Trash, Color(0xFF636366),
+                Modifier.weight(1f),
+            ) { onSelect(Scope.Trash) }
+            Spacer(Modifier.width(8.dp).weight(1f))
+        }
     }
 }
 
 @Composable
-private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolean, iconBg: Color, countBadge: Boolean = false, onClick: () -> Unit) {
+private fun SmartCard(
+    icon: IconName,
+    label: String,
+    count: Int,
+    selected: Boolean,
+    iconBg: Color,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
     val focused by interactionSource.collectIsFocusedAsState()
     val bg by animateColorAsState(
-        when {
-            selected -> colors.bgSecondary
-            hovered -> colors.bgSecondary
-            else -> Color.Transparent
-        },
+        if (hovered || selected) colors.bgSecondary else colors.bgPrimary,
         tween(200),
-        label = "scope-row-bg",
+        label = "smart-card-bg",
     )
-    Row(
-        Modifier
-        .fillMaxWidth()
-        .height(30.dp)
-        .clip(RoundedCornerShape(RemRadii.r2))
-        .background(bg)
-        .border(if (focused) 1.dp else 0.dp, colors.focusRing, RoundedCornerShape(RemRadii.r2))
-        .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-        .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    val ringColor = when {
+        selected -> colors.brand
+        focused -> colors.focusRing
+        else -> Color.Transparent
+    }
+    Box(
+        modifier
+            .height(104.dp)
+            .clip(RoundedCornerShape(RemRadii.r2))
+            .background(bg)
+            .border(
+                if (ringColor != Color.Transparent) 1.dp else 0.dp,
+                ringColor,
+                RoundedCornerShape(RemRadii.r2),
+            )
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .semantics { this.selected = selected },
+        contentAlignment = Alignment.Center,
     ) {
-        SmartIcon(icon, iconBg)
-        Spacer(Modifier.width(8.dp))
-        androidx.compose.foundation.text.BasicText(
-            label,
-            style = RemType.text12.copy(
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                color = if (selected) colors.textHigh else colors.textNormal,
-            ),
-            modifier = Modifier.weight(1f),
-        )
-        if (count > 0) {
-            if (countBadge) {
-                RemBadge(
-                    label = count.toString(),
-                    color = colors.error,
-                    monospace = true,
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            SmartIcon(icon, iconBg, size = 44.dp, iconSize = 22.dp)
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.foundation.text.BasicText(
+                    label,
+                    style = RemType.text12.copy(
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                        color = if (selected) colors.textHigh else colors.textNormal,
+                    ),
                 )
-            } else {
-                androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = if (selected) colors.brand else colors.textLow))
+                if (count > 0) {
+                    Spacer(Modifier.width(4.dp))
+                    androidx.compose.foundation.text.BasicText(
+                        count.toString(),
+                        style = RemType.text10.copy(color = colors.textLow, fontFamily = FontFamily.Monospace),
+                    )
+                }
             }
         }
     }
