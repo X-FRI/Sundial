@@ -47,7 +47,7 @@ data class RemColors(
 
 val LightRemColors = RemColors(
     sidebarBg = Color(0xFFFFFFFF),
-    contentBg = Color(0xFFFAFAFC),
+    contentBg = Color(0xFFF6F6F8),
     selectedBg = Color(0xFFF2F2F7),
     rowDivider = Color(0xFFF0F0F4),
     textPrimary = Color(0xFF111111),

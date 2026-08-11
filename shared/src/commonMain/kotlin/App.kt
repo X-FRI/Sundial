@@ -1,5 +1,10 @@
 package com.myapplication.shared.ui.app
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -70,8 +75,13 @@ fun AppRoot(graph: AppGraph) {
                 Row(Modifier.fillMaxSize()) {
                     Sidebar(mainVm)
                     TodoListScreen(mainVm, Modifier.weight(1f).background(colors.contentBg))
-                    if (selectedId != null) {
-                        DetailScreen(mainVm, graph, selectedId, Modifier.width(340.dp))
+                    AnimatedVisibility(
+                        visible = selectedId != null,
+                        enter = fadeIn(tween(150)) + slideInHorizontally(initialOffsetX = { it / 8 }),
+                        exit = fadeOut(tween(100)),
+                        modifier = Modifier.width(340.dp),
+                    ) {
+                        selectedId?.let { DetailScreen(mainVm, graph, it) }
                     }
                 }
             }
