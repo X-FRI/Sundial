@@ -129,8 +129,8 @@ UPDATE todo SET flag = ?, updated_at = ?, updated_by = ? WHERE id = ?;
 -- 同步专用查询（SQL 层 LWW）--
 
 upsertTodo:
-INSERT INTO todo(list_id, title, note, due_date, is_completed, completed_at, is_trashed, trashed_at, parent_id, sort_position, flag, created_at, updated_at, updated_by)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO todo(id, list_id, title, note, due_date, is_completed, completed_at, is_trashed, trashed_at, parent_id, sort_position, flag, created_at, updated_at, updated_by)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(id) DO UPDATE SET
   list_id = excluded.list_id,
   title = excluded.title,
@@ -178,6 +178,9 @@ DELETE FROM outbox WHERE seq <= ?;
 
 selectOutboxCount:
 SELECT COUNT(*) FROM outbox;
+
+selectOutboxMaxSeq:
+SELECT COALESCE(MAX(seq), 0) FROM outbox;
 
 -- settings --
 
