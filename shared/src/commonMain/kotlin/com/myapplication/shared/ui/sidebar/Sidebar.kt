@@ -179,11 +179,11 @@ private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolea
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RemIcon(icon, if (selected) colors.brand else colors.textLow, Modifier.size(16.dp))
+        RemIcon(icon, if (selected) colors.brand else colors.textLow, Modifier.size(14.dp))
         Spacer(Modifier.width(8.dp))
         androidx.compose.foundation.text.BasicText(
             label,
-            style = RemType.text14.copy(
+            style = RemType.text12.copy(
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 color = if (selected) colors.textHigh else colors.textNormal,
             ),

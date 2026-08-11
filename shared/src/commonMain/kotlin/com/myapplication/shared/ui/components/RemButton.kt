@@ -45,6 +45,7 @@ fun RemButton(
         when {
             variant == RemButtonVariant.Default && hovered -> colors.brandHover
             variant == RemButtonVariant.Default -> colors.brand
+            variant == RemButtonVariant.Danger && hovered -> colors.error.copy(alpha = 0.08f)
             hovered -> colors.bgSecondary
             else -> Color.Transparent
         },
@@ -93,7 +94,7 @@ fun RemIconButton(
     val bg by animateColorAsState(if (hovered) colors.bgSecondary else Color.Transparent, tween(200), label = "ib-bg")
     Box(
         modifier
-            .size(size + 12.dp)
+            .size(size + 8.dp)
             .clip(RoundedCornerShape(RemRadii.r2))
             .background(bg)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)

@@ -141,6 +141,8 @@ fun DetailScreen(
                 placeholder = "备注…",
                 singleLine = false,
                 minLines = 3,
+                style = RemType.text12,
+                bordered = false,
                 modifier = Modifier.fillMaxWidth(),
             )
         }

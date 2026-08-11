@@ -50,6 +50,7 @@ import com.myapplication.shared.ui.components.RemTextField
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Scope
 import com.myapplication.shared.ui.theme.LocalRemColors
+import com.myapplication.shared.ui.theme.remGrid
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemSpacing
 import com.myapplication.shared.ui.theme.RemType
@@ -70,7 +71,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
     val query by mainVm.searchQuery.collectAsState()
     var quickAddFocus by remember { mutableStateOf(0) }
 
-    Column(modifier.background(colors.bgSecondary)) {
+    Column(modifier.background(colors.bgSecondary).remGrid(colors)) {
         val today = todayDate()
         val activeCount = todos.count { !it.isCompleted }
         Row(
@@ -109,7 +110,10 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
         }
         androidx.compose.foundation.text.BasicText(
             if (scope == Scope.Today || scope == Scope.Scheduled) "${today.monthNumber} 月 ${today.dayOfMonth} 日 · 星期${"一二三四五六日"[today.dayOfWeek.isoDayNumber - 1]}" else if (scope == Scope.Completed) "${todos.size} 项" else "$activeCount 项未完成",
-            style = RemType.text12.copy(color = colors.textLow),
+            style = RemType.text12.copy(
+                color = colors.textLow,
+                fontFamily = if (scope == Scope.Today || scope == Scope.Scheduled) FontFamily.Default else FontFamily.Monospace,
+            ),
             modifier = Modifier.padding(start = 20.dp, top = 4.dp, bottom = 8.dp),
         )
         if (scope != Scope.Trash) {
@@ -146,6 +150,7 @@ private fun QuickAddRow(mainVm: MainViewModel, focusRequested: Int = 0) {
         value = text,
         onValueChange = { text = it },
         placeholder = "添加待办…（支持“明天 15:00”等日期）",
+        style = RemType.text12,
         leadingIcon = IconName.Plus,
         onEnter = {
             mainVm.addQuick(text)
@@ -161,7 +166,7 @@ private fun QuickAddRow(mainVm: MainViewModel, focusRequested: Int = 0) {
 @Composable
 private fun SectionHeader(title: String, count: Int, overdue: Boolean) {
     val colors = LocalRemColors.current
-    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.foundation.text.BasicText(
             title,
             style = RemType.label10.copy(color = colors.textHigh),
@@ -381,10 +386,10 @@ fun TodoRow(
             }
             .background(hoverBg)
             .padding(start = if (indent) 16.dp else 0.dp)
-            .padding(vertical = 10.dp, horizontal = 8.dp),
+            .padding(vertical = 6.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RemCheckbox(item.isCompleted, { mainVm.toggleCompleted(item) })
+        RemCheckbox(item.isCompleted, { mainVm.toggleCompleted(item) }, size = 14.dp)
         Spacer(Modifier.width(10.dp))
         Column(
             Modifier

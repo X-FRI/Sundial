@@ -45,6 +45,7 @@ fun RemTextField(
     onEnter: (() -> Unit)? = null,
     trailing: Pair<String, () -> Unit>? = null,
     focusRequester: FocusRequester? = null,
+    bordered: Boolean = true,
 ) {
     val colors = LocalRemColors.current
     var focused by remember { mutableStateOf(false) }
@@ -53,7 +54,11 @@ fun RemTextField(
             .clip(RoundedCornerShape(RemRadii.r2))
             .background(colors.inputBg)
             .border(
-                1.dp,
+                if (bordered) {
+                    1.dp
+                } else {
+                    0.dp
+                },
                 if (focused) colors.brand else colors.border,
                 RoundedCornerShape(RemRadii.r2),
             )
