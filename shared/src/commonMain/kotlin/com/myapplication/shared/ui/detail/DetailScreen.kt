@@ -1,5 +1,7 @@
 package com.myapplication.shared.ui.detail
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -146,10 +148,15 @@ fun DetailScreen(
 
         val dateInteraction = remember { MutableInteractionSource() }
         val dateHovered by dateInteraction.collectIsHoveredAsState()
+        val dateBg by animateColorAsState(
+            if (dateHovered) colors.bgSecondary else Color.Transparent,
+            tween(200),
+            label = "date-row-bg",
+        )
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(if (dateHovered) colors.bgSecondary.copy(alpha = 0.4f) else Color.Transparent)
+                .background(dateBg)
                 .clickable(
                     interactionSource = dateInteraction,
                     indication = null,
@@ -177,10 +184,15 @@ fun DetailScreen(
 
         val flagInteraction = remember { MutableInteractionSource() }
         val flagHovered by flagInteraction.collectIsHoveredAsState()
+        val flagBg by animateColorAsState(
+            if (flagHovered) colors.bgSecondary else Color.Transparent,
+            tween(200),
+            label = "flag-row-bg",
+        )
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(if (flagHovered) colors.bgSecondary.copy(alpha = 0.4f) else Color.Transparent)
+                .background(flagBg)
                 .clickable(
                     interactionSource = flagInteraction,
                     indication = null,
@@ -198,10 +210,15 @@ fun DetailScreen(
         val currentList = lists.firstOrNull { it.id == current.listId }
         val listInteraction = remember { MutableInteractionSource() }
         val listHovered by listInteraction.collectIsHoveredAsState()
+        val listBg by animateColorAsState(
+            if (listHovered) colors.bgSecondary else Color.Transparent,
+            tween(200),
+            label = "list-row-bg",
+        )
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(if (listHovered) colors.bgSecondary.copy(alpha = 0.4f) else Color.Transparent)
+                .background(listBg)
                 .clickable(
                     interactionSource = listInteraction,
                     indication = null,

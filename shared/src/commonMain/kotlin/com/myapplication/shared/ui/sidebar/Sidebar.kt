@@ -1,5 +1,7 @@
 package com.myapplication.shared.ui.sidebar
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -91,7 +93,10 @@ fun Sidebar(mainVm: MainViewModel) {
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp)
-                .clickable { listsExpanded = !listsExpanded },
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { listsExpanded = !listsExpanded },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RemIcon(
@@ -117,15 +122,17 @@ fun Sidebar(mainVm: MainViewModel) {
         Spacer(Modifier.weight(1f))
         val addListSource = remember { MutableInteractionSource() }
         val addListHovered by addListSource.collectIsHoveredAsState()
+        val addListBg by animateColorAsState(
+            if (addListHovered) colors.bgSecondary else Color.Transparent,
+            tween(200),
+            label = "add-list-bg",
+        )
         Row(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp)
                 .clip(RoundedCornerShape(RemRadii.r2))
-                .background(
-                    if (addListHovered) colors.bgSecondary.copy(alpha = 0.4f) else Color.Transparent,
-                    RoundedCornerShape(RemRadii.r2),
-                )
+                .background(addListBg, RoundedCornerShape(RemRadii.r2))
                 .clickable(interactionSource = addListSource, indication = null) { showAddList = true }
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -152,18 +159,21 @@ private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolea
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
     val focused by interactionSource.collectIsFocusedAsState()
+    val bg by animateColorAsState(
+        when {
+            selected -> colors.bgSecondary
+            hovered -> colors.bgSecondary
+            else -> Color.Transparent
+        },
+        tween(200),
+        label = "scope-row-bg",
+    )
     Row(
         Modifier
             .fillMaxWidth()
             .height(28.dp)
             .clip(RoundedCornerShape(RemRadii.r2))
-            .background(
-                when {
-                    selected -> colors.bgSecondary
-                    hovered -> colors.bgSecondary.copy(alpha = 0.4f)
-                    else -> Color.Transparent
-                },
-            )
+            .background(bg)
             .border(if (focused) 1.dp else 0.dp, colors.focusRing, RoundedCornerShape(RemRadii.r2))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 8.dp),
@@ -212,18 +222,21 @@ private fun ListRow(
     val trashSource = remember { MutableInteractionSource() }
     val trashHovered by trashSource.collectIsHoveredAsState()
     var confirmDelete by remember { mutableStateOf(false) }
+    val bg by animateColorAsState(
+        when {
+            selected -> colors.bgSecondary
+            hovered -> colors.bgSecondary
+            else -> Color.Transparent
+        },
+        tween(200),
+        label = "list-row-bg",
+    )
     Row(
         Modifier
             .fillMaxWidth()
             .height(28.dp)
             .clip(RoundedCornerShape(RemRadii.r2))
-            .background(
-                when {
-                    selected -> colors.bgSecondary
-                    hovered -> colors.bgSecondary.copy(alpha = 0.4f)
-                    else -> Color.Transparent
-                },
-            )
+            .background(bg)
             .border(if (focused) 1.dp else 0.dp, colors.focusRing, RoundedCornerShape(RemRadii.r2))
             .combinedClickable(
                 interactionSource = interactionSource,
@@ -327,7 +340,10 @@ private fun AddListDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> 
                             .size(24.dp)
                             .background(ListColorOf[key] ?: Color.Gray, CircleShape)
                             .clip(CircleShape)
-                            .clickable { colorKey = key }
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { colorKey = key }
                             .semantics {
                                 contentDescription = colorNames[key] ?: key
                                 selected = key == colorKey

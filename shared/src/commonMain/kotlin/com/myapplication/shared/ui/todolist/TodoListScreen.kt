@@ -1,5 +1,7 @@
 package com.myapplication.shared.ui.todolist
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -74,7 +76,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(start = 20.dp, end = 16.dp, top = 18.dp),
+                .padding(start = 20.dp, end = 16.dp, top = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             androidx.compose.foundation.text.BasicText(
@@ -108,7 +110,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
         androidx.compose.foundation.text.BasicText(
             if (scope == Scope.Today || scope == Scope.Scheduled) "${today.monthNumber} 月 ${today.dayOfMonth} 日 · 星期${"一二三四五六日"[today.dayOfWeek.isoDayNumber - 1]}" else if (scope == Scope.Completed) "${todos.size} 项" else "$activeCount 项未完成",
             style = RemType.text12.copy(color = colors.textLow),
-            modifier = Modifier.padding(start = 20.dp, top = 4.dp, bottom = 12.dp),
+            modifier = Modifier.padding(start = 20.dp, top = 4.dp, bottom = 8.dp),
         )
         if (scope != Scope.Trash) {
             QuickAddRow(mainVm, focusRequested = quickAddFocus)
@@ -366,13 +368,18 @@ fun TodoRow(
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
+    val hoverBg by animateColorAsState(
+        if (hovered) colors.bgSecondary else Color.Transparent,
+        tween(200),
+        label = "row-hover",
+    )
     Row(
         Modifier
             .fillMaxWidth()
             .clickable(interactionSource = interactionSource, indication = null) {
                 if (showChevron) onToggleExpand() else mainVm.openDetail(item.id)
             }
-            .background(if (hovered) colors.bgSecondary.copy(alpha = 0.4f) else Color.Transparent)
+            .background(hoverBg)
             .padding(start = if (indent) 16.dp else 0.dp)
             .padding(vertical = 10.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -380,7 +387,12 @@ fun TodoRow(
         RemCheckbox(item.isCompleted, { mainVm.toggleCompleted(item) })
         Spacer(Modifier.width(10.dp))
         Column(
-            Modifier.weight(1f).clickable { mainVm.openDetail(item.id) },
+            Modifier
+                .weight(1f)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { mainVm.openDetail(item.id) },
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.text.BasicText(
