@@ -1,2 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 网络同步（Supabase PostgREST + Realtime）需要 INTERNET 权限，缺失会导致 socket EPERM -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>
