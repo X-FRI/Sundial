@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -31,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -74,12 +74,9 @@ fun RemDialog(
                 Column(
                     Modifier
                         .widthIn(max = 360.dp)
-                        .shadow(
-                            elevation = if (isSystemInDarkTheme()) 12.dp else 8.dp,
-                            shape = RoundedCornerShape(RemRadii.r3),
-                            clip = true,
-                        )
+                        .clip(RoundedCornerShape(RemRadii.r3))
                         .background(if (isSystemInDarkTheme()) Color(0xFF2A2A2E) else Color(0xFFFEFEFE))
+                        .border(1.dp, colors.border, RoundedCornerShape(RemRadii.r3))
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                         .padding(20.dp),
                 ) {
