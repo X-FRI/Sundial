@@ -105,12 +105,12 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
             }
         }
         androidx.compose.foundation.text.BasicText(
-            if (scope == Scope.Today || scope == Scope.Scheduled) "${today.monthNumber} 月 ${today.dayOfMonth} 日 · 星期${"一二三四五六日"[today.dayOfWeek.isoDayNumber - 1]}" else "$activeCount 项未完成",
+            if (scope == Scope.Today || scope == Scope.Scheduled) "${today.monthNumber} 月 ${today.dayOfMonth} 日 · 星期${"一二三四五六日"[today.dayOfWeek.isoDayNumber - 1]}" else if (scope == Scope.Completed) "${todos.size} 项" else "$activeCount 项未完成",
             style = RemType.text13.copy(color = colors.textTertiary),
             modifier = Modifier.padding(start = 20.dp, top = 4.dp, bottom = 12.dp),
         )
         if (scope != Scope.Trash) {
-            QuickAddRow(mainVm, focusRequested = quickAddFocus > 0)
+            QuickAddRow(mainVm, focusRequested = quickAddFocus)
         }
         when {
             todos.isEmpty() && query.isNotBlank() -> RemEmptyState("没有找到结果", "换个关键词试试", IconName.Search)
@@ -135,10 +135,10 @@ fun scopeTitle(scope: Scope, query: String): String = when {
 }
 
 @Composable
-private fun QuickAddRow(mainVm: MainViewModel, focusRequested: Boolean = false) {
+private fun QuickAddRow(mainVm: MainViewModel, focusRequested: Int = 0) {
     var text by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(focusRequested) { if (focusRequested) focusRequester.requestFocus() }
+    LaunchedEffect(focusRequested) { if (focusRequested > 0) focusRequester.requestFocus() }
     RemTextField(
         value = text,
         onValueChange = { text = it },
@@ -214,6 +214,7 @@ private fun PlainList(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, 
     val childrenByParent = todos.filter { it.parentId != null }.groupBy { it.parentId!! }
     val completed = todos.filter { it.isCompleted && it.parentId == null }
     var expanded by remember { mutableStateOf(true) }
+    var completedExpanded by remember { mutableStateOf(true) }
 
     LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         if (active.isNotEmpty()) {
@@ -249,15 +250,15 @@ private fun PlainList(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, 
                     Modifier
                         .fillMaxWidth()
                         .padding(vertical = 6.dp)
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { expanded = !expanded },
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { completedExpanded = !completedExpanded },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     androidx.compose.foundation.text.BasicText("已完成", style = RemType.label13.copy(color = colors.textTertiary))
                     Spacer(Modifier.weight(1f))
-                    RemIcon(if (expanded) IconName.ChevronDown else IconName.ChevronRight, colors.textTertiary, Modifier.size(14.dp))
+                    RemIcon(if (completedExpanded) IconName.ChevronDown else IconName.ChevronRight, colors.textTertiary, Modifier.size(14.dp))
                 }
             }
-            if (expanded) {
+            if (completedExpanded) {
                 item(key = "completed-card") {
                     Column(
                         Modifier
@@ -314,7 +315,7 @@ private fun ScheduledGrouped(todos: List<TodoItem>, today: kotlinx.datetime.Loca
 @Composable
 private fun TrashList(todos: List<TodoItem>, mainVm: MainViewModel) {
     val colors = LocalRemColors.current
-    LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+    LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         items(todos, key = { it.id }) { item ->
             Row(
                 Modifier
