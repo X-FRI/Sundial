@@ -1,41 +1,79 @@
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
+package com.myapplication.shared.ui.app
+
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import myapplication.shared.generated.resources.Res
-import myapplication.shared.generated.resources.compose_multiplatform
-import org.jetbrains.compose.resources.painterResource
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.myapplication.shared.di.AppGraph
+import com.myapplication.shared.di.createAppGraph
+import com.myapplication.shared.ui.main.MainViewModel
+import com.myapplication.shared.ui.main.Route
+import com.myapplication.shared.ui.theme.RemindersTheme
 
 @Composable
 fun App() {
-    MaterialTheme {
-        var greetingText by remember { mutableStateOf("Hello, World!") }
-        var showImage by remember { mutableStateOf(false) }
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Button(onClick = {
-                greetingText = "Hello, ${getPlatformName()}"
-                showImage = !showImage
-            }) {
-                Text(greetingText)
+    RemindersTheme {
+        val graph = remember { createAppGraph() }
+        AppRoot(graph)
+    }
+}
+
+@Composable
+fun AppRoot(graph: AppGraph) {
+    val mainVm: MainViewModel = viewModel { MainViewModel(graph.repository) }
+    val route by mainVm.route.collectAsState()
+
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val wide = maxWidth >= 900.dp
+        val selectedId = (route as? Route.Detail)?.todoId
+        when {
+            wide -> {
+                Row(Modifier.fillMaxSize()) {
+                    Sidebar(mainVm)
+                    TodoListScreen(mainVm, Modifier.weight(1f))
+                    if (selectedId != null) {
+                        DetailScreen(mainVm, graph, selectedId)
+                    }
+                }
             }
-            AnimatedVisibility(showImage) {
-                Image(
-                    painterResource(Res.drawable.compose_multiplatform),
-                    contentDescription = "Compose Multiplatform icon"
-                )
+            selectedId != null -> {
+                DetailScreen(mainVm, graph, selectedId)
+            }
+            else -> {
+                Column(Modifier.fillMaxSize()) {
+                    NarrowTopBar(mainVm)
+                    TodoListScreen(mainVm, Modifier.weight(1f))
+                    NarrowBottomNav(mainVm)
+                }
             }
         }
     }
 }
 
-expect fun getPlatformName(): String
+@Composable
+fun NarrowTopBar(mainVm: MainViewModel) {
+    Text("提醒事项", style = MaterialTheme.typography.titleLarge)
+}
+
+@Composable
+fun NarrowBottomNav(mainVm: MainViewModel) {
+    Text("")
+}
+
+@Composable
+fun Sidebar(mainVm: MainViewModel) = Text("")
+
+@Composable
+fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) = Text("")
+
+@Composable
+fun DetailScreen(mainVm: MainViewModel, graph: AppGraph, todoId: Long) = Text("")
