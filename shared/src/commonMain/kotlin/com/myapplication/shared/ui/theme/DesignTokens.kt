@@ -32,6 +32,17 @@ data class RemColors(
     val danger: Color,
     val checkboxBorder: Color,
     val dialogBg: Color,
+    val todayBadgeBg: Color,
+    val todayBadgeText: Color,
+    val upcomingBadgeBg: Color,
+    val upcomingBadgeText: Color,
+    val overdueBadgeBg: Color,
+    val overdueBadgeText: Color,
+    val cardBg: Color,
+    val cardBorder: Color,
+    val hoverActionBg: Color,
+    val flagColor: Color,
+    val windowBg: Color,
 )
 
 val LightRemColors = RemColors(
@@ -46,6 +57,17 @@ val LightRemColors = RemColors(
     danger = Color(0xFFFF3B30),
     checkboxBorder = Color(0xFFC7C7CC),
     dialogBg = Color(0xFFFFFFFF),
+    todayBadgeBg = Color(0x33FFD60A),
+    todayBadgeText = Color(0xFFB25000),
+    upcomingBadgeBg = Color(0x20C7C7CC),
+    upcomingBadgeText = Color(0xFF8E8E93),
+    overdueBadgeBg = Color(0x26FF3B30),
+    overdueBadgeText = Color(0xFFFF3B30),
+    cardBg = Color(0xFFFFFFFF),
+    cardBorder = Color(0xFFEEEEF0),
+    hoverActionBg = Color(0xFFE5E5EA),
+    flagColor = Color(0xFFFF9500),
+    windowBg = Color(0xFFF6F6F8),
 )
 
 val DarkRemColors = RemColors(
@@ -60,6 +82,17 @@ val DarkRemColors = RemColors(
     danger = Color(0xFFFF453A),
     checkboxBorder = Color(0xFF636366),
     dialogBg = Color(0xFF2C2C2E),
+    todayBadgeBg = Color(0x40FFD60A),
+    todayBadgeText = Color(0xFFFFD60A),
+    upcomingBadgeBg = Color(0x333A3A3C),
+    upcomingBadgeText = Color(0xFF8E8E93),
+    overdueBadgeBg = Color(0x33FF453A),
+    overdueBadgeText = Color(0xFFFF453A),
+    cardBg = Color(0xFF2C2C2E),
+    cardBorder = Color(0xFF3A3A3C),
+    hoverActionBg = Color(0xFF48484A),
+    flagColor = Color(0xFFFFD60A),
+    windowBg = Color(0xFF1C1C1E),
 )
 
 object RemType {
@@ -70,6 +103,7 @@ object RemType {
     val title20 = TextStyle(fontFamily = FontFamily.Default, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp)
     val label12 = TextStyle(fontFamily = FontFamily.Default, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     val label13 = TextStyle(fontFamily = FontFamily.Default, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    val title28 = TextStyle(fontFamily = FontFamily.Default, fontSize = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
 }
 
 object RemSpacing {

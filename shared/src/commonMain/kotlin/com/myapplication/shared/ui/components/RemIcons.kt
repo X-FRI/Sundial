@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 
-enum class IconName { Calendar, Today, Scheduled, Tray, CheckCircle, Trash, Search, Plus, Close, ChevronBack, ChevronRight, ChevronDown }
+enum class IconName { Calendar, Today, Scheduled, Tray, CheckCircle, Trash, Search, Plus, Close, ChevronBack, ChevronRight, ChevronDown, Flag }
 
 @Composable
 fun RemIcon(
@@ -40,7 +40,7 @@ fun RemIcon(
                 cornerRadius = CornerRadius(r * u, r * u),
                 style = Stroke(width = st),
             )
-        fun poly(vararg pts: Float) {
+        fun poly(vararg pts: Float, filled: Boolean = false) {
             val p = Path()
             var i = 0
             while (i + 1 < pts.size) {
@@ -49,7 +49,7 @@ fun RemIcon(
                 if (i == 0) p.moveTo(x, y) else p.lineTo(x, y)
                 i += 2
             }
-            drawPath(p, tint, style = Stroke(width = st, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(p, tint, style = if (filled) Fill else Stroke(width = st, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }
         when (name) {
             IconName.Calendar -> {
@@ -101,6 +101,10 @@ fun RemIcon(
             IconName.ChevronBack -> poly(14f, 6f, 9f, 12f, 14f, 18f)
             IconName.ChevronRight -> poly(10f, 6f, 15f, 12f, 10f, 18f)
             IconName.ChevronDown -> poly(6f, 10f, 12f, 15f, 18f, 10f)
+            IconName.Flag -> {
+                line(8f, 4f, 8f, 20f)
+                poly(8f, 5.5f, 18f, 8.5f, 8f, 11.5f, filled = true)
+            }
         }
     }
 }
