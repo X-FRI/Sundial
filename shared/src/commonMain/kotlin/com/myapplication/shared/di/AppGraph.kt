@@ -22,7 +22,8 @@ class AppGraph(
     val clock: Clock = Clock.System,
     val timeZone: TimeZone = TimeZone.currentSystemDefault(),
 ) {
-    val repository: TodoRepository by lazy { TodoRepositoryImpl(TodoDb(driver), clock, timeZone, loadDeviceId()) }
+    private val db = TodoDb(driver)
+    val repository: TodoRepository by lazy { TodoRepositoryImpl(db, clock, timeZone, loadDeviceId()) }
     val addTodo: AddTodoUseCase by lazy { AddTodoUseCase(repository) }
     val addSubTask: AddSubTaskUseCase by lazy { AddSubTaskUseCase(repository) }
 
@@ -37,10 +38,10 @@ class AppGraph(
     }
 
     private fun loadDeviceId(): String {
-        val existing = runBlocking { repository.getSetting("sync.deviceId").getOrNull() }
+        val existing = db.todoDbQueries.getSetting("sync.deviceId").executeAsOneOrNull()
         if (existing != null) return existing
         val id = createDeviceId()
-        runBlocking { repository.setSetting("sync.deviceId", id) }
+        db.todoDbQueries.setSetting("sync.deviceId", id)
         return id
     }
 
