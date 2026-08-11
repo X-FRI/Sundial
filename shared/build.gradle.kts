@@ -10,6 +10,7 @@ val sqlDelightVersion = findProperty("sqlDelight.version") as String
 val kotlinxDatetimeVersion = findProperty("kotlinxDatetime.version") as String
 val lifecycleVersion = findProperty("lifecycle.version") as String
 val coroutinesTestVersion = findProperty("coroutinesTest.version") as String
+val arrowVersion = findProperty("arrow.version") as String
 
 kotlin {
     androidTarget()
@@ -39,6 +40,7 @@ kotlin {
                 implementation("org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose:$lifecycleVersion")
                 implementation("app.cash.sqldelight:runtime:$sqlDelightVersion")
                 implementation("app.cash.sqldelight:coroutines-extensions:$sqlDelightVersion")
+                implementation("io.arrow-kt:arrow-core:$arrowVersion")
             }
         }
         val androidMain by getting {
