@@ -401,15 +401,29 @@ class TodoRepositoryImpl(
         db.todoDbQueries.selectOutboxCount().asFlow().map { it.executeAsOne().toInt() }
 
     override suspend fun applyRemoteUpsert(row: TodoRowDto): Either<TodoError, Unit> = guard {
-        db.todoDbQueries.upsertTodo(
-            row.id, row.listId, row.title, row.note, row.dueDate, row.isCompleted, row.completedAt,
-            row.isTrashed, row.trashedAt, row.parentId, row.sortPosition, row.flag,
-            row.createdAt, row.updatedAt, row.updatedBy,
-        )
+        db.transaction {
+            db.todoDbQueries.updateTodoIfNewer(
+                row.listId, row.title, row.note, row.dueDate, row.isCompleted, row.completedAt,
+                row.isTrashed, row.trashedAt, row.parentId, row.sortPosition, row.flag,
+                row.createdAt, row.updatedAt, row.updatedBy, row.id, row.updatedAt,
+            )
+            db.todoDbQueries.insertTodoIfMissing(
+                row.id, row.listId, row.title, row.note, row.dueDate, row.isCompleted, row.completedAt,
+                row.isTrashed, row.trashedAt, row.parentId, row.sortPosition, row.flag,
+                row.createdAt, row.updatedAt, row.updatedBy, row.id,
+            )
+        }
     }
 
     override suspend fun applyRemoteUpsertList(row: ListRowDto): Either<TodoError, Unit> = guard {
-        db.todoDbQueries.upsertList(row.id, row.name, row.colorKey, row.position.toLong(), row.createdAt, row.updatedAt, row.updatedBy)
+        db.transaction {
+            db.todoDbQueries.updateListIfNewer(
+                row.name, row.colorKey, row.position.toLong(), row.updatedAt, row.updatedBy, row.id, row.updatedAt,
+            )
+            db.todoDbQueries.insertListIfMissing(
+                row.id, row.name, row.colorKey, row.position.toLong(), row.createdAt, row.updatedAt, row.updatedBy, row.id,
+            )
+        }
     }
 
     override suspend fun applyRemoteDelete(table: String, rowId: Long, updatedAt: Long): Either<TodoError, Unit> = guard {
@@ -424,7 +438,10 @@ class TodoRepositoryImpl(
         guard { db.todoDbQueries.getSetting(key).executeAsOneOrNull() }
 
     override suspend fun setSetting(key: String, value: String): Either<TodoError, Unit> = guard {
-        db.todoDbQueries.setSetting(key, value)
+        db.transaction {
+            db.todoDbQueries.updateSetting(value, key)
+            db.todoDbQueries.insertSettingIfMissing(key, value, key)
+        }
     }
 
     override suspend fun getSettings(): Either<TodoError, Map<String, String>> =

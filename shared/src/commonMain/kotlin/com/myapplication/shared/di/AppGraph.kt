@@ -41,7 +41,10 @@ class AppGraph(
         val existing = db.todoDbQueries.getSetting("sync.deviceId").executeAsOneOrNull()
         if (existing != null) return existing
         val id = createDeviceId()
-        db.todoDbQueries.setSetting("sync.deviceId", id)
+        db.transaction {
+            db.todoDbQueries.updateSetting(id, "sync.deviceId")
+            db.todoDbQueries.insertSettingIfMissing("sync.deviceId", id, "sync.deviceId")
+        }
         return id
     }
 
