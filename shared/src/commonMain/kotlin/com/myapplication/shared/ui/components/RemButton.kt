@@ -1,15 +1,15 @@
 package com.myapplication.shared.ui.components
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -29,32 +28,51 @@ import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
 
+enum class RemButtonVariant { Default, Ghost, Danger }
+
 @Composable
 fun RemButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    danger: Boolean = false,
+    variant: RemButtonVariant = RemButtonVariant.Ghost,
 ) {
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
     val pressed by interactionSource.collectIsPressedAsState()
-    val focused by interactionSource.collectIsFocusedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.92f else 1f, tween(150), label = "btn-scale")
+    val bg by animateColorAsState(
+        when {
+            variant == RemButtonVariant.Default && hovered -> colors.brandHover
+            variant == RemButtonVariant.Default -> colors.brand
+            hovered -> colors.bgSecondary
+            else -> Color.Transparent
+        },
+        tween(200),
+        label = "btn-bg",
+    )
+    val fg by animateColorAsState(
+        when {
+            variant == RemButtonVariant.Default -> Color.White
+            variant == RemButtonVariant.Danger -> colors.error
+            else -> colors.textNormal
+        },
+        tween(200),
+        label = "btn-fg",
+    )
     Box(
         modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(RoundedCornerShape(RemRadii.r2))
-            .background(if (hovered) colors.bgSecondary else Color.Transparent)
-            .border(if (focused) 2.dp else 0.dp, colors.brand, RoundedCornerShape(RemRadii.r2))
+            .background(bg)
+            .border(if (variant == RemButtonVariant.Danger) 1.dp else 0.dp, colors.border, RoundedCornerShape(RemRadii.r2))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .height(29.dp)
+            .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.foundation.text.BasicText(
             text,
-            style = RemType.label12.copy(color = if (danger) colors.error else colors.textHigh),
+            style = RemType.label12.copy(color = if (pressed) fg.copy(alpha = 0.8f) else fg),
         )
     }
 }
@@ -66,25 +84,22 @@ fun RemIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     tint: Color? = null,
-    size: Dp = 18.dp,
+    size: Dp = 14.dp,
 ) {
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
     val pressed by interactionSource.collectIsPressedAsState()
-    val focused by interactionSource.collectIsFocusedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.85f else 1f, tween(150), label = "iconbtn-scale")
+    val bg by animateColorAsState(if (hovered) colors.bgSecondary else Color.Transparent, tween(200), label = "ib-bg")
     Box(
         modifier
-            .size(size + 16.dp)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .size(size + 12.dp)
             .clip(RoundedCornerShape(RemRadii.r2))
-            .background(if (hovered) colors.bgSecondary else Color.Transparent)
-            .border(if (focused) 2.dp else 0.dp, colors.brand, RoundedCornerShape(RemRadii.r2))
+            .background(bg)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .semantics { if (contentDescription != null) this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center,
     ) {
-        RemIcon(icon, tint ?: colors.textNormal, Modifier.size(size))
+        RemIcon(icon, if (pressed) (tint ?: colors.textLow).copy(alpha = 0.8f) else tint ?: colors.textLow, Modifier.size(size))
     }
 }

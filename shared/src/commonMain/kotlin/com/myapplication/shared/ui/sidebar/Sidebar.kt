@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.ui.components.IconName
+import com.myapplication.shared.ui.components.RemBadge
 import com.myapplication.shared.ui.components.RemDialog
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemTextField
@@ -169,13 +170,11 @@ private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolea
         )
         if (count > 0) {
             if (countBadge) {
-                Box(
-                    Modifier
-                        .background(colors.error, RoundedCornerShape(RemRadii.r2))
-                        .padding(horizontal = 6.dp, vertical = 1.dp),
-                ) {
-                    androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = Color.White))
-                }
+                RemBadge(
+                    label = count.toString(),
+                    color = colors.error,
+                    monospace = true,
+                )
             } else {
                 androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = if (selected) colors.brand else colors.textLow))
             }

@@ -33,6 +33,7 @@ import com.myapplication.shared.di.AppGraph
 import com.myapplication.shared.ui.components.IconName
 import com.myapplication.shared.ui.components.RemBadge
 import com.myapplication.shared.ui.components.RemButton
+import com.myapplication.shared.ui.components.RemButtonVariant
 import com.myapplication.shared.ui.components.RemCheckbox
 import com.myapplication.shared.ui.components.RemDatePicker
 import com.myapplication.shared.ui.components.RemDialog
@@ -94,17 +95,22 @@ fun DetailScreen(
                     detailVm.setTitle(it)
                 },
                 style = RemType.text16,
-                filled = false,
                 modifier = Modifier.weight(1f),
             )
             if (current.dueDate != null) {
                 Spacer(Modifier.width(8.dp))
-                RemBadge(
-                    label = formatDueDate(current.dueDate),
-                    bg = colors.bgPanel,
-                    tint = colors.textLow,
-                    onClick = { showDatePicker = true },
-                )
+                Box(
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { showDatePicker = true },
+                ) {
+                    RemBadge(
+                        label = formatDueDate(current.dueDate),
+                        color = colors.warning,
+                        monospace = true,
+                    )
+                }
             }
             RemIconButton(IconName.Close, "关闭详情", onClick = mainVm::back, size = 16.dp)
         }
@@ -131,7 +137,6 @@ fun DetailScreen(
                 placeholder = "备注…",
                 singleLine = false,
                 minLines = 3,
-                filled = false,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -154,7 +159,9 @@ fun DetailScreen(
             if (current.dueDate != null) {
                 RemBadge(
                     label = formatDueDate(current.dueDate),
-                    icon = { RemIcon(IconName.Calendar, colors.textLow, Modifier.size(10.dp)) },
+                    color = colors.warning,
+                    monospace = true,
+                    icon = { RemIcon(IconName.Calendar, colors.warning, Modifier.size(10.dp)) },
                 )
                 Spacer(Modifier.width(8.dp))
                 RemButton("清除", onClick = { detailVm.setDueDate(null) })
@@ -255,7 +262,7 @@ fun DetailScreen(
                     mainVm.trash(current)
                     mainVm.back()
                 },
-                danger = true,
+                variant = RemButtonVariant.Danger,
                 modifier = Modifier.weight(1f),
             )
         }

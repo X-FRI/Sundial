@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 
-enum class IconName { Calendar, Today, Scheduled, Tray, CheckCircle, Trash, Search, Plus, Close, ChevronBack, ChevronRight, ChevronDown, Flag }
+enum class IconName { Calendar, Today, Scheduled, Tray, CheckCircle, Trash, Search, Plus, Close, ChevronBack, ChevronRight, ChevronDown, Flag, DotsThree }
 
 @Composable
 fun RemIcon(
@@ -104,6 +104,11 @@ fun RemIcon(
             IconName.Flag -> {
                 line(8f, 4f, 8f, 20f)
                 poly(8f, 5.5f, 18f, 8.5f, 8f, 11.5f, filled = true)
+            }
+            IconName.DotsThree -> {
+                circle(5.5f, 12f, 1.2f, filled = true)
+                circle(12f, 12f, 1.2f, filled = true)
+                circle(18.5f, 12f, 1.2f, filled = true)
             }
         }
     }

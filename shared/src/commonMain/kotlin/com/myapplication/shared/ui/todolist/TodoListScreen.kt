@@ -39,6 +39,7 @@ import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.ui.components.IconName
 import com.myapplication.shared.ui.components.RemBadge
 import com.myapplication.shared.ui.components.RemButton
+import com.myapplication.shared.ui.components.RemButtonVariant
 import com.myapplication.shared.ui.components.RemCheckbox
 import com.myapplication.shared.ui.components.RemEmptyState
 import com.myapplication.shared.ui.components.RemIcon
@@ -84,8 +85,8 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
             if (count > 0) {
                 RemBadge(
                     label = "$count 项",
-                    bg = if (scope == Scope.Today) colors.error.copy(alpha = 0.08f) else colors.bgPanel,
-                    tint = if (scope == Scope.Today) colors.error else colors.textLow,
+                    monospace = true,
+                    color = if (scope == Scope.Today) colors.error else null,
                 )
             }
             Spacer(Modifier.width(8.dp))
@@ -164,8 +165,8 @@ private fun SectionHeader(title: String, count: Int, overdue: Boolean) {
             Spacer(Modifier.width(6.dp))
             RemBadge(
                 label = "$count",
-                bg = if (overdue) colors.error.copy(alpha = 0.08f) else colors.bgPanel,
-                tint = if (overdue) colors.error else colors.textLow,
+                monospace = true,
+                color = if (overdue) colors.error else null,
             )
         }
     }
@@ -321,7 +322,7 @@ private fun TrashList(todos: List<TodoItem>, mainVm: MainViewModel) {
                 )
                 RemButton("恢复", onClick = { mainVm.restore(item) })
                 Spacer(Modifier.width(8.dp))
-                RemButton("彻底删除", onClick = { mainVm.deleteForever(item) }, danger = true)
+                RemButton("彻底删除", onClick = { mainVm.deleteForever(item) }, variant = RemButtonVariant.Danger)
             }
         }
     }
@@ -335,16 +336,16 @@ private fun TodoBadge(item: TodoItem, today: kotlinx.datetime.LocalDate) {
     val date = due.toLocalDateTime(tz).date
     val bucket = bucketOf(date, today)
     val label = formatDueDate(due, tz, today)
-    val (bg, fg) = when (bucket) {
-        DueBucket.OVERDUE -> colors.error.copy(alpha = 0.08f) to colors.error
-        DueBucket.TODAY -> colors.warning.copy(alpha = 0.08f) to colors.warning
-        else -> colors.bgPanel to colors.textLow
+    val color = when (bucket) {
+        DueBucket.OVERDUE -> colors.error
+        DueBucket.TODAY -> colors.warning
+        else -> null
     }
     RemBadge(
         label = label,
-        bg = bg,
-        tint = fg,
-        icon = { RemIcon(IconName.Calendar, fg, Modifier.size(10.dp)) },
+        color = color,
+        monospace = true,
+        icon = { RemIcon(IconName.Calendar, color ?: colors.textLow, Modifier.size(10.dp)) },
     )
 }
 

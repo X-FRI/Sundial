@@ -1,19 +1,17 @@
 package com.myapplication.shared.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
@@ -23,26 +21,17 @@ import com.myapplication.shared.ui.theme.RemType
 fun RemBadge(
     label: String,
     modifier: Modifier = Modifier,
-    tint: Color? = null,
-    bg: Color? = null,
+    color: Color? = null,
+    monospace: Boolean = false,
     icon: (@Composable () -> Unit)? = null,
-    onClick: (() -> Unit)? = null,
 ) {
     val colors = LocalRemColors.current
-    val clickModifier = if (onClick != null) {
-        Modifier.clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-            onClick = onClick,
-        )
-    } else {
-        Modifier
-    }
+    val bg = color?.copy(alpha = 0.08f) ?: colors.bgPanel
+    val fg = color ?: colors.textLow
     Row(
         modifier
-            .then(clickModifier)
             .clip(RoundedCornerShape(RemRadii.r2))
-            .background(bg ?: colors.bgSecondary)
+            .background(bg)
             .padding(horizontal = 6.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -50,6 +39,12 @@ fun RemBadge(
             icon()
             Spacer(Modifier.width(3.dp))
         }
-        androidx.compose.foundation.text.BasicText(label, style = RemType.text12.copy(color = tint ?: colors.textLow))
+        androidx.compose.foundation.text.BasicText(
+            label,
+            style = RemType.text10.copy(
+                color = fg,
+                fontFamily = if (monospace) FontFamily.Monospace else FontFamily.Default,
+            ),
+        )
     }
 }

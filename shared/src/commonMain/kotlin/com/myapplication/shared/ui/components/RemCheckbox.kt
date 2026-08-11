@@ -66,7 +66,7 @@ fun RemCheckbox(
             drawCircle(
                 color = when {
                     checked -> colors.brand
-                    hovered -> colors.brand
+                    hovered -> colors.textHigh
                     else -> colors.textLow
                 },
                 style = Stroke(width = r * 0.18f),

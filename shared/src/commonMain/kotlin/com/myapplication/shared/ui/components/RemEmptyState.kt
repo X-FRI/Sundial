@@ -49,7 +49,7 @@ fun RemEmptyState(
                         color = cardColor,
                         topLeft = Offset(s * 0.18f, s * 0.22f),
                         size = Size(s * 0.64f, s * 0.56f),
-                        cornerRadius = CornerRadius(s * 0.08f),
+                        cornerRadius = CornerRadius(s * 0.02f),
                         style = Stroke(width = st),
                     )
                     drawRoundRect(

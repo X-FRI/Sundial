@@ -23,7 +23,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -40,7 +39,6 @@ fun RemTextField(
     placeholder: String = "",
     singleLine: Boolean = true,
     minLines: Int = 1,
-    filled: Boolean = true,
     style: TextStyle = RemType.text14,
     leadingIcon: IconName? = null,
     onEnter: (() -> Unit)? = null,
@@ -52,10 +50,10 @@ fun RemTextField(
     Row(
         modifier
             .clip(RoundedCornerShape(RemRadii.r2))
-            .background(if (filled) colors.bgSecondary else Color.Transparent)
+            .background(colors.inputBg)
             .border(
-                if (focused && filled) 2.dp else 0.dp,
-                colors.brand,
+                1.dp,
+                if (focused) colors.brand else colors.border,
                 RoundedCornerShape(RemRadii.r2),
             )
             .padding(horizontal = 10.dp, vertical = 6.dp),
