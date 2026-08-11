@@ -41,7 +41,7 @@ fun RemEmptyState(
             Canvas(Modifier.size(96.dp)) {
                 val s = size.minDimension
                 val st = 2.dp.toPx()
-                val cardColor = colors.textTertiary.copy(alpha = 0.35f)
+                val cardColor = colors.textLow.copy(alpha = 0.35f)
                 withTransform({
                     rotate(-6f, pivot = Offset(s / 2, s / 2))
                 }) {
@@ -53,13 +53,13 @@ fun RemEmptyState(
                         style = Stroke(width = st),
                     )
                     drawRoundRect(
-                        color = colors.checkboxBorder.copy(alpha = 0.5f),
+                        color = colors.textLow.copy(alpha = 0.5f),
                         topLeft = Offset(s * 0.30f, s * 0.34f),
                         size = Size(s * 0.40f, s * 0.08f),
                         cornerRadius = CornerRadius(s * 0.04f),
                     )
                     drawRoundRect(
-                        color = colors.checkboxBorder.copy(alpha = 0.5f),
+                        color = colors.textLow.copy(alpha = 0.5f),
                         topLeft = Offset(s * 0.30f, s * 0.48f),
                         size = Size(s * 0.28f, s * 0.08f),
                         cornerRadius = CornerRadius(s * 0.04f),
@@ -69,15 +69,15 @@ fun RemEmptyState(
                         lineTo(s * 0.42f, s * 0.82f)
                         lineTo(s * 0.60f, s * 0.62f)
                     }
-                    drawPath(p, colors.accent, style = Stroke(width = st, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                    drawPath(p, colors.brand, style = Stroke(width = st, cap = StrokeCap.Round, join = StrokeJoin.Round))
                 }
             }
             Spacer(Modifier.height(16.dp))
         }
-        androidx.compose.foundation.text.BasicText(title, style = RemType.title20.copy(color = colors.textPrimary))
+        androidx.compose.foundation.text.BasicText(title, style = RemType.title18.copy(color = colors.textHigh))
         if (subtitle.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
-            androidx.compose.foundation.text.BasicText(subtitle, style = RemType.text12.copy(color = colors.textTertiary))
+            androidx.compose.foundation.text.BasicText(subtitle, style = RemType.text12.copy(color = colors.textLow))
         }
     }
 }

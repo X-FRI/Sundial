@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.ui.theme.LocalRemColors
+import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
 import com.myapplication.shared.util.todayDate
 import kotlinx.datetime.LocalDate
@@ -62,7 +63,7 @@ fun RemDatePicker(
                 RemIconButton(IconName.ChevronBack, "上个月", onClick = { month = month.minusMonth() }, size = 14.dp)
                 androidx.compose.foundation.text.BasicText(
                     "${month.year} 年 ${month.month.number} 月",
-                    style = RemType.title15.copy(color = colors.textPrimary, textAlign = TextAlign.Center),
+                    style = RemType.text16.copy(color = colors.textHigh, textAlign = TextAlign.Center),
                     modifier = Modifier.weight(1f),
                 )
                 RemIconButton(IconName.ChevronRight, "下个月", onClick = { month = month.plusMonth() }, size = 14.dp)
@@ -76,7 +77,7 @@ fun RemDatePicker(
                 weekHeaders.forEach {
                     androidx.compose.foundation.text.BasicText(
                         it,
-                        style = RemType.label12.copy(color = colors.textTertiary, textAlign = TextAlign.Center),
+                        style = RemType.label10.copy(color = colors.textLow, textAlign = TextAlign.Center),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -97,8 +98,8 @@ fun RemDatePicker(
                                 Modifier
                                     .weight(1f)
                                     .aspectRatio(1f)
-                                    .clip(CircleShape)
-                                    .background(if (isSelected) colors.accent else Color.Transparent)
+                                    .clip(RoundedCornerShape(RemRadii.r2))
+                                    .background(if (isSelected) colors.brand else Color.Transparent)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
@@ -107,11 +108,11 @@ fun RemDatePicker(
                             ) {
                                 androidx.compose.foundation.text.BasicText(
                                     "$d",
-                                    style = RemType.text13.copy(
+                                    style = RemType.text14.copy(
                                         color = when {
                                             isSelected -> Color.White
-                                            isToday -> colors.accent
-                                            else -> colors.textPrimary
+                                            isToday -> colors.brand
+                                            else -> colors.textHigh
                                         },
                                     ),
                                 )
@@ -131,7 +132,7 @@ private fun TimePickerRow(initialTime: LocalTime?, onPickTime: (Int, Int) -> Uni
     var hour by remember { mutableStateOf(initialTime?.hour ?: 9) }
     var minute by remember { mutableStateOf(initialTime?.minute ?: 0) }
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        androidx.compose.foundation.text.BasicText("时间", style = RemType.text13.copy(color = colors.textSecondary))
+        androidx.compose.foundation.text.BasicText("时间", style = RemType.text14.copy(color = colors.textNormal))
         Spacer(Modifier.weight(1f))
         RemIconButton(IconName.ChevronBack, "减一小时", onClick = {
             hour = (hour + 23) % 24
@@ -139,7 +140,7 @@ private fun TimePickerRow(initialTime: LocalTime?, onPickTime: (Int, Int) -> Uni
         }, size = 14.dp)
         androidx.compose.foundation.text.BasicText(
             "${hour.toString().padStart(2, '0')} : ${minute.toString().padStart(2, '0')}",
-            style = RemType.title15.copy(color = colors.textPrimary),
+            style = RemType.text16.copy(color = colors.textHigh),
         )
         RemIconButton(IconName.ChevronRight, "加一小时", onClick = {
             hour = (hour + 1) % 24
@@ -150,7 +151,7 @@ private fun TimePickerRow(initialTime: LocalTime?, onPickTime: (Int, Int) -> Uni
             minute = (minute + 55) % 60
             onPickTime(hour, minute)
         }, size = 14.dp)
-        androidx.compose.foundation.text.BasicText("分", style = RemType.text12.copy(color = colors.textTertiary))
+        androidx.compose.foundation.text.BasicText("分", style = RemType.text12.copy(color = colors.textLow))
         RemIconButton(IconName.ChevronRight, "加五分钟", onClick = {
             minute = (minute + 5) % 60
             onPickTime(hour, minute)

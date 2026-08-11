@@ -41,7 +41,7 @@ fun RemCheckbox(
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.85f else 1f, tween(150), label = "cb-scale")
     val fill by animateColorAsState(
-        if (checked) colors.accent else Color.Transparent,
+        if (checked) colors.brand else Color.Transparent,
         spring(dampingRatio = 0.6f, stiffness = 400f),
         label = "cb-fill",
     )
@@ -65,9 +65,9 @@ fun RemCheckbox(
             drawCircle(fill)
             drawCircle(
                 color = when {
-                    checked -> colors.accent
-                    hovered -> colors.accent
-                    else -> colors.checkboxBorder
+                    checked -> colors.brand
+                    hovered -> colors.brand
+                    else -> colors.textLow
                 },
                 style = Stroke(width = r * 0.18f),
             )

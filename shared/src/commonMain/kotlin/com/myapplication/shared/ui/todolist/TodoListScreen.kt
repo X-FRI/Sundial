@@ -1,7 +1,6 @@
 package com.myapplication.shared.ui.todolist
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -28,9 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -69,7 +66,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
     val query by mainVm.searchQuery.collectAsState()
     var quickAddFocus by remember { mutableStateOf(0) }
 
-    Column(modifier.background(colors.windowBg)) {
+    Column(modifier.background(colors.bgSecondary)) {
         val today = todayDate()
         val activeCount = todos.count { !it.isCompleted }
         Row(
@@ -80,33 +77,33 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
         ) {
             androidx.compose.foundation.text.BasicText(
                 scopeTitle(scope, query),
-                style = RemType.title28.copy(color = colors.textPrimary),
+                style = RemType.title18.copy(color = colors.textHigh),
                 modifier = Modifier.weight(1f),
             )
             val count = if (scope == Scope.Completed) todos.size else activeCount
             if (count > 0) {
                 RemBadge(
                     label = "$count 项",
-                    bg = if (scope == Scope.Today) colors.overdueBadgeBg else colors.upcomingBadgeBg,
-                    tint = if (scope == Scope.Today) colors.overdueBadgeText else colors.upcomingBadgeText,
+                    bg = if (scope == Scope.Today) colors.error.copy(alpha = 0.08f) else colors.bgPanel,
+                    tint = if (scope == Scope.Today) colors.error else colors.textLow,
                 )
             }
             Spacer(Modifier.width(8.dp))
             Box(
                 Modifier
                     .size(26.dp)
-                    .clip(RoundedCornerShape(RemRadii.r6))
-                    .background(colors.hoverActionBg)
+                    .clip(RoundedCornerShape(RemRadii.r2))
+                    .background(colors.bgSecondary)
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { quickAddFocus++ }
                     .semantics { contentDescription = "新建待办" },
                 contentAlignment = Alignment.Center,
             ) {
-                RemIcon(IconName.Plus, colors.textPrimary, Modifier.size(14.dp))
+                RemIcon(IconName.Plus, colors.textHigh, Modifier.size(14.dp))
             }
         }
         androidx.compose.foundation.text.BasicText(
             if (scope == Scope.Today || scope == Scope.Scheduled) "${today.monthNumber} 月 ${today.dayOfMonth} 日 · 星期${"一二三四五六日"[today.dayOfWeek.isoDayNumber - 1]}" else if (scope == Scope.Completed) "${todos.size} 项" else "$activeCount 项未完成",
-            style = RemType.text13.copy(color = colors.textTertiary),
+            style = RemType.text14.copy(color = colors.textLow),
             modifier = Modifier.padding(start = 20.dp, top = 4.dp, bottom = 12.dp),
         )
         if (scope != Scope.Trash) {
@@ -161,18 +158,16 @@ private fun SectionHeader(title: String, count: Int, overdue: Boolean) {
     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.foundation.text.BasicText(
             title,
-            style = RemType.label13.copy(color = colors.textPrimary),
+            style = RemType.label12.copy(color = colors.textHigh),
         )
         if (count > 0) {
             Spacer(Modifier.width(6.dp))
             RemBadge(
                 label = "$count",
-                bg = if (overdue) colors.overdueBadgeBg else colors.upcomingBadgeBg,
-                tint = if (overdue) colors.overdueBadgeText else colors.upcomingBadgeText,
+                bg = if (overdue) colors.error.copy(alpha = 0.08f) else colors.bgPanel,
+                tint = if (overdue) colors.error else colors.textLow,
             )
         }
-        Spacer(Modifier.width(8.dp))
-        Box(Modifier.weight(1f).height(1.dp).background(colors.rowDivider))
     }
 }
 
@@ -192,8 +187,7 @@ private fun TodayGrouped(todos: List<TodoItem>, today: kotlinx.datetime.LocalDat
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .background(colors.cardBg, RoundedCornerShape(RemRadii.r10))
-                            .border(1.dp, colors.cardBorder, RoundedCornerShape(RemRadii.r10))
+                            .background(colors.bgPrimary, RoundedCornerShape(RemRadii.r2))
                             .padding(horizontal = 8.dp),
                     ) {
                         items.forEach { item ->
@@ -222,8 +216,7 @@ private fun PlainList(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, 
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .background(colors.cardBg, RoundedCornerShape(RemRadii.r10))
-                        .border(1.dp, colors.cardBorder, RoundedCornerShape(RemRadii.r10))
+                        .background(colors.bgPrimary, RoundedCornerShape(RemRadii.r2))
                         .padding(horizontal = 8.dp),
                 ) {
                     active.forEach { parent ->
@@ -253,9 +246,9 @@ private fun PlainList(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, 
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { completedExpanded = !completedExpanded },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    androidx.compose.foundation.text.BasicText("已完成", style = RemType.label13.copy(color = colors.textTertiary))
+                    androidx.compose.foundation.text.BasicText("已完成", style = RemType.label12.copy(color = colors.textLow))
                     Spacer(Modifier.weight(1f))
-                    RemIcon(if (completedExpanded) IconName.ChevronDown else IconName.ChevronRight, colors.textTertiary, Modifier.size(14.dp))
+                    RemIcon(if (completedExpanded) IconName.ChevronDown else IconName.ChevronRight, colors.textLow, Modifier.size(14.dp))
                 }
             }
             if (completedExpanded) {
@@ -263,8 +256,7 @@ private fun PlainList(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, 
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .background(colors.cardBg, RoundedCornerShape(RemRadii.r10))
-                            .border(1.dp, colors.cardBorder, RoundedCornerShape(RemRadii.r10))
+                            .background(colors.bgPrimary, RoundedCornerShape(RemRadii.r2))
                             .padding(horizontal = 8.dp),
                     ) {
                         completed.forEach { item -> TodoRow(item, mainVm, today) }
@@ -297,8 +289,7 @@ private fun ScheduledGrouped(todos: List<TodoItem>, today: kotlinx.datetime.Loca
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .background(colors.cardBg, RoundedCornerShape(RemRadii.r10))
-                            .border(1.dp, colors.cardBorder, RoundedCornerShape(RemRadii.r10))
+                            .background(colors.bgPrimary, RoundedCornerShape(RemRadii.r2))
                             .padding(horizontal = 8.dp),
                     ) {
                         items.forEach { item ->
@@ -325,7 +316,7 @@ private fun TrashList(todos: List<TodoItem>, mainVm: MainViewModel) {
             ) {
                 androidx.compose.foundation.text.BasicText(
                     item.title,
-                    style = RemType.text13.copy(color = colors.textPrimary),
+                    style = RemType.text14.copy(color = colors.textHigh),
                     modifier = Modifier.weight(1f),
                 )
                 RemButton("恢复", onClick = { mainVm.restore(item) })
@@ -345,9 +336,9 @@ private fun TodoBadge(item: TodoItem, today: kotlinx.datetime.LocalDate) {
     val bucket = bucketOf(date, today)
     val label = formatDueDate(due, tz, today)
     val (bg, fg) = when (bucket) {
-        DueBucket.OVERDUE -> colors.overdueBadgeBg to colors.overdueBadgeText
-        DueBucket.TODAY -> colors.todayBadgeBg to colors.todayBadgeText
-        else -> colors.upcomingBadgeBg to colors.upcomingBadgeText
+        DueBucket.OVERDUE -> colors.error.copy(alpha = 0.08f) to colors.error
+        DueBucket.TODAY -> colors.warning.copy(alpha = 0.08f) to colors.warning
+        else -> colors.bgPanel to colors.textLow
     }
     RemBadge(
         label = label,
@@ -377,10 +368,7 @@ fun TodoRow(
             .clickable(interactionSource = interactionSource, indication = null) {
                 if (showChevron) onToggleExpand() else mainVm.openDetail(item.id)
             }
-            .background(if (hovered) colors.selectedBg.copy(alpha = 0.6f) else Color.Transparent)
-            .drawBehind {
-                drawLine(colors.rowDivider, Offset(0f, size.height), Offset(size.width, size.height), 1f)
-            }
+            .background(if (hovered) colors.bgSecondary.copy(alpha = 0.6f) else Color.Transparent)
             .padding(start = if (indent) 16.dp else 0.dp)
             .padding(vertical = 10.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -393,8 +381,8 @@ fun TodoRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.text.BasicText(
                     item.title,
-                    style = RemType.text13.copy(
-                        color = if (item.isCompleted) colors.textTertiary else colors.textPrimary,
+                    style = RemType.text14.copy(
+                        color = if (item.isCompleted) colors.textLow else colors.textHigh,
                         textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
                         fontWeight = if (item.isCompleted) FontWeight.Normal else FontWeight.Medium,
                     ),
@@ -404,14 +392,14 @@ fun TodoRow(
                 )
                 if (item.flag) {
                     Spacer(Modifier.width(6.dp))
-                    RemIcon(IconName.Flag, colors.flagColor, Modifier.size(14.dp))
+                    RemIcon(IconName.Flag, colors.warning, Modifier.size(14.dp))
                 }
             }
             if (item.isCompleted) {
                 item.completedAt?.let {
                     androidx.compose.foundation.text.BasicText(
                         "已完成 ${formatDueDate(it, TimeZone.currentSystemDefault(), today)}",
-                        style = RemType.text12.copy(color = colors.textTertiary),
+                        style = RemType.text12.copy(color = colors.textLow),
                     )
                 }
             } else if (item.note.isNotBlank() || subtaskCount > 0) {
@@ -419,7 +407,7 @@ fun TodoRow(
                     if (item.note.isNotBlank()) {
                         androidx.compose.foundation.text.BasicText(
                             item.note,
-                            style = RemType.text12.copy(color = colors.textTertiary),
+                            style = RemType.text12.copy(color = colors.textLow),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
@@ -431,14 +419,14 @@ fun TodoRow(
                         Spacer(Modifier.width(6.dp))
                         androidx.compose.foundation.text.BasicText(
                             "⌄ $subtaskCount",
-                            style = RemType.text12.copy(color = colors.textTertiary),
+                            style = RemType.text12.copy(color = colors.textLow),
                         )
                     }
                 }
             }
         }
         if (showChevron) {
-            RemIcon(if (expanded) IconName.ChevronDown else IconName.ChevronRight, colors.textTertiary, Modifier.size(14.dp))
+            RemIcon(if (expanded) IconName.ChevronDown else IconName.ChevronRight, colors.textLow, Modifier.size(14.dp))
             Spacer(Modifier.width(8.dp))
         }
         TodoBadge(item, today)

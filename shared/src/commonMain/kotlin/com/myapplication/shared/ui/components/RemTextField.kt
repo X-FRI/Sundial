@@ -41,7 +41,7 @@ fun RemTextField(
     singleLine: Boolean = true,
     minLines: Int = 1,
     filled: Boolean = true,
-    style: TextStyle = RemType.text13,
+    style: TextStyle = RemType.text14,
     leadingIcon: IconName? = null,
     onEnter: (() -> Unit)? = null,
     trailing: Pair<String, () -> Unit>? = null,
@@ -51,18 +51,18 @@ fun RemTextField(
     var focused by remember { mutableStateOf(false) }
     Row(
         modifier
-            .clip(RoundedCornerShape(RemRadii.r7))
-            .background(if (filled) colors.selectedBg else Color.Transparent)
+            .clip(RoundedCornerShape(RemRadii.r2))
+            .background(if (filled) colors.bgSecondary else Color.Transparent)
             .border(
                 if (focused && filled) 2.dp else 0.dp,
-                colors.accent,
-                RoundedCornerShape(RemRadii.r7),
+                colors.brand,
+                RoundedCornerShape(RemRadii.r2),
             )
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (leadingIcon != null) {
-            RemIcon(leadingIcon, colors.textTertiary, Modifier.width(14.dp).height(14.dp))
+            RemIcon(leadingIcon, colors.textLow, Modifier.width(14.dp).height(14.dp))
             Spacer(Modifier.width(6.dp))
         }
         BasicTextField(
@@ -72,15 +72,15 @@ fun RemTextField(
                 .weight(1f)
                 .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
                 .onFocusChanged { focused = it.isFocused },
-            textStyle = style.copy(color = colors.textPrimary),
-            cursorBrush = SolidColor(colors.accent),
+            textStyle = style.copy(color = colors.textHigh),
+            cursorBrush = SolidColor(colors.brand),
             singleLine = singleLine,
             minLines = minLines,
             keyboardOptions = if (onEnter != null) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
             keyboardActions = if (onEnter != null) KeyboardActions(onDone = { onEnter() }) else KeyboardActions.Default,
             decorationBox = { inner ->
                 if (value.isEmpty() && placeholder.isNotEmpty()) {
-                    androidx.compose.foundation.text.BasicText(placeholder, style = style.copy(color = colors.textTertiary))
+                    androidx.compose.foundation.text.BasicText(placeholder, style = style.copy(color = colors.textLow))
                 }
                 inner()
             },
@@ -89,7 +89,7 @@ fun RemTextField(
             Spacer(Modifier.width(6.dp))
             androidx.compose.foundation.text.BasicText(
                 trailing.first,
-                style = RemType.label13.copy(color = colors.accent),
+                style = RemType.label12.copy(color = colors.brand),
                 modifier = Modifier.clickable { trailing.second() },
             )
         }

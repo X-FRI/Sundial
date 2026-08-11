@@ -55,12 +55,12 @@ fun RemDialog(
             Column(
                 Modifier
                     .widthIn(max = 340.dp)
-                    .clip(RoundedCornerShape(RemRadii.r8))
-                    .background(colors.dialogBg)
+                    .clip(RoundedCornerShape(RemRadii.r2))
+                    .background(colors.bgPrimary)
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                     .padding(16.dp),
             ) {
-                androidx.compose.foundation.text.BasicText(title, style = RemType.title15.copy(color = colors.textPrimary))
+                androidx.compose.foundation.text.BasicText(title, style = RemType.text16.copy(color = colors.textHigh))
                 Spacer(Modifier.height(12.dp))
                 content()
                 if (showButtons) {

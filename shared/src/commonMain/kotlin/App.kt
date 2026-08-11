@@ -58,7 +58,7 @@ fun AppRoot(graph: AppGraph) {
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
-            .background(colors.contentBg)
+            .background(colors.bgSecondary)
             .onPreviewKeyEvent { event ->
                 if (event.type == KeyEventType.KeyUp && event.key == Key.Escape) {
                     mainVm.back()
@@ -74,7 +74,7 @@ fun AppRoot(graph: AppGraph) {
             wide -> {
                 Row(Modifier.fillMaxSize()) {
                     Sidebar(mainVm)
-                    TodoListScreen(mainVm, Modifier.weight(1f).background(colors.contentBg))
+                    TodoListScreen(mainVm, Modifier.weight(1f).background(colors.bgSecondary))
                     AnimatedVisibility(
                         visible = selectedId != null,
                         enter = fadeIn(tween(150)) + slideInHorizontally(initialOffsetX = { it / 8 }),

@@ -41,8 +41,8 @@ fun RemBadge(
     Row(
         modifier
             .then(clickModifier)
-            .clip(RoundedCornerShape(RemRadii.r4))
-            .background(bg ?: colors.selectedBg)
+            .clip(RoundedCornerShape(RemRadii.r2))
+            .background(bg ?: colors.bgSecondary)
             .padding(horizontal = 6.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -50,6 +50,6 @@ fun RemBadge(
             icon()
             Spacer(Modifier.width(3.dp))
         }
-        androidx.compose.foundation.text.BasicText(label, style = RemType.text12.copy(color = tint ?: colors.textTertiary))
+        androidx.compose.foundation.text.BasicText(label, style = RemType.text12.copy(color = tint ?: colors.textLow))
     }
 }

@@ -67,12 +67,12 @@ fun Sidebar(mainVm: MainViewModel) {
         Modifier
             .fillMaxHeight()
             .width(220.dp)
-            .background(colors.sidebarBg)
+            .background(colors.bgPrimary)
             .padding(vertical = RemSpacing.s16, horizontal = 10.dp),
     ) {
         androidx.compose.foundation.text.BasicText(
             "提醒事项",
-            style = RemType.title17.copy(color = colors.textPrimary),
+            style = RemType.title18.copy(color = colors.textHigh),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
         )
         Spacer(Modifier.height(RemSpacing.s12))
@@ -83,13 +83,6 @@ fun Sidebar(mainVm: MainViewModel) {
         ScopeRow(IconName.Tray, "全部待办", allCount, scope == Scope.All) { mainVm.selectScope(Scope.All) }
         ScopeRow(IconName.CheckCircle, "已完成", completedCount, scope == Scope.Completed) { mainVm.selectScope(Scope.Completed) }
         ScopeRow(IconName.Trash, "垃圾箱", trashCount, scope == Scope.Trash) { mainVm.selectScope(Scope.Trash) }
-        Box(
-            Modifier
-                .padding(horizontal = 8.dp, vertical = RemSpacing.s8)
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(colors.rowDivider),
-        )
         Row(
             Modifier
                 .fillMaxWidth()
@@ -99,11 +92,11 @@ fun Sidebar(mainVm: MainViewModel) {
         ) {
             RemIcon(
                 IconName.ChevronRight,
-                colors.textTertiary,
+                colors.textLow,
                 Modifier.size(12.dp).graphicsLayer { rotationZ = if (listsExpanded) 90f else 0f },
             )
             Spacer(Modifier.width(4.dp))
-            androidx.compose.foundation.text.BasicText("我的列表", style = RemType.label12.copy(color = colors.textTertiary))
+            androidx.compose.foundation.text.BasicText("我的列表", style = RemType.label10.copy(color = colors.textLow))
         }
         if (listsExpanded) {
             lists.forEach { list ->
@@ -122,14 +115,14 @@ fun Sidebar(mainVm: MainViewModel) {
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp)
-                .clip(RoundedCornerShape(RemRadii.r6))
+                .clip(RoundedCornerShape(RemRadii.r2))
                 .clickable { showAddList = true }
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RemIcon(IconName.Plus, colors.accent, Modifier.size(16.dp))
+            RemIcon(IconName.Plus, colors.brand, Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
-            androidx.compose.foundation.text.BasicText("添加列表", style = RemType.label13.copy(color = colors.accent))
+            androidx.compose.foundation.text.BasicText("添加列表", style = RemType.label12.copy(color = colors.brand))
         }
     }
 
@@ -152,11 +145,11 @@ private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolea
         Modifier
             .fillMaxWidth()
             .height(28.dp)
-            .clip(RoundedCornerShape(RemRadii.r7))
+            .clip(RoundedCornerShape(RemRadii.r2))
             .background(
                 when {
-                    selected -> colors.selectedBg
-                    hovered -> colors.selectedBg.copy(alpha = 0.6f)
+                    selected -> colors.bgSecondary
+                    hovered -> colors.bgSecondary.copy(alpha = 0.6f)
                     else -> Color.Transparent
                 },
             )
@@ -164,13 +157,13 @@ private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolea
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RemIcon(icon, if (selected) colors.accent else colors.textTertiary, Modifier.size(16.dp))
+        RemIcon(icon, if (selected) colors.brand else colors.textLow, Modifier.size(16.dp))
         Spacer(Modifier.width(8.dp))
         androidx.compose.foundation.text.BasicText(
             label,
-            style = RemType.text13.copy(
+            style = RemType.text14.copy(
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                color = colors.textPrimary,
+                color = colors.textHigh,
             ),
             modifier = Modifier.weight(1f),
         )
@@ -178,13 +171,13 @@ private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolea
             if (countBadge) {
                 Box(
                     Modifier
-                        .background(colors.danger, RoundedCornerShape(RemRadii.r8))
+                        .background(colors.error, RoundedCornerShape(RemRadii.r2))
                         .padding(horizontal = 6.dp, vertical = 1.dp),
                 ) {
                     androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = Color.White))
                 }
             } else {
-                androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = if (selected) colors.accent else colors.textTertiary))
+                androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = if (selected) colors.brand else colors.textLow))
             }
         }
     }
@@ -208,11 +201,11 @@ private fun ListRow(
         Modifier
             .fillMaxWidth()
             .height(28.dp)
-            .clip(RoundedCornerShape(RemRadii.r7))
+            .clip(RoundedCornerShape(RemRadii.r2))
             .background(
                 when {
-                    selected -> colors.selectedBg
-                    hovered -> colors.selectedBg.copy(alpha = 0.6f)
+                    selected -> colors.bgSecondary
+                    hovered -> colors.bgSecondary.copy(alpha = 0.6f)
                     else -> Color.Transparent
                 },
             )
@@ -229,36 +222,36 @@ private fun ListRow(
         Spacer(Modifier.width(8.dp))
         androidx.compose.foundation.text.BasicText(
             list.name,
-            style = RemType.text13.copy(color = colors.textPrimary),
+            style = RemType.text14.copy(color = colors.textHigh),
             modifier = Modifier.weight(1f),
         )
         if (count > 0) {
-            androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = colors.textTertiary))
+            androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = colors.textLow))
         }
         if (hovered) {
             Spacer(Modifier.width(4.dp))
             Box(
                 Modifier
                     .size(16.dp)
-                    .clip(RoundedCornerShape(RemRadii.r4))
+                    .clip(RoundedCornerShape(RemRadii.r2))
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect() }
                     .semantics { contentDescription = "跳转到${list.name}" },
                 contentAlignment = Alignment.Center,
             ) {
-                RemIcon(IconName.Plus, colors.textTertiary, Modifier.size(12.dp))
+                RemIcon(IconName.Plus, colors.textLow, Modifier.size(12.dp))
             }
             if (canDelete) {
                 Spacer(Modifier.width(2.dp))
                 Box(
                     Modifier
                         .size(16.dp)
-                        .clip(RoundedCornerShape(RemRadii.r4))
-                        .background(colors.hoverActionBg, RoundedCornerShape(RemRadii.r4))
+                        .clip(RoundedCornerShape(RemRadii.r2))
+                        .background(colors.bgSecondary, RoundedCornerShape(RemRadii.r2))
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { confirmDelete = true }
                         .semantics { contentDescription = "删除列表" },
                     contentAlignment = Alignment.Center,
                 ) {
-                    RemIcon(IconName.Trash, colors.textTertiary, Modifier.size(12.dp))
+                    RemIcon(IconName.Trash, colors.textLow, Modifier.size(12.dp))
                 }
             }
         }
@@ -270,7 +263,7 @@ private fun ListRow(
             content = {
                 androidx.compose.foundation.text.BasicText(
                     "确定删除列表「${list.name}」？该列表的所有待办将移入垃圾箱。",
-                    style = RemType.text13.copy(color = colors.textSecondary),
+                    style = RemType.text14.copy(color = colors.textNormal),
                 )
             },
             confirmText = "删除",

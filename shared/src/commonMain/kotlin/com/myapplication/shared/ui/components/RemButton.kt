@@ -12,7 +12,6 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,16 +45,16 @@ fun RemButton(
     Box(
         modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(RemRadii.r6))
-            .background(if (hovered) colors.selectedBg else Color.Transparent)
-            .border(if (focused) 2.dp else 0.dp, colors.accent, RoundedCornerShape(RemRadii.r6))
+            .clip(RoundedCornerShape(RemRadii.r2))
+            .background(if (hovered) colors.bgSecondary else Color.Transparent)
+            .border(if (focused) 2.dp else 0.dp, colors.brand, RoundedCornerShape(RemRadii.r2))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.foundation.text.BasicText(
             text,
-            style = RemType.label13.copy(color = if (danger) colors.danger else colors.textPrimary),
+            style = RemType.label12.copy(color = if (danger) colors.error else colors.textHigh),
         )
     }
 }
@@ -79,13 +78,13 @@ fun RemIconButton(
         modifier
             .size(size + 16.dp)
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(CircleShape)
-            .background(if (hovered) colors.selectedBg else Color.Transparent)
-            .border(if (focused) 2.dp else 0.dp, colors.accent, CircleShape)
+            .clip(RoundedCornerShape(RemRadii.r2))
+            .background(if (hovered) colors.bgSecondary else Color.Transparent)
+            .border(if (focused) 2.dp else 0.dp, colors.brand, RoundedCornerShape(RemRadii.r2))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .semantics { if (contentDescription != null) this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center,
     ) {
-        RemIcon(icon, tint ?: colors.textSecondary, Modifier.size(size))
+        RemIcon(icon, tint ?: colors.textNormal, Modifier.size(size))
     }
 }

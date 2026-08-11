@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.sp
 val ListColorKeys = listOf("blue", "red", "orange", "yellow", "green", "teal", "purple")
 
 val ListColorOf = mapOf(
-    "blue" to Color(0xFF007AFF),
+    "blue" to Color(0xFF0A84FF),
     "red" to Color(0xFFFF3B30),
     "orange" to Color(0xFFFF9500),
     "yellow" to Color(0xFFFFCC00),
@@ -21,106 +21,82 @@ val ListColorOf = mapOf(
 )
 
 data class RemColors(
-    val sidebarBg: Color,
-    val contentBg: Color,
-    val selectedBg: Color,
-    val rowDivider: Color,
-    val textPrimary: Color,
-    val textSecondary: Color,
-    val textTertiary: Color,
-    val accent: Color,
-    val danger: Color,
-    val checkboxBorder: Color,
-    val dialogBg: Color,
-    val todayBadgeBg: Color,
-    val todayBadgeText: Color,
-    val upcomingBadgeBg: Color,
-    val upcomingBadgeText: Color,
-    val overdueBadgeBg: Color,
-    val overdueBadgeText: Color,
-    val cardBg: Color,
-    val cardBorder: Color,
-    val hoverActionBg: Color,
-    val flagColor: Color,
-    val windowBg: Color,
+    val bgPrimary: Color,
+    val bgSecondary: Color,
+    val bgPanel: Color,
+    val textHigh: Color,
+    val textNormal: Color,
+    val textLow: Color,
+    val border: Color,
+    val inputBg: Color,
+    val brand: Color,
+    val brandHover: Color,
+    val brandSecondary: Color,
+    val error: Color,
+    val success: Color,
+    val warning: Color,
+    val info: Color,
+    val focusRing: Color,
 )
 
 val LightRemColors = RemColors(
-    sidebarBg = Color(0xFFFFFFFF),
-    contentBg = Color(0xFFF6F6F8),
-    selectedBg = Color(0xFFF2F2F7),
-    rowDivider = Color(0xFFF0F0F4),
-    textPrimary = Color(0xFF111111),
-    textSecondary = Color(0xFF3C3C43),
-    textTertiary = Color(0xFF8E8E93),
-    accent = Color(0xFF0A84FF),
-    danger = Color(0xFFFF3B30),
-    checkboxBorder = Color(0xFFC7C7CC),
-    dialogBg = Color(0xFFFFFFFF),
-    todayBadgeBg = Color(0x33FFD60A),
-    todayBadgeText = Color(0xFFB25000),
-    upcomingBadgeBg = Color(0x20C7C7CC),
-    upcomingBadgeText = Color(0xFF8E8E93),
-    overdueBadgeBg = Color(0x26FF3B30),
-    overdueBadgeText = Color(0xFFFF3B30),
-    cardBg = Color(0xFFFFFFFF),
-    cardBorder = Color(0xFFEEEEF0),
-    hoverActionBg = Color(0xFFE5E5EA),
-    flagColor = Color(0xFFFF9500),
-    windowBg = Color(0xFFF6F6F8),
+    bgPrimary = Color(0xFFFFFFFF),
+    bgSecondary = Color(0xFFF2F2F2),
+    bgPanel = Color(0xFFE3E3E3),
+    textHigh = Color(0xFF0D0D0D),
+    textNormal = Color(0xFF333333),
+    textLow = Color(0xFF636363),
+    border = Color(0xFFD9D9D9),
+    inputBg = Color(0xFFF5F5F5),
+    brand = Color(0xFFEA7A2A),
+    brandHover = Color(0xFFE79255),
+    brandSecondary = Color(0xFFAC5111),
+    error = Color(0xFFD25151),
+    success = Color(0xFF54B04F),
+    warning = Color(0xFFDB7706),
+    info = Color(0xFF3C83F6),
+    focusRing = Color(0xFFEA7A2A),
 )
 
 val DarkRemColors = RemColors(
-    sidebarBg = Color(0xFF1C1C1E),
-    contentBg = Color(0xFF2C2C2E),
-    selectedBg = Color(0xFF3A3A3C),
-    rowDivider = Color(0xFF38383A),
-    textPrimary = Color(0xFFFFFFFF),
-    textSecondary = Color(0xFFD1D1D6),
-    textTertiary = Color(0xFF8E8E93),
-    accent = Color(0xFF0A84FF),
-    danger = Color(0xFFFF453A),
-    checkboxBorder = Color(0xFF636366),
-    dialogBg = Color(0xFF2C2C2E),
-    todayBadgeBg = Color(0x40FFD60A),
-    todayBadgeText = Color(0xFFFFD60A),
-    upcomingBadgeBg = Color(0x333A3A3C),
-    upcomingBadgeText = Color(0xFF8E8E93),
-    overdueBadgeBg = Color(0x33FF453A),
-    overdueBadgeText = Color(0xFFFF453A),
-    cardBg = Color(0xFF2C2C2E),
-    cardBorder = Color(0xFF3A3A3C),
-    hoverActionBg = Color(0xFF48484A),
-    flagColor = Color(0xFFFFD60A),
-    windowBg = Color(0xFF1C1C1E),
+    bgPrimary = Color(0xFF212121),
+    bgSecondary = Color(0xFF1C1C1C),
+    bgPanel = Color(0xFF292929),
+    textHigh = Color(0xFFF5F5F5),
+    textNormal = Color(0xFFC4C4C4),
+    textLow = Color(0xFF8F8F8F),
+    border = Color(0xFF333333),
+    inputBg = Color(0xFF333333),
+    brand = Color(0xFFEA7A2A),
+    brandHover = Color(0xFFE79255),
+    brandSecondary = Color(0xFFAC5111),
+    error = Color(0xFFFF6B6B),
+    success = Color(0xFF54B04F),
+    warning = Color(0xFFE0913E),
+    info = Color(0xFF3C83F6),
+    focusRing = Color(0xFFE79255),
 )
 
 object RemType {
-    val text12 = TextStyle(fontFamily = FontFamily.Default, fontSize = 12.sp, fontWeight = FontWeight.Normal)
-    val text13 = TextStyle(fontFamily = FontFamily.Default, fontSize = 13.sp, fontWeight = FontWeight.Normal)
-    val title15 = TextStyle(fontFamily = FontFamily.Default, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-    val title17 = TextStyle(fontFamily = FontFamily.Default, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp)
-    val title20 = TextStyle(fontFamily = FontFamily.Default, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp)
+    val text10 = TextStyle(fontFamily = FontFamily.Default, fontSize = 10.sp)
+    val text12 = TextStyle(fontFamily = FontFamily.Default, fontSize = 12.sp)
+    val text14 = TextStyle(fontFamily = FontFamily.Default, fontSize = 14.sp)
+    val text16 = TextStyle(fontFamily = FontFamily.Default, fontSize = 16.sp)
+    val title18 = TextStyle(fontFamily = FontFamily.Default, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+    val label10 = TextStyle(fontFamily = FontFamily.Default, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
     val label12 = TextStyle(fontFamily = FontFamily.Default, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-    val label13 = TextStyle(fontFamily = FontFamily.Default, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-    val title28 = TextStyle(fontFamily = FontFamily.Default, fontSize = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.5).sp)
 }
 
 object RemSpacing {
+    val s2 = 2.dp
     val s4 = 4.dp
     val s8 = 8.dp
     val s12 = 12.dp
     val s16 = 16.dp
-    val s24 = 24.dp
-    val s32 = 32.dp
 }
 
 object RemRadii {
-    val r4 = 4.dp
-    val r6 = 6.dp
-    val r7 = 7.dp
-    val r8 = 8.dp
-    val r10 = 10.dp
+    val r2 = 2.dp
 }
 
 val LocalRemColors = staticCompositionLocalOf { LightRemColors }

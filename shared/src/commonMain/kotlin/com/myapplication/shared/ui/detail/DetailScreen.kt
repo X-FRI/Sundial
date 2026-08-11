@@ -1,7 +1,6 @@
 package com.myapplication.shared.ui.detail
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -26,8 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -96,7 +93,7 @@ fun DetailScreen(
                     titleText = it
                     detailVm.setTitle(it)
                 },
-                style = RemType.title15,
+                style = RemType.text16,
                 filled = false,
                 modifier = Modifier.weight(1f),
             )
@@ -104,8 +101,8 @@ fun DetailScreen(
                 Spacer(Modifier.width(8.dp))
                 RemBadge(
                     label = formatDueDate(current.dueDate),
-                    bg = colors.upcomingBadgeBg,
-                    tint = colors.upcomingBadgeText,
+                    bg = colors.bgPanel,
+                    tint = colors.textLow,
                     onClick = { showDatePicker = true },
                 )
             }
@@ -115,15 +112,14 @@ fun DetailScreen(
             Spacer(Modifier.height(4.dp))
             androidx.compose.foundation.text.BasicText(
                 "已完成 ${formatDueDate(current.completedAt)}",
-                style = RemType.text12.copy(color = colors.textTertiary),
+                style = RemType.text12.copy(color = colors.textLow),
             )
         }
         Spacer(Modifier.height(10.dp))
         Box(
             Modifier
                 .fillMaxWidth()
-                .background(colors.cardBg, RoundedCornerShape(RemRadii.r6))
-                .border(1.dp, colors.cardBorder, RoundedCornerShape(RemRadii.r6))
+                .background(colors.bgPrimary, RoundedCornerShape(RemRadii.r2))
                 .padding(4.dp),
         ) {
             RemTextField(
@@ -148,23 +144,22 @@ fun DetailScreen(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                 ) { showDatePicker = true }
-                .drawBehind { drawLine(colors.rowDivider, Offset(0f, size.height), Offset(size.width, size.height), 1f) }
                 .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RemIcon(IconName.Calendar, colors.textTertiary, Modifier.size(14.dp))
+            RemIcon(IconName.Calendar, colors.textLow, Modifier.size(14.dp))
             Spacer(Modifier.width(8.dp))
-            androidx.compose.foundation.text.BasicText("日期", style = RemType.text13.copy(color = colors.textSecondary))
+            androidx.compose.foundation.text.BasicText("日期", style = RemType.text14.copy(color = colors.textNormal))
             Spacer(Modifier.weight(1f))
             if (current.dueDate != null) {
                 RemBadge(
                     label = formatDueDate(current.dueDate),
-                    icon = { RemIcon(IconName.Calendar, colors.textTertiary, Modifier.size(10.dp)) },
+                    icon = { RemIcon(IconName.Calendar, colors.textLow, Modifier.size(10.dp)) },
                 )
                 Spacer(Modifier.width(8.dp))
                 RemButton("清除", onClick = { detailVm.setDueDate(null) })
             } else {
-                androidx.compose.foundation.text.BasicText("无", style = RemType.text12.copy(color = colors.textTertiary))
+                androidx.compose.foundation.text.BasicText("无", style = RemType.text12.copy(color = colors.textLow))
             }
         }
 
@@ -175,15 +170,14 @@ fun DetailScreen(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                 ) { mainVm.toggleFlag(current) }
-                .drawBehind { drawLine(colors.rowDivider, Offset(0f, size.height), Offset(size.width, size.height), 1f) }
                 .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            androidx.compose.foundation.text.BasicText("旗标", style = RemType.text13.copy(color = colors.textSecondary))
+            androidx.compose.foundation.text.BasicText("旗标", style = RemType.text14.copy(color = colors.textNormal))
             Spacer(Modifier.weight(1f))
-            RemIcon(IconName.Flag, if (current.flag) colors.flagColor else colors.textTertiary, Modifier.size(16.dp))
+            RemIcon(IconName.Flag, if (current.flag) colors.warning else colors.textLow, Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
-            androidx.compose.foundation.text.BasicText(if (current.flag) "已标记" else "未标记", style = RemType.text13.copy(color = if (current.flag) colors.textPrimary else colors.textTertiary))
+            androidx.compose.foundation.text.BasicText(if (current.flag) "已标记" else "未标记", style = RemType.text14.copy(color = if (current.flag) colors.textHigh else colors.textLow))
         }
 
         val currentList = lists.firstOrNull { it.id == current.listId }
@@ -194,27 +188,26 @@ fun DetailScreen(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                 ) { showListDialog = true }
-                .drawBehind { drawLine(colors.rowDivider, Offset(0f, size.height), Offset(size.width, size.height), 1f) }
                 .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RemIcon(IconName.Tray, colors.textTertiary, Modifier.size(14.dp))
+            RemIcon(IconName.Tray, colors.textLow, Modifier.size(14.dp))
             Spacer(Modifier.width(8.dp))
-            androidx.compose.foundation.text.BasicText("列表", style = RemType.text13.copy(color = colors.textSecondary))
+            androidx.compose.foundation.text.BasicText("列表", style = RemType.text14.copy(color = colors.textNormal))
             Spacer(Modifier.weight(1f))
             Box(Modifier.size(10.dp).background(ListColorOf[currentList?.colorKey] ?: Color.Gray, CircleShape))
             Spacer(Modifier.width(6.dp))
             androidx.compose.foundation.text.BasicText(
                 currentList?.name ?: "未知列表",
-                style = RemType.text13.copy(color = colors.textPrimary),
+                style = RemType.text14.copy(color = colors.textHigh),
             )
         }
         Spacer(Modifier.height(16.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
-            RemIcon(IconName.ChevronDown, colors.textTertiary, Modifier.size(14.dp))
+            RemIcon(IconName.ChevronDown, colors.textLow, Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
-            androidx.compose.foundation.text.BasicText("子任务", style = RemType.label13.copy(color = colors.textTertiary))
+            androidx.compose.foundation.text.BasicText("子任务", style = RemType.label12.copy(color = colors.textLow))
         }
         Spacer(Modifier.height(6.dp))
         subtasks.forEach { sub ->
@@ -223,8 +216,8 @@ fun DetailScreen(
                 Spacer(Modifier.width(8.dp))
                 androidx.compose.foundation.text.BasicText(
                     sub.title,
-                    style = RemType.text13.copy(
-                        color = if (sub.isCompleted) colors.textTertiary else colors.textPrimary,
+                    style = RemType.text14.copy(
+                        color = if (sub.isCompleted) colors.textLow else colors.textHigh,
                         textDecoration = if (sub.isCompleted) TextDecoration.LineThrough else null,
                     ),
                     modifier = Modifier.weight(1f),
@@ -250,7 +243,7 @@ fun DetailScreen(
         Spacer(Modifier.height(24.dp))
         androidx.compose.foundation.text.BasicText(
             "创建于 ${current.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).let { "${it.monthNumber} 月 ${it.dayOfMonth} 日" }}",
-            style = RemType.text12.copy(color = colors.textTertiary),
+            style = RemType.text12.copy(color = colors.textLow),
         )
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
@@ -311,11 +304,11 @@ fun DetailScreen(
                         Spacer(Modifier.width(8.dp))
                         androidx.compose.foundation.text.BasicText(
                             list.name,
-                            style = RemType.text13.copy(color = colors.textPrimary),
+                            style = RemType.text14.copy(color = colors.textHigh),
                             modifier = Modifier.weight(1f),
                         )
                         if (list.id == current?.listId) {
-                            RemIcon(IconName.CheckCircle, colors.accent, Modifier.size(16.dp))
+                            RemIcon(IconName.CheckCircle, colors.brand, Modifier.size(16.dp))
                         }
                     }
                 }

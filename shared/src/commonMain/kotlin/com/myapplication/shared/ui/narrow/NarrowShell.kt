@@ -47,7 +47,7 @@ fun NarrowTopBar(mainVm: MainViewModel, modifier: Modifier = Modifier) {
     Column(
         modifier
             .fillMaxWidth()
-            .background(colors.sidebarBg)
+            .background(colors.bgPrimary)
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         if (searching) {
@@ -73,7 +73,7 @@ fun NarrowTopBar(mainVm: MainViewModel, modifier: Modifier = Modifier) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 androidx.compose.foundation.text.BasicText(
                     scopeTitle(scope, query),
-                    style = RemType.title17.copy(color = colors.textPrimary),
+                    style = RemType.title18.copy(color = colors.textHigh),
                     modifier = Modifier.weight(1f),
                 )
                 RemIconButton(IconName.Search, "搜索", onClick = { searching = true }, size = 18.dp)
@@ -90,7 +90,7 @@ fun NarrowBottomNav(mainVm: MainViewModel, modifier: Modifier = Modifier) {
         modifier
             .fillMaxWidth()
             .height(56.dp)
-            .background(colors.sidebarBg),
+            .background(colors.bgPrimary),
     ) {
         NavItem(IconName.Today, "今天", scope == Scope.Today, Modifier.weight(1f)) { mainVm.selectScope(Scope.Today) }
         NavItem(IconName.Scheduled, "计划", scope == Scope.Scheduled, Modifier.weight(1f)) { mainVm.selectScope(Scope.Scheduled) }
@@ -104,12 +104,12 @@ fun NarrowBottomNav(mainVm: MainViewModel, modifier: Modifier = Modifier) {
 private fun NavItem(icon: IconName, label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
-    val tint = if (selected) colors.accent else colors.textTertiary
+    val tint = if (selected) colors.brand else colors.textLow
     Column(
         modifier
             .fillMaxHeight()
-            .clip(RoundedCornerShape(RemRadii.r6))
-            .background(if (selected) colors.selectedBg else Color.Transparent)
+            .clip(RoundedCornerShape(RemRadii.r2))
+            .background(if (selected) colors.bgSecondary else Color.Transparent)
             .clickable(interactionSource = interactionSource, indication = null) { onClick() },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
