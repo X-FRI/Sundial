@@ -142,7 +142,9 @@ class MainViewModel(
     }
 
     fun addList(name: String, colorKey: String) {
-        viewModelScope.launch { repository.addList(name, colorKey).onLeft { lastError.value = it } }
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        viewModelScope.launch { repository.addList(trimmed, colorKey).onLeft { lastError.value = it } }
     }
 
     fun deleteList(list: TodoList) {
