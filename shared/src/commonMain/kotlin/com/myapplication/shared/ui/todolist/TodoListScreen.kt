@@ -201,9 +201,10 @@ private fun TrashList(todos: List<TodoItem>, mainVm: MainViewModel) {
 private fun TodoBadge(item: TodoItem, today: kotlinx.datetime.LocalDate) {
     val colors = LocalRemColors.current
     val due = item.dueDate ?: return
-    val date = due.toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val tz = TimeZone.currentSystemDefault()
+    val date = due.toLocalDateTime(tz).date
     val bucket = bucketOf(date, today)
-    val label = formatDueDate(due)
+    val label = formatDueDate(due, tz, today)
     val (bg, fg) = when (bucket) {
         DueBucket.OVERDUE -> colors.overdueBadgeBg to colors.overdueBadgeText
         DueBucket.TODAY -> colors.todayBadgeBg to colors.todayBadgeText
@@ -258,6 +259,8 @@ fun TodoRow(
                         textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
                         fontWeight = if (item.isCompleted) FontWeight.Normal else FontWeight.Medium,
                     ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 if (item.flag) {
