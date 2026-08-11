@@ -22,7 +22,7 @@
 
 ## 简介
 
-Sundial 是一个用 **Kotlin Multiplatform + Compose Multiplatform** 构建的待办应用：一套代码同时覆盖 Android、iOS 与桌面（macOS / Windows / Linux）。
+Sundial 是使用 **Kotlin Compose Multiplatform** 实现的全平台同步 Reminder App——一套代码同时覆盖 Android、iOS 与桌面（macOS / Windows / Linux）。
 
 它采用**本地优先**架构——所有数据先落本地 SQLite，同步作为可插拔的后端能力存在：默认纯本地使用，需要时一键切换到 Supabase 云端，实现多设备实时同步；未来还可接入自建服务器（已预留端口）。
 
@@ -50,15 +50,40 @@ Sundial 是一个用 **Kotlin Multiplatform + Compose Multiplatform** 构建的�
 
 ## 架构
 
-```
-┌───────────────────────────────────────────────────────┐
-│  UI 层   Compose 屏幕 / ViewModel / 路由状态机          │
-├───────────────────────────────────────────────────────┤
-│  领域层   TodoRepository 端口 · SyncClient 端口 · 用例  │
-├───────────────────────────────────────────────────────┤
-│  数据层   SQLDelight 双写 outbox · SQL 层 LWW          │
-│          适配器：Noop / Supabase / (Sundial-Server)    │
-└───────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph UI["UI 层"]
+        Screens["Compose 屏幕"]
+        ViewModels["ViewModel / 路由状态机"]
+    end
+
+    subgraph Domain["领域层"]
+        RepoPort["TodoRepository 端口"]
+        SyncPort["SyncClient 端口"]
+        UseCases["用例"]
+    end
+
+    subgraph Data["数据层"]
+        Impl["SQLDelight 双写 outbox"]
+        LWW["SQL 层 LWW"]
+        Noop["NoopSyncClient"]
+        Supa["SupabaseSyncClient"]
+        Server["Sundial-Server（预留）"]
+    end
+
+    DB[("本地 SQLite")]
+    Supabase["Supabase（PostgREST + Realtime）"]
+
+    Screens --> ViewModels
+    ViewModels --> RepoPort
+    RepoPort --> Impl
+    Impl --> LWW
+    Impl --> DB
+    SyncPort --> Noop
+    SyncPort --> Supa
+    SyncPort --> Server
+    Supa <--> Supabase
+    Domain -. 依赖注入 .-> Data
 ```
 
 同步核心设计：
