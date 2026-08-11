@@ -15,6 +15,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDateTime
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -99,11 +100,12 @@ class MainViewModelTest {
     }
 
     @Test
-    fun quickAddParsesDateAndTitle() = runTest(dispatcher) {
+    fun createTodoWithDateAndNote() = runTest(dispatcher) {
         val repo = FakeRepository()
         val vm = MainViewModel(repo)
         collect(vm)
-        vm.addQuick("明天 交报告")
+        val due = LocalDateTime(2026, 8, 12, 15, 0)
+        vm.createTodo("交报告", "备注内容", due)
         advanceUntilIdle()
         assertEquals("交报告", repo.addedTitle)
         assertNotNull(repo.addedDue)
@@ -111,22 +113,21 @@ class MainViewModelTest {
     }
 
     @Test
-    fun quickAddInListScopeAddsToList() = runTest(dispatcher) {
+    fun createTodoInListAddsToList() = runTest(dispatcher) {
         val repo = FakeRepository()
         val vm = MainViewModel(repo)
         collect(vm)
-        vm.selectScope(Scope.List(7))
-        vm.addQuick("写周报")
+        vm.createTodo("写周报", "", null, false, 7)
         advanceUntilIdle()
         assertEquals(7L, repo.addedListId)
     }
 
     @Test
-    fun quickAddBlankIgnored() = runTest(dispatcher) {
+    fun createTodoBlankIgnored() = runTest(dispatcher) {
         val repo = FakeRepository()
         val vm = MainViewModel(repo)
         collect(vm)
-        vm.addQuick("   ")
+        vm.createTodo("   ", "", null)
         advanceUntilIdle()
         assertNull(repo.addedTitle)
     }

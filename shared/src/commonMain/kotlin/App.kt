@@ -6,17 +6,20 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -39,6 +42,7 @@ import com.myapplication.shared.ui.narrow.NarrowTopBar
 import com.myapplication.shared.ui.sidebar.Sidebar
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemindersTheme
+import com.myapplication.shared.ui.todolist.TodoFAB
 import com.myapplication.shared.ui.todolist.TodoListScreen
 
 @Composable
@@ -115,7 +119,15 @@ fun AppRoot(graph: AppGraph) {
             else -> {
                 Column(Modifier.fillMaxSize().background(colors.bgPrimary)) {
                     NarrowTopBar(mainVm)
-                    TodoListScreen(mainVm, Modifier.weight(1f), showHeader = false)
+                    Box(Modifier.weight(1f)) {
+                        TodoListScreen(mainVm, Modifier.fillMaxSize(), showHeader = false)
+                        TodoFAB(
+                            mainVm,
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(16.dp),
+                        )
+                    }
                     NarrowBottomNav(mainVm)
                 }
             }

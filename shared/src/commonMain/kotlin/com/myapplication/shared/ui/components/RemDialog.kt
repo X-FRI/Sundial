@@ -30,17 +30,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun RemDialog(
     title: String,
@@ -55,15 +62,23 @@ fun RemDialog(
     val colors = LocalRemColors.current
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
-    Dialog(
+    Popup(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true),
+        properties = PopupProperties(focusable = true, usePlatformDefaultWidth = false),
     ) {
         Box(
             Modifier
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = if (isSystemInDarkTheme()) 0.6f else 0.45f))
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss)
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyUp && event.key == Key.Escape) {
+                        onDismiss()
+                        true
+                    } else {
+                        false
+                    }
+                },
             contentAlignment = Alignment.Center,
         ) {
             AnimatedVisibility(

@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,7 +69,6 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
     val scope by mainVm.scope.collectAsState()
     val query by mainVm.searchQuery.collectAsState()
     val lists by mainVm.lists.collectAsState()
-    var quickAddFocus by remember { mutableStateOf(0) }
     var showCreate by remember { mutableStateOf(false) }
 
     Column(modifier.background(colors.bgSecondary).remGrid(colors)) {
@@ -121,9 +119,6 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier, showHea
             ),
             modifier = Modifier.padding(start = 20.dp, top = if (showHeader) 4.dp else 10.dp, bottom = 8.dp),
         )
-        if (scope != Scope.Trash) {
-            QuickAddRow(mainVm, focusRequested = quickAddFocus)
-        }
         when {
             todos.isEmpty() && query.isNotBlank() -> RemEmptyState("没有找到结果", "换个关键词试试", IconName.Search)
             todos.isEmpty() -> RemEmptyState("没有待办", "点击 ＋ 或输入框添加", IconName.Tray)
@@ -156,28 +151,6 @@ fun scopeTitle(scope: Scope, query: String): String = when {
     scope == Scope.Trash -> "垃圾箱"
     scope is Scope.List -> "列表"
     else -> "待办"
-}
-
-@Composable
-private fun QuickAddRow(mainVm: MainViewModel, focusRequested: Int = 0) {
-    var text by remember { mutableStateOf("") }
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(focusRequested) { if (focusRequested > 0) focusRequester.requestFocus() }
-    RemTextField(
-        value = text,
-        onValueChange = { text = it },
-        placeholder = "添加待办…（支持“明天 15:00”等日期）",
-        style = RemType.text12,
-        leadingIcon = IconName.Plus,
-        onEnter = {
-            mainVm.addQuick(text)
-            text = ""
-        },
-        focusRequester = focusRequester,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = RemSpacing.s16),
-    )
 }
 
 @Composable

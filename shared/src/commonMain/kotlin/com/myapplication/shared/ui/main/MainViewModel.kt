@@ -5,8 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.repository.TodoRepository
-import com.myapplication.shared.util.DateParser
-import com.myapplication.shared.util.todayDate
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -92,17 +90,6 @@ class MainViewModel(private val repository: TodoRepository) : ViewModel() {
 
     fun back() {
         route.value = Route.Main
-    }
-
-    fun addQuick(input: String) {
-        val trimmed = input.trim()
-        if (trimmed.isEmpty()) return
-        val parsed = DateParser.parse(trimmed, todayDate())
-        val listId = (scope.value as? Scope.List)?.listId
-        val due = parsed.dueDate?.toInstant(TimeZone.currentSystemDefault())
-        viewModelScope.launch {
-            repository.addTodo(listId, parsed.title, "", due, null)
-        }
     }
 
     fun createTodo(title: String, note: String, due: LocalDateTime?, flag: Boolean = false, listId: Long? = null) {
