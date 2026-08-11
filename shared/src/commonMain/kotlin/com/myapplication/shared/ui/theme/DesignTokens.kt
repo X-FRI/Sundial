@@ -120,6 +120,7 @@ object RemRadii {
     val r6 = 6.dp
     val r7 = 7.dp
     val r8 = 8.dp
+    val r10 = 10.dp
 }
 
 val LocalRemColors = staticCompositionLocalOf { LightRemColors }

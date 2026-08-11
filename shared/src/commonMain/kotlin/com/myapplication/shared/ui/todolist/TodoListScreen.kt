@@ -1,6 +1,7 @@
 package com.myapplication.shared.ui.todolist
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -10,12 +11,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,9 +27,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,6 +49,7 @@ import com.myapplication.shared.ui.components.RemTextField
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Scope
 import com.myapplication.shared.ui.theme.LocalRemColors
+import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemSpacing
 import com.myapplication.shared.ui.theme.RemType
 import com.myapplication.shared.util.DueBucket
@@ -49,6 +58,7 @@ import com.myapplication.shared.util.bucketOf
 import com.myapplication.shared.util.formatDueDate
 import com.myapplication.shared.util.todayDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.toLocalDateTime
 
 @Composable
@@ -57,26 +67,55 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
     val todos by mainVm.todos.collectAsState()
     val scope by mainVm.scope.collectAsState()
     val query by mainVm.searchQuery.collectAsState()
+    var quickAddFocus by remember { mutableStateOf(0) }
 
-    Column(modifier) {
+    Column(modifier.background(colors.windowBg)) {
+        val today = todayDate()
         val activeCount = todos.count { !it.isCompleted }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 16.dp, top = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            androidx.compose.foundation.text.BasicText(
+                scopeTitle(scope, query),
+                style = RemType.title28.copy(color = colors.textPrimary),
+                modifier = Modifier.weight(1f),
+            )
+            val count = if (scope == Scope.Completed) todos.size else activeCount
+            if (count > 0) {
+                RemBadge(
+                    label = "$count 项",
+                    bg = if (scope == Scope.Today) colors.overdueBadgeBg else colors.upcomingBadgeBg,
+                    tint = if (scope == Scope.Today) colors.overdueBadgeText else colors.upcomingBadgeText,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Box(
+                Modifier
+                    .size(26.dp)
+                    .clip(RoundedCornerShape(RemRadii.r6))
+                    .background(colors.hoverActionBg)
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { quickAddFocus++ }
+                    .semantics { contentDescription = "新建待办" },
+                contentAlignment = Alignment.Center,
+            ) {
+                RemIcon(IconName.Plus, colors.textPrimary, Modifier.size(14.dp))
+            }
+        }
         androidx.compose.foundation.text.BasicText(
-            scopeTitle(scope, query),
-            style = RemType.title17.copy(color = colors.textPrimary),
-            modifier = Modifier.padding(horizontal = RemSpacing.s16, vertical = 14.dp),
+            if (scope == Scope.Today || scope == Scope.Scheduled) "${today.monthNumber} 月 ${today.dayOfMonth} 日 · 星期${"一二三四五六日"[today.dayOfWeek.isoDayNumber - 1]}" else "$activeCount 项未完成",
+            style = RemType.text13.copy(color = colors.textTertiary),
+            modifier = Modifier.padding(start = 20.dp, top = 4.dp, bottom = 12.dp),
         )
         if (scope != Scope.Trash) {
-            androidx.compose.foundation.text.BasicText(
-                if (scope == Scope.Completed) "${todos.size} 项" else "$activeCount 项未完成",
-                style = RemType.text12.copy(color = colors.textTertiary),
-                modifier = Modifier.padding(horizontal = RemSpacing.s16).padding(bottom = 8.dp),
-            )
-            QuickAddRow(mainVm)
+            QuickAddRow(mainVm, focusRequested = quickAddFocus > 0)
         }
-        val today = todayDate()
         when {
             todos.isEmpty() && query.isNotBlank() -> RemEmptyState("没有找到结果", "换个关键词试试", IconName.Search)
-            todos.isEmpty() -> RemEmptyState("没有待办", "", IconName.Tray)
+            todos.isEmpty() -> RemEmptyState("没有待办", "点击 ＋ 或输入框添加", IconName.Tray)
+            scope == Scope.Today -> TodayGrouped(todos, today, mainVm)
             scope == Scope.Scheduled -> ScheduledGrouped(todos, today, mainVm)
             scope == Scope.Trash -> TrashList(todos, mainVm)
             else -> PlainList(todos, today, mainVm)
@@ -96,8 +135,10 @@ fun scopeTitle(scope: Scope, query: String): String = when {
 }
 
 @Composable
-private fun QuickAddRow(mainVm: MainViewModel) {
+private fun QuickAddRow(mainVm: MainViewModel, focusRequested: Boolean = false) {
     var text by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(focusRequested) { if (focusRequested) focusRequester.requestFocus() }
     RemTextField(
         value = text,
         onValueChange = { text = it },
@@ -107,10 +148,63 @@ private fun QuickAddRow(mainVm: MainViewModel) {
             mainVm.addQuick(text)
             text = ""
         },
+        focusRequester = focusRequester,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = RemSpacing.s16),
     )
+}
+
+@Composable
+private fun SectionHeader(title: String, count: Int, overdue: Boolean) {
+    val colors = LocalRemColors.current
+    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.foundation.text.BasicText(
+            title,
+            style = RemType.label13.copy(color = colors.textPrimary),
+        )
+        if (count > 0) {
+            Spacer(Modifier.width(6.dp))
+            RemBadge(
+                label = "$count",
+                bg = if (overdue) colors.overdueBadgeBg else colors.upcomingBadgeBg,
+                tint = if (overdue) colors.overdueBadgeText else colors.upcomingBadgeText,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Box(Modifier.weight(1f).height(1.dp).background(colors.rowDivider))
+    }
+}
+
+@Composable
+private fun TodayGrouped(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, mainVm: MainViewModel) {
+    val colors = LocalRemColors.current
+    val tz = TimeZone.currentSystemDefault()
+    val grouped = todos
+        .filter { it.dueDate != null }
+        .groupBy { bucketOf(it.dueDate!!.toLocalDateTime(tz).date, today) }
+    LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        listOf(DueBucket.OVERDUE, DueBucket.TODAY, DueBucket.LATER).forEach { bucket ->
+            val items = grouped[bucket].orEmpty()
+            if (items.isNotEmpty()) {
+                item(key = "h-$bucket") { SectionHeader(bucketLabel(bucket), items.size, bucket == DueBucket.OVERDUE) }
+                item(key = "c-$bucket") {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(colors.cardBg, RoundedCornerShape(RemRadii.r10))
+                            .border(1.dp, colors.cardBorder, RoundedCornerShape(RemRadii.r10))
+                            .padding(horizontal = 8.dp),
+                    ) {
+                        items.forEach { item ->
+                            TodoRow(item, mainVm, today)
+                        }
+                    }
+                }
+                item(key = "sp-$bucket") { Spacer(Modifier.height(12.dp)) }
+            }
+        }
+    }
 }
 
 @Composable
@@ -121,24 +215,61 @@ private fun PlainList(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, 
     val completed = todos.filter { it.isCompleted && it.parentId == null }
     var expanded by remember { mutableStateOf(true) }
 
-    LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-        items(active, key = { it.id }) { parent ->
-            TodoRow(parent, mainVm, today, showChevron = childrenByParent[parent.id] != null, expanded = expanded, onToggleExpand = { expanded = !expanded }, subtaskCount = childrenByParent[parent.id]?.size ?: 0)
-            if (expanded) {
-                childrenByParent[parent.id]?.forEach { child ->
-                    TodoRow(child, mainVm, today, indent = true)
+    LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        if (active.isNotEmpty()) {
+            item(key = "active-card") {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(colors.cardBg, RoundedCornerShape(RemRadii.r10))
+                        .border(1.dp, colors.cardBorder, RoundedCornerShape(RemRadii.r10))
+                        .padding(horizontal = 8.dp),
+                ) {
+                    active.forEach { parent ->
+                        TodoRow(
+                            parent, mainVm, today,
+                            showChevron = childrenByParent[parent.id] != null,
+                            expanded = expanded,
+                            onToggleExpand = { expanded = !expanded },
+                            subtaskCount = childrenByParent[parent.id]?.size ?: 0,
+                        )
+                        if (expanded) {
+                            childrenByParent[parent.id]?.forEach { child ->
+                                TodoRow(child, mainVm, today, indent = true)
+                            }
+                        }
+                    }
                 }
             }
+            item(key = "sp-active") { Spacer(Modifier.height(12.dp)) }
         }
         if (completed.isNotEmpty()) {
-            item {
-                androidx.compose.foundation.text.BasicText(
-                    "已完成",
-                    style = RemType.label13.copy(color = colors.textTertiary),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
-                )
+            item(key = "completed-header") {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { expanded = !expanded },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    androidx.compose.foundation.text.BasicText("已完成", style = RemType.label13.copy(color = colors.textTertiary))
+                    Spacer(Modifier.weight(1f))
+                    RemIcon(if (expanded) IconName.ChevronDown else IconName.ChevronRight, colors.textTertiary, Modifier.size(14.dp))
+                }
             }
-            items(completed, key = { it.id }) { item -> TodoRow(item, mainVm, today) }
+            if (expanded) {
+                item(key = "completed-card") {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(colors.cardBg, RoundedCornerShape(RemRadii.r10))
+                            .border(1.dp, colors.cardBorder, RoundedCornerShape(RemRadii.r10))
+                            .padding(horizontal = 8.dp),
+                    ) {
+                        completed.forEach { item -> TodoRow(item, mainVm, today) }
+                    }
+                }
+            }
         }
     }
 }
@@ -150,24 +281,31 @@ private fun ScheduledGrouped(todos: List<TodoItem>, today: kotlinx.datetime.Loca
     val grouped = todos
         .filter { it.dueDate != null }
         .groupBy { bucketOf(it.dueDate!!.toLocalDateTime(tz).date, today) }
-    LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+    LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         listOf(
-            com.myapplication.shared.util.DueBucket.OVERDUE,
-            com.myapplication.shared.util.DueBucket.TODAY,
-            com.myapplication.shared.util.DueBucket.TOMORROW,
-            com.myapplication.shared.util.DueBucket.THIS_WEEK,
-            com.myapplication.shared.util.DueBucket.LATER,
+            DueBucket.OVERDUE,
+            DueBucket.TODAY,
+            DueBucket.TOMORROW,
+            DueBucket.THIS_WEEK,
+            DueBucket.LATER,
         ).forEach { bucket ->
             val items = grouped[bucket].orEmpty()
             if (items.isNotEmpty()) {
-                item {
-                    androidx.compose.foundation.text.BasicText(
-                        bucketLabel(bucket),
-                        style = RemType.label13.copy(color = colors.textTertiary),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
-                    )
+                item(key = "h-$bucket") { SectionHeader(bucketLabel(bucket), items.size, bucket == DueBucket.OVERDUE) }
+                item(key = "c-$bucket") {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(colors.cardBg, RoundedCornerShape(RemRadii.r10))
+                            .border(1.dp, colors.cardBorder, RoundedCornerShape(RemRadii.r10))
+                            .padding(horizontal = 8.dp),
+                    ) {
+                        items.forEach { item ->
+                            TodoRow(item, mainVm, today)
+                        }
+                    }
                 }
-                items(items, key = { it.id }) { item -> TodoRow(item, mainVm, today) }
+                item(key = "sp-$bucket") { Spacer(Modifier.height(12.dp)) }
             }
         }
     }
