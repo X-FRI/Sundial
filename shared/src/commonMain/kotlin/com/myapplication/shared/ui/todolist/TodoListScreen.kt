@@ -26,7 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.ui.components.IconName
@@ -41,6 +43,7 @@ import com.myapplication.shared.ui.main.Scope
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemSpacing
 import com.myapplication.shared.ui.theme.RemType
+import com.myapplication.shared.util.DueBucket
 import com.myapplication.shared.util.bucketLabel
 import com.myapplication.shared.util.bucketOf
 import com.myapplication.shared.util.formatDueDate
@@ -120,7 +123,7 @@ private fun PlainList(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, 
 
     LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
         items(active, key = { it.id }) { parent ->
-            TodoRow(parent, mainVm, today, showChevron = childrenByParent[parent.id] != null, expanded = expanded, onToggleExpand = { expanded = !expanded })
+            TodoRow(parent, mainVm, today, showChevron = childrenByParent[parent.id] != null, expanded = expanded, onToggleExpand = { expanded = !expanded }, subtaskCount = childrenByParent[parent.id]?.size ?: 0)
             if (expanded) {
                 childrenByParent[parent.id]?.forEach { child ->
                     TodoRow(child, mainVm, today, indent = true)
@@ -195,6 +198,26 @@ private fun TrashList(todos: List<TodoItem>, mainVm: MainViewModel) {
 }
 
 @Composable
+private fun TodoBadge(item: TodoItem, today: kotlinx.datetime.LocalDate) {
+    val colors = LocalRemColors.current
+    val due = item.dueDate ?: return
+    val date = due.toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val bucket = bucketOf(date, today)
+    val label = formatDueDate(due)
+    val (bg, fg) = when (bucket) {
+        DueBucket.OVERDUE -> colors.overdueBadgeBg to colors.overdueBadgeText
+        DueBucket.TODAY -> colors.todayBadgeBg to colors.todayBadgeText
+        else -> colors.upcomingBadgeBg to colors.upcomingBadgeText
+    }
+    RemBadge(
+        label = label,
+        bg = bg,
+        tint = fg,
+        icon = { RemIcon(IconName.Calendar, fg, Modifier.size(10.dp)) },
+    )
+}
+
+@Composable
 fun TodoRow(
     item: TodoItem,
     mainVm: MainViewModel,
@@ -203,11 +226,9 @@ fun TodoRow(
     showChevron: Boolean = false,
     expanded: Boolean = false,
     onToggleExpand: () -> Unit = {},
+    subtaskCount: Int = 0,
 ) {
     val colors = LocalRemColors.current
-    val isOverdue = item.dueDate?.let {
-        it.toLocalDateTime(TimeZone.currentSystemDefault()).date < today
-    } == true
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
     Row(
@@ -221,7 +242,7 @@ fun TodoRow(
                 drawLine(colors.rowDivider, Offset(0f, size.height), Offset(size.width, size.height), 1f)
             }
             .padding(start = if (indent) 16.dp else 0.dp)
-            .padding(vertical = 8.dp, horizontal = 8.dp),
+            .padding(vertical = 10.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RemCheckbox(item.isCompleted, { mainVm.toggleCompleted(item) })
@@ -229,24 +250,55 @@ fun TodoRow(
         Column(
             Modifier.weight(1f).clickable { mainVm.openDetail(item.id) },
         ) {
-            androidx.compose.foundation.text.BasicText(
-                item.title,
-                style = RemType.text13.copy(
-                    color = if (item.isCompleted) colors.textTertiary else colors.textPrimary,
-                    textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
-                ),
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                androidx.compose.foundation.text.BasicText(
+                    item.title,
+                    style = RemType.text13.copy(
+                        color = if (item.isCompleted) colors.textTertiary else colors.textPrimary,
+                        textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
+                        fontWeight = if (item.isCompleted) FontWeight.Normal else FontWeight.Medium,
+                    ),
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (item.flag) {
+                    Spacer(Modifier.width(6.dp))
+                    RemIcon(IconName.Flag, colors.flagColor, Modifier.size(14.dp))
+                }
+            }
+            if (item.isCompleted) {
+                item.completedAt?.let {
+                    androidx.compose.foundation.text.BasicText(
+                        "已完成 ${formatDueDate(it, TimeZone.currentSystemDefault(), today)}",
+                        style = RemType.text12.copy(color = colors.textTertiary),
+                    )
+                }
+            } else if (item.note.isNotBlank() || subtaskCount > 0) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (item.note.isNotBlank()) {
+                        androidx.compose.foundation.text.BasicText(
+                            item.note,
+                            style = RemType.text12.copy(color = colors.textTertiary),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+                    if (subtaskCount > 0) {
+                        Spacer(Modifier.width(6.dp))
+                        androidx.compose.foundation.text.BasicText(
+                            "⌄ $subtaskCount",
+                            style = RemType.text12.copy(color = colors.textTertiary),
+                        )
+                    }
+                }
+            }
         }
         if (showChevron) {
             RemIcon(if (expanded) IconName.ChevronDown else IconName.ChevronRight, colors.textTertiary, Modifier.size(14.dp))
             Spacer(Modifier.width(8.dp))
         }
-        item.dueDate?.let {
-            RemBadge(
-                label = formatDueDate(it),
-                tint = if (isOverdue) colors.danger else null,
-                icon = { RemIcon(IconName.Calendar, if (isOverdue) colors.danger else colors.textTertiary, Modifier.size(10.dp)) },
-            )
-        }
+        TodoBadge(item, today)
     }
 }
