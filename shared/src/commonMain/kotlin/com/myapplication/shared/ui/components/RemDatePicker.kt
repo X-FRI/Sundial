@@ -133,16 +133,28 @@ private fun TimePickerRow(initialTime: LocalTime?, onPickTime: (Int, Int) -> Uni
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.foundation.text.BasicText("时间", style = RemType.text13.copy(color = colors.textSecondary))
         Spacer(Modifier.weight(1f))
-        RemIconButton(IconName.ChevronBack, "减一小时", onClick = { hour = (hour + 23) % 24 }, size = 14.dp)
+        RemIconButton(IconName.ChevronBack, "减一小时", onClick = {
+            hour = (hour + 23) % 24
+            onPickTime(hour, minute)
+        }, size = 14.dp)
         androidx.compose.foundation.text.BasicText(
             "${hour.toString().padStart(2, '0')} : ${minute.toString().padStart(2, '0')}",
             style = RemType.title15.copy(color = colors.textPrimary),
         )
-        RemIconButton(IconName.ChevronRight, "加一小时", onClick = { hour = (hour + 1) % 24 }, size = 14.dp)
+        RemIconButton(IconName.ChevronRight, "加一小时", onClick = {
+            hour = (hour + 1) % 24
+            onPickTime(hour, minute)
+        }, size = 14.dp)
         Spacer(Modifier.width(4.dp))
-        RemIconButton(IconName.ChevronBack, "减五分钟", onClick = { minute = (minute + 55) % 60 }, size = 14.dp)
+        RemIconButton(IconName.ChevronBack, "减五分钟", onClick = {
+            minute = (minute + 55) % 60
+            onPickTime(hour, minute)
+        }, size = 14.dp)
         androidx.compose.foundation.text.BasicText("分", style = RemType.text12.copy(color = colors.textTertiary))
-        RemIconButton(IconName.ChevronRight, "加五分钟", onClick = { minute = (minute + 5) % 60 }, size = 14.dp)
+        RemIconButton(IconName.ChevronRight, "加五分钟", onClick = {
+            minute = (minute + 5) % 60
+            onPickTime(hour, minute)
+        }, size = 14.dp)
         Spacer(Modifier.width(8.dp))
         RemButton("清除时间", onClick = { onPickTime(-1, -1) })
     }

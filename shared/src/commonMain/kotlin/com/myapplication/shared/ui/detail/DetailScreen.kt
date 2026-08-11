@@ -247,8 +247,7 @@ fun DetailScreen(
             },
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(16.dp))
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(24.dp))
         androidx.compose.foundation.text.BasicText(
             "创建于 ${current.createdAt.toLocalDateTime(TimeZone.currentSystemDefault()).let { "${it.monthNumber} 月 ${it.dayOfMonth} 日" }}",
             style = RemType.text12.copy(color = colors.textTertiary),
