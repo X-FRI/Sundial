@@ -2,6 +2,24 @@
 
 > 从代码审查与注释工作中收集的待修项。按严重程度排序。
 
+## 待办改进
+
+### A. [feature] 移动端待办详情改用 Drawer 组件
+
+- 位置：`shared/src/commonMain/kotlin/App.kt` 窄屏分支 + `ui/detail/DetailScreen.kt`
+- 目标：窄屏（<900dp）下待办详情从当前的全屏替换渲染改为侧滑 Drawer（`ModalNavigationDrawer` / `ModalBottomSheet`），提供更流畅的过渡动画，与宽屏的右侧详情栏体验对齐
+- 关注点：返回手势与 `PlatformBackHandler` 联动、键盘弹出时的高度适配、`remember(currentId)` 重建语义
+
+### B. [improve] 优化同步体验
+
+- 目标：提升多端同步的稳定性与可感知性
+- 候选子项：
+  - 推送失败行的隔离（脏数据不再卡死整批，见下方 Bug 5）
+  - `SyncEngine.configure` 失败分支 `pendingCount` 失真（见「观察项」）
+  - 同步状态连接信号目前仅由 push 结果代理，接入 Realtime 真实连接状态
+  - 待同步积压时的重试退避（当前固定 2s）
+  - 首次启用同步时可选的全量拉取/初始化对齐
+
 ## 待修 Bug
 
 ### 1. [bug] 周日当天没有「本周」时间桶（Formatting.bucketOf）
