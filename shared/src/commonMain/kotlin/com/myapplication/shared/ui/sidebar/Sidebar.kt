@@ -48,6 +48,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.domain.model.TodoList
+import com.myapplication.shared.domain.sync.SyncMode
+import com.myapplication.shared.domain.sync.SyncStatus
 import com.myapplication.shared.ui.components.IconName
 import com.myapplication.shared.ui.components.RemDialog
 import com.myapplication.shared.ui.components.RemIcon
@@ -87,7 +89,7 @@ private fun SidebarLogo(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun Sidebar(mainVm: MainViewModel) {
+fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) {
     val colors = LocalRemColors.current
     val lists by mainVm.lists.collectAsState()
     val scope by mainVm.scope.collectAsState()
@@ -98,6 +100,10 @@ fun Sidebar(mainVm: MainViewModel) {
     val completedCount by mainVm.completedCount.collectAsState()
     val trashCount by mainVm.trashCount.collectAsState()
     val listCounts by mainVm.listCounts.collectAsState()
+    val syncSummary = when (syncStatus.mode) {
+        SyncMode.Local -> "本地模式"
+        else -> (if (syncStatus.connected) "已同步" else "同步中断") + if (syncStatus.pendingCount > 0) " · 待同步 ${syncStatus.pendingCount}" else ""
+    }
     var showAddList by remember { mutableStateOf(false) }
     var listsExpanded by remember { mutableStateOf(true) }
 
@@ -186,6 +192,23 @@ fun Sidebar(mainVm: MainViewModel) {
             RemIcon(IconName.Plus, colors.brand, Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
             androidx.compose.foundation.text.BasicText("添加列表", style = RemType.label12.copy(color = colors.brand))
+        }
+        Spacer(Modifier.height(RemSpacing.s8))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .clip(RoundedCornerShape(RemRadii.r2))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { mainVm.openSettings() }
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            androidx.compose.foundation.text.BasicText("设置", style = RemType.label12.copy(color = colors.textNormal))
+            Spacer(Modifier.weight(1f))
+            androidx.compose.foundation.text.BasicText(syncSummary, style = RemType.text10.copy(color = colors.textLow))
         }
     }
 

@@ -40,6 +40,7 @@ import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Route
 import com.myapplication.shared.ui.narrow.NarrowBottomNav
 import com.myapplication.shared.ui.narrow.NarrowTopBar
+import com.myapplication.shared.ui.settings.SettingsScreen
 import com.myapplication.shared.ui.sidebar.Sidebar
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemType
@@ -61,11 +62,10 @@ fun App() {
 fun AppRoot(graph: AppGraph) {
     val mainVm: MainViewModel = viewModel { MainViewModel(graph.repository, graph.addTodo, graph.timeZone) }
     val route by mainVm.route.collectAsState()
+    val syncStatus by graph.engine.status.collectAsState()
     val colors = LocalRemColors.current
 
-    val isDetail = (route as? Route.Detail) != null
-    PlatformBackHandler(enabled = isDetail) { mainVm.back() }
-
+    PlatformBackHandler(enabled = route != Route.Main) { mainVm.back() }
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
@@ -82,9 +82,13 @@ fun AppRoot(graph: AppGraph) {
         val wide = maxWidth >= 900.dp
         val selectedId = (route as? Route.Detail)?.todoId
         when {
+            route == Route.Settings -> SettingsScreen(
+                viewModel { graph.settingsViewModelFactory() },
+                onBack = mainVm::back,
+            )
             wide -> {
                 Row(Modifier.fillMaxSize()) {
-                    Sidebar(mainVm)
+                    Sidebar(mainVm, syncStatus)
                     TodoListScreen(mainVm, Modifier.weight(1f).background(colors.bgSecondary))
                     AnimatedVisibility(
                         visible = selectedId != null,

@@ -25,6 +25,7 @@ import kotlinx.datetime.toInstant
 sealed interface Route {
     data object Main : Route
     data class Detail(val todoId: Long) : Route
+    data object Settings : Route
 }
 
 sealed interface Scope {
@@ -98,6 +99,10 @@ class MainViewModel(
 
     fun openDetail(id: Long) {
         route.value = Route.Detail(id)
+    }
+
+    fun openSettings() {
+        route.value = Route.Settings
     }
 
     fun back() {
