@@ -5,7 +5,6 @@ import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
 import com.myapplication.shared.test.FakeTodoRepository
-import kotlin.time.Clock
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -25,10 +24,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-
-private val fixedClock: Clock = object : Clock {
-    override fun now(): kotlin.time.Instant = kotlin.time.Instant.fromEpochMilliseconds(1_000_000_000_000)
-}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModelTest {
@@ -51,13 +46,13 @@ class MainViewModelTest {
     }
 
     private fun vm(repo: FakeTodoRepository): MainViewModel =
-        MainViewModel(repo, AddTodoUseCase(repo), fixedClock, TimeZone.currentSystemDefault())
+        MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
 
     @Test
     fun createTodoWithDateAndNote() = runTest(dispatcher) {
         val repo = FakeTodoRepository()
         repo.ensureInbox()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), fixedClock, TimeZone.currentSystemDefault())
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
         collect(vm)
         val due = LocalDateTime(2026, 8, 12, 15, 0)
         vm.createTodo("交报告", "备注内容", due)
@@ -71,7 +66,7 @@ class MainViewModelTest {
     fun createTodoInListAddsToList() = runTest(dispatcher) {
         val repo = FakeTodoRepository()
         repo.ensureInbox()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), fixedClock, TimeZone.currentSystemDefault())
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
         collect(vm)
         vm.createTodo("写周报", "", null, false, 7)
         advanceUntilIdle()
@@ -81,7 +76,7 @@ class MainViewModelTest {
     @Test
     fun createTodoBlankShowsEmptyTitleError() = runTest(dispatcher) {
         val repo = FakeTodoRepository()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), fixedClock, TimeZone.currentSystemDefault())
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
         collect(vm)
         vm.createTodo("   ", "", null)
         advanceUntilIdle()
@@ -94,7 +89,7 @@ class MainViewModelTest {
         val repo = FakeTodoRepository()
         repo.ensureInbox()
         repo.failNextInsert = true
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), fixedClock, TimeZone.currentSystemDefault())
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
         collect(vm)
         vm.createTodo("写不了", "", null)
         advanceUntilIdle()
@@ -104,7 +99,7 @@ class MainViewModelTest {
     @Test
     fun dismissErrorClearsLastError() {
         val repo = FakeTodoRepository()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), fixedClock, TimeZone.currentSystemDefault())
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
         vm.lastError.value = TodoError.EmptyTitle
         vm.dismissError()
         assertNull(vm.lastError.value)
@@ -114,7 +109,7 @@ class MainViewModelTest {
     fun toggleCompletedDelegates() = runTest(dispatcher) {
         val repo = FakeTodoRepository()
         repo.ensureInbox()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), fixedClock, TimeZone.currentSystemDefault())
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
         collect(vm)
         val item = TodoItem(5, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
         vm.toggleCompleted(item)
@@ -127,7 +122,7 @@ class MainViewModelTest {
     fun toggleFlagDelegates() = runTest(dispatcher) {
         val repo = FakeTodoRepository()
         repo.ensureInbox()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), fixedClock, TimeZone.currentSystemDefault())
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
         collect(vm)
         val item = TodoItem(6, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
         vm.toggleFlag(item)
@@ -157,7 +152,7 @@ class MainViewModelTest {
     fun deleteSelectedListResetsScopeToAll() = runTest(dispatcher) {
         val repo = FakeTodoRepository()
         repo.ensureInbox()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), fixedClock, TimeZone.currentSystemDefault())
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
         collect(vm)
         vm.selectScope(Scope.List(7))
         vm.deleteList(TodoList(7, "x", "blue", 1, Instant.fromEpochMilliseconds(0)))

@@ -8,7 +8,6 @@ import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.usecase.AddTodoInput
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
-import kotlin.time.Clock
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +40,6 @@ sealed interface Scope {
 class MainViewModel(
     private val repository: TodoRepository,
     private val addTodo: AddTodoUseCase,
-    private val clock: Clock = Clock.System,
     private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
 ) : ViewModel() {
 

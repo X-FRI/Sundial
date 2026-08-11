@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.myapplication.shared.di.AppGraph
 import com.myapplication.shared.di.createAppGraph
-import com.myapplication.shared.domain.error.TodoError
 import com.myapplication.shared.ui.PlatformBackHandler
 import com.myapplication.shared.ui.components.RemDialog
 import com.myapplication.shared.ui.detail.DetailScreen
@@ -60,7 +59,7 @@ fun App() {
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun AppRoot(graph: AppGraph) {
-    val mainVm: MainViewModel = viewModel { MainViewModel(graph.repository, graph.addTodo, graph.clock, graph.timeZone) }
+    val mainVm: MainViewModel = viewModel { MainViewModel(graph.repository, graph.addTodo, graph.timeZone) }
     val route by mainVm.route.collectAsState()
     val colors = LocalRemColors.current
 
