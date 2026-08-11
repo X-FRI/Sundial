@@ -120,18 +120,35 @@ object RemType {
 ### 3.5 阴影（唯一两处）
 
 ```kotlin
-// 仅浮层使用：0 2px 8px rgba(0,0,0,0.12)（亮）/ rgba(0,0,0,0.5)（暗）
-val RemShadows.popover = Shadow(...)  // 或 drawShadow 统一实现
+// 仅浮层（RemDialog 外层 Box）使用 Modifier.shadow(8.dp, shape, clip = false)：
+// 亮色 ambientColor 0x1F000000 / spotColor 0x1F000000 / elevation 8dp
+// 暗色 ambientColor 0x80000000 / spotColor 0x80000000 / elevation 12dp
+// 实现：RemDialog 新增参数 elevation（默认 8dp），按 isSystemInDarkTheme 取对应色
 ```
+
+### 3.6 RemBadge 最终签名（重写后）
+
+```kotlin
+@Composable
+fun RemBadge(
+    label: String,
+    modifier: Modifier = Modifier,
+    color: Color? = null,     // 状态色：null = 常态（bgPanel 底 + textLow 字）
+                              // 非 null = 该色 8% 透明底 + 该色字
+    monospace: Boolean = false, // 数字/时间用 FontFamily.Monospace
+    icon: @Composable (() -> Unit)? = null,
+)
+```
+
+删除旧 `tint/bg/onClick` 参数；详情页时间徽章的可点击性由外部 Modifier.clickable 提供。
 
 ## 4. 组件规范（commonMain/ui/components/ 重写）
 
 ### 4.1 RemBadge（徽章/计数胶囊）
 
-- 底色 `bgPanel`、文字 `textLow`（常态）；状态色版 = 该色 8% 透明底 + 该色文字（error/success/warning/info）
+- 签名见 §3.6：底色 `bgPanel`、文字 `textLow`（常态）；状态色版 = 该色 8% 透明底 + 该色文字（error/success/warning/info）
 - 圆角 r2、内边距 h4 v1、字号 text10、`FontFamily.Monospace` 用于数字
 - 颜色点（列表色）8px 圆点 + name，仿 KanbanBadge
-- 移除 onClick 版的自定义 bg 参数（由 color: Color? 语义参数替代）
 
 ### 4.2 RemButton / RemIconButton
 
