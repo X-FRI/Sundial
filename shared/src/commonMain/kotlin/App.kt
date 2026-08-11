@@ -17,6 +17,7 @@ import com.myapplication.shared.di.AppGraph
 import com.myapplication.shared.di.createAppGraph
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Route
+import com.myapplication.shared.ui.sidebar.Sidebar
 import com.myapplication.shared.ui.theme.RemindersTheme
 
 @Composable
@@ -68,9 +69,6 @@ fun NarrowTopBar(mainVm: MainViewModel) {
 fun NarrowBottomNav(mainVm: MainViewModel) {
     Text("")
 }
-
-@Composable
-fun Sidebar(mainVm: MainViewModel) = Text("")
 
 @Composable
 fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) = Text("")
