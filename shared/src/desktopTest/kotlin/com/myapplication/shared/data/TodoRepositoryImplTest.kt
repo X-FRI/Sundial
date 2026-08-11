@@ -121,4 +121,85 @@ class TodoRepositoryImplTest {
         repo.setDueDate(item.id, null)
         assertNull(repo.observeTodo(item.id).first()?.dueDate)
     }
+
+    @Test
+    fun observeScheduledIncludesDatedTodos() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        val due = Clock.System.now()
+        repo.addTodo(inbox, "有日期的", "", due, null)
+        repo.addTodo(inbox, "没日期的", "", null, null)
+        val scheduled = repo.observeScheduled().first()
+        assertEquals(1, scheduled.size)
+        assertEquals("有日期的", scheduled.first().title)
+    }
+
+    @Test
+    fun searchEscapesWildcards() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        repo.addTodo(inbox, "100%", "", null, null)
+        repo.addTodo(inbox, "under_score", "", null, null)
+        val percent = repo.search("100%").first()
+        assertEquals(1, percent.size)
+        assertEquals("100%", percent.first().title)
+        val underscore = repo.search("_").first()
+        assertEquals(1, underscore.size)
+        assertEquals("under_score", underscore.first().title)
+    }
+
+    @Test
+    fun setCompletedFalseClearsCompletedAt() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        repo.addTodo(inbox, "改状态", "", null, null)
+        val item = repo.observeAllActive().first().first()
+        repo.setCompleted(item.id, true)
+        assertNotNull(repo.observeTodo(item.id).first()?.completedAt)
+        repo.setCompleted(item.id, false)
+        assertNull(repo.observeTodo(item.id).first()?.completedAt)
+    }
+
+    @Test
+    fun ensureInboxIsIdempotent() = runTest {
+        val repo = newRepo()
+        repo.ensureInbox()
+        repo.ensureInbox()
+        assertEquals(1, repo.observeLists().first().size)
+    }
+
+    @Test
+    fun addSubTaskMissingParentIsNoOp() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        repo.addTodo(inbox, "存在的", "", null, null)
+        repo.addSubTask(999L, "孤儿")
+        assertEquals(1, repo.observeAllActive().first().size)
+    }
+
+    @Test
+    fun deleteListTrashesTodosAndRemovesList() = runTest {
+        val repo = newRepo()
+        repo.addList("项目", "red")
+        val listId = repo.observeLists().first().first { it.name == "项目" }.id
+        repo.addTodo(listId, "要清理的", "", null, null)
+        repo.deleteList(listId)
+        assertTrue(repo.observeLists().first().none { it.id == listId })
+        assertTrue(repo.observeByList(listId).first().isEmpty())
+        val trashed = repo.observeTrashed().first()
+        assertEquals(1, trashed.size)
+        assertEquals("要清理的", trashed.first().title)
+    }
+
+    @Test
+    fun addListAppendsWithPosition() = runTest {
+        val repo = newRepo()
+        repo.inbox()
+        repo.addList("甲", "blue")
+        repo.addList("乙", "red")
+        val lists = repo.observeLists().first()
+        assertEquals(3, lists.size)
+        assertEquals(listOf("收件箱", "甲", "乙"), lists.map { it.name })
+        assertTrue(lists[1].position < lists[2].position)
+    }
 }

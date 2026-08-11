@@ -10,7 +10,7 @@ CREATE TABLE reminder_list (
 
 CREATE TABLE todo (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  list_id INTEGER NOT NULL REFERENCES reminder_list(id) ON DELETE CASCADE,
+  list_id INTEGER NOT NULL REFERENCES reminder_list(id),
   title TEXT NOT NULL,
   note TEXT NOT NULL DEFAULT '',
   due_date INTEGER,

@@ -9,7 +9,10 @@ actual fun createSqlDriver(): SqlDriver {
     val home = System.getProperty("user.home") ?: "."
     val dir = Paths.get(home, ".reminders")
     Files.createDirectories(dir)
-    val driver = JdbcSqliteDriver("jdbc:sqlite:${dir.resolve("reminders.db")}")
-    TodoDb.Schema.create(driver)
+    val dbFile = dir.resolve("reminders.db")
+    val driver = JdbcSqliteDriver("jdbc:sqlite:${dbFile}")
+    if (!Files.exists(dbFile) || Files.size(dbFile) == 0L) {
+        TodoDb.Schema.create(driver)
+    }
     return driver
 }

@@ -113,7 +113,11 @@ class TodoRepositoryImpl(private val db: TodoDb) : TodoRepository {
         val now = Clock.System.now().toEpochMilliseconds()
         val targetList = parentId
             ?.let { pid -> db.todoDbQueries.selectById(pid).executeAsOneOrNull()?.list_id }
-            ?: listId ?: 1L
+            ?: listId
+            ?: run {
+                ensureInbox()
+                db.todoDbQueries.selectLists().executeAsList().first().id
+            }
         db.todoDbQueries.insertTodo(targetList, title, note, dueDate?.toEpochMilliseconds(), parentId, 0.0, now)
     }
 
