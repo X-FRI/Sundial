@@ -222,7 +222,7 @@ fun TodoRow(
             }
         }
         Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f).clickable { mainVm.openDetail(item.id) }) {
             Text(
                 item.title,
                 textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,

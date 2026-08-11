@@ -146,6 +146,14 @@ class MainViewModelTest {
     }
 
     @Test
+    fun selectScopeClearsSearchQuery() = runTest(dispatcher) {
+        val vm = MainViewModel(FakeRepository())
+        vm.setSearch("牛奶")
+        vm.selectScope(Scope.Today)
+        assertEquals("", vm.searchQuery.value)
+    }
+
+    @Test
     fun deleteSelectedListResetsScopeToAll() = runTest(dispatcher) {
         val repo = FakeRepository()
         val vm = MainViewModel(repo)
