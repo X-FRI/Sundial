@@ -31,6 +31,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,12 +91,14 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
                 )
             }
             Spacer(Modifier.width(8.dp))
+            val plusInteraction = remember { MutableInteractionSource() }
+            val plusHovered by plusInteraction.collectIsHoveredAsState()
             Box(
                 Modifier
                     .size(26.dp)
                     .clip(RoundedCornerShape(RemRadii.r2))
-                    .background(colors.bgSecondary)
-                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { quickAddFocus++ }
+                    .background(if (plusHovered) colors.bgSecondary else Color.Transparent)
+                    .clickable(interactionSource = plusInteraction, indication = null) { quickAddFocus++ }
                     .semantics { contentDescription = "新建待办" },
                 contentAlignment = Alignment.Center,
             ) {
@@ -104,7 +107,7 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
         }
         androidx.compose.foundation.text.BasicText(
             if (scope == Scope.Today || scope == Scope.Scheduled) "${today.monthNumber} 月 ${today.dayOfMonth} 日 · 星期${"一二三四五六日"[today.dayOfWeek.isoDayNumber - 1]}" else if (scope == Scope.Completed) "${todos.size} 项" else "$activeCount 项未完成",
-            style = RemType.text14.copy(color = colors.textLow),
+            style = RemType.text12.copy(color = colors.textLow),
             modifier = Modifier.padding(start = 20.dp, top = 4.dp, bottom = 12.dp),
         )
         if (scope != Scope.Trash) {
@@ -159,7 +162,7 @@ private fun SectionHeader(title: String, count: Int, overdue: Boolean) {
     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.foundation.text.BasicText(
             title,
-            style = RemType.label12.copy(color = colors.textHigh),
+            style = RemType.label10.copy(color = colors.textHigh),
         )
         if (count > 0) {
             Spacer(Modifier.width(6.dp))
@@ -196,7 +199,7 @@ private fun TodayGrouped(todos: List<TodoItem>, today: kotlinx.datetime.LocalDat
                         }
                     }
                 }
-                item(key = "sp-$bucket") { Spacer(Modifier.height(12.dp)) }
+                item(key = "sp-$bucket") { Spacer(Modifier.height(8.dp)) }
             }
         }
     }
@@ -236,7 +239,7 @@ private fun PlainList(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, 
                     }
                 }
             }
-            item(key = "sp-active") { Spacer(Modifier.height(12.dp)) }
+            item(key = "sp-active") { Spacer(Modifier.height(8.dp)) }
         }
         if (completed.isNotEmpty()) {
             item(key = "completed-header") {
@@ -298,7 +301,7 @@ private fun ScheduledGrouped(todos: List<TodoItem>, today: kotlinx.datetime.Loca
                         }
                     }
                 }
-                item(key = "sp-$bucket") { Spacer(Modifier.height(12.dp)) }
+                item(key = "sp-$bucket") { Spacer(Modifier.height(8.dp)) }
             }
         }
     }
@@ -369,7 +372,7 @@ fun TodoRow(
             .clickable(interactionSource = interactionSource, indication = null) {
                 if (showChevron) onToggleExpand() else mainVm.openDetail(item.id)
             }
-            .background(if (hovered) colors.bgSecondary.copy(alpha = 0.6f) else Color.Transparent)
+            .background(if (hovered) colors.bgSecondary.copy(alpha = 0.4f) else Color.Transparent)
             .padding(start = if (indent) 16.dp else 0.dp)
             .padding(vertical = 10.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -385,7 +388,7 @@ fun TodoRow(
                     style = RemType.text14.copy(
                         color = if (item.isCompleted) colors.textLow else colors.textHigh,
                         textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
-                        fontWeight = if (item.isCompleted) FontWeight.Normal else FontWeight.Medium,
+                        fontWeight = FontWeight.Medium,
                     ),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -420,7 +423,7 @@ fun TodoRow(
                         Spacer(Modifier.width(6.dp))
                         androidx.compose.foundation.text.BasicText(
                             "⌄ $subtaskCount",
-                            style = RemType.text12.copy(color = colors.textLow),
+                            style = RemType.text12.copy(color = colors.textLow, fontFamily = FontFamily.Monospace),
                         )
                     }
                 }
