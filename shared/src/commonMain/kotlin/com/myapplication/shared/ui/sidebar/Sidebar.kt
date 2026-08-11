@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -60,6 +61,7 @@ fun Sidebar(mainVm: MainViewModel) {
     val trashCount by mainVm.trashCount.collectAsState()
     val listCounts by mainVm.listCounts.collectAsState()
     var showAddList by remember { mutableStateOf(false) }
+    var listsExpanded by remember { mutableStateOf(true) }
 
     Column(
         Modifier
@@ -76,7 +78,7 @@ fun Sidebar(mainVm: MainViewModel) {
         Spacer(Modifier.height(RemSpacing.s12))
         RemTextField(value = query, onValueChange = mainVm::setSearch, placeholder = "搜索", leadingIcon = IconName.Search)
         Spacer(Modifier.height(RemSpacing.s8))
-        ScopeRow(IconName.Today, "今天", todayCount, scope == Scope.Today) { mainVm.selectScope(Scope.Today) }
+        ScopeRow(IconName.Today, "今天", todayCount, scope == Scope.Today, countBadge = true) { mainVm.selectScope(Scope.Today) }
         ScopeRow(IconName.Scheduled, "计划", scheduledCount, scope == Scope.Scheduled) { mainVm.selectScope(Scope.Scheduled) }
         ScopeRow(IconName.Tray, "全部待办", allCount, scope == Scope.All) { mainVm.selectScope(Scope.All) }
         ScopeRow(IconName.CheckCircle, "已完成", completedCount, scope == Scope.Completed) { mainVm.selectScope(Scope.Completed) }
@@ -88,20 +90,32 @@ fun Sidebar(mainVm: MainViewModel) {
                 .height(1.dp)
                 .background(colors.rowDivider),
         )
-        androidx.compose.foundation.text.BasicText(
-            "我的列表",
-            style = RemType.label12.copy(color = colors.textTertiary),
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-        )
-        lists.forEach { list ->
-            ListRow(
-                list = list,
-                count = listCounts[list.id] ?: 0,
-                selected = scope == Scope.List(list.id),
-                canDelete = list.position != 0,
-                onSelect = { mainVm.selectScope(Scope.List(list.id)) },
-                onDelete = { mainVm.deleteList(list) },
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .clickable { listsExpanded = !listsExpanded },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RemIcon(
+                IconName.ChevronRight,
+                colors.textTertiary,
+                Modifier.size(12.dp).graphicsLayer { rotationZ = if (listsExpanded) 90f else 0f },
             )
+            Spacer(Modifier.width(4.dp))
+            androidx.compose.foundation.text.BasicText("我的列表", style = RemType.label12.copy(color = colors.textTertiary))
+        }
+        if (listsExpanded) {
+            lists.forEach { list ->
+                ListRow(
+                    list = list,
+                    count = listCounts[list.id] ?: 0,
+                    selected = scope == Scope.List(list.id),
+                    canDelete = list.position != 0,
+                    onSelect = { mainVm.selectScope(Scope.List(list.id)) },
+                    onDelete = { mainVm.deleteList(list) },
+                )
+            }
         }
         Spacer(Modifier.weight(1f))
         Row(
@@ -130,7 +144,7 @@ fun Sidebar(mainVm: MainViewModel) {
 }
 
 @Composable
-private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolean, onClick: () -> Unit) {
+private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolean, countBadge: Boolean = false, onClick: () -> Unit) {
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
@@ -161,10 +175,17 @@ private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolea
             modifier = Modifier.weight(1f),
         )
         if (count > 0) {
-            androidx.compose.foundation.text.BasicText(
-                count.toString(),
-                style = RemType.text12.copy(color = if (selected) colors.accent else colors.textTertiary),
-            )
+            if (countBadge) {
+                Box(
+                    Modifier
+                        .background(colors.danger, RoundedCornerShape(RemRadii.r8))
+                        .padding(horizontal = 6.dp, vertical = 1.dp),
+                ) {
+                    androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = Color.White))
+                }
+            } else {
+                androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = if (selected) colors.accent else colors.textTertiary))
+            }
         }
     }
 }
@@ -213,6 +234,31 @@ private fun ListRow(
         )
         if (count > 0) {
             androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = colors.textTertiary))
+        }
+        if (hovered) {
+            Spacer(Modifier.width(4.dp))
+            Box(
+                Modifier
+                    .size(16.dp)
+                    .clip(RoundedCornerShape(RemRadii.r4))
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect() },
+                contentAlignment = Alignment.Center,
+            ) {
+                RemIcon(IconName.Plus, colors.textTertiary, Modifier.size(12.dp))
+            }
+            if (canDelete) {
+                Spacer(Modifier.width(2.dp))
+                Box(
+                    Modifier
+                        .size(16.dp)
+                        .clip(RoundedCornerShape(RemRadii.r4))
+                        .background(colors.hoverActionBg, RoundedCornerShape(RemRadii.r4))
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { confirmDelete = true },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    RemIcon(IconName.Trash, colors.textTertiary, Modifier.size(12.dp))
+                }
+            }
         }
     }
     if (confirmDelete) {
