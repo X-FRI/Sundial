@@ -194,18 +194,30 @@ fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) 
             androidx.compose.foundation.text.BasicText("添加列表", style = RemType.label12.copy(color = colors.brand))
         }
         Spacer(Modifier.height(RemSpacing.s8))
+        val settingsSource = remember { MutableInteractionSource() }
+        val settingsHovered by settingsSource.collectIsHoveredAsState()
+        val settingsBg by animateColorAsState(
+            if (settingsHovered) colors.bgSecondary else Color.Transparent,
+            tween(200),
+            label = "settings-bg",
+        )
+        val syncDot = when {
+            syncStatus.mode == SyncMode.Local -> colors.textLow
+            syncStatus.connected -> colors.success
+            else -> colors.warning
+        }
         Row(
             Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp)
                 .clip(RoundedCornerShape(RemRadii.r2))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) { mainVm.openSettings() }
+                .background(settingsBg, RoundedCornerShape(RemRadii.r2))
+                .clickable(interactionSource = settingsSource, indication = null) { mainVm.openSettings() }
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            Box(Modifier.size(6.dp).background(syncDot, CircleShape))
+            Spacer(Modifier.width(6.dp))
             androidx.compose.foundation.text.BasicText("设置", style = RemType.label12.copy(color = colors.textNormal))
             Spacer(Modifier.weight(1f))
             androidx.compose.foundation.text.BasicText(syncSummary, style = RemType.text10.copy(color = colors.textLow))

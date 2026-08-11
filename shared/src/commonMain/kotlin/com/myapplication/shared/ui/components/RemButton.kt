@@ -36,6 +36,7 @@ fun RemButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     variant: RemButtonVariant = RemButtonVariant.Ghost,
+    enabled: Boolean = true,
 ) {
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -43,6 +44,8 @@ fun RemButton(
     val pressed by interactionSource.collectIsPressedAsState()
     val bg by animateColorAsState(
         when {
+            !enabled && variant == RemButtonVariant.Default -> colors.brand.copy(alpha = 0.4f)
+            !enabled -> Color.Transparent
             variant == RemButtonVariant.Default && hovered -> colors.brandHover
             variant == RemButtonVariant.Default -> colors.brand
             variant == RemButtonVariant.Danger && hovered -> colors.error.copy(alpha = 0.08f)
@@ -54,6 +57,8 @@ fun RemButton(
     )
     val fg by animateColorAsState(
         when {
+            !enabled && variant == RemButtonVariant.Default -> Color.White.copy(alpha = 0.7f)
+            !enabled -> colors.textLow.copy(alpha = 0.6f)
             variant == RemButtonVariant.Default -> Color.White
             variant == RemButtonVariant.Danger -> colors.error
             else -> colors.textNormal
@@ -67,7 +72,12 @@ fun RemButton(
             .clip(shape)
             .background(bg)
             .border(if (variant == RemButtonVariant.Danger) 1.dp else 0.dp, colors.border, shape)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick,
+            )
             .height(32.dp)
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
