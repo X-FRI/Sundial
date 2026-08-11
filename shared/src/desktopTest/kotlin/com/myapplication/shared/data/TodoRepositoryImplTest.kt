@@ -2,6 +2,8 @@ package com.myapplication.shared.data
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.myapplication.shared.domain.error.TodoError
+import com.myapplication.shared.domain.sync.SyncAction
+import com.myapplication.shared.domain.sync.TodoRowDto
 import com.myapplication.shared.domain.usecase.AddSubTaskUseCase
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.first
@@ -11,6 +13,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -217,5 +220,43 @@ class TodoRepositoryImplTest {
         assertTrue(repo.observeTodo(item.id).first()?.flag == true)
         assertTrue(repo.setFlag(item.id, false).isRight())
         assertFalse(repo.observeTodo(item.id).first()?.flag ?: true)
+    }
+
+    @Test
+    fun insertTodoWritesOutboxWithPayload() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        assertTrue(repo.insertTodo(inbox, "双写", "", null, null, false).isRight())
+        val outbox = repo.readOutbox(10).getOrNull()!!
+        assertEquals(2, outbox.size)
+        val todoRow = outbox.last()
+        assertEquals("todo", todoRow.table)
+        assertEquals(SyncAction.UPSERT, todoRow.action)
+        val dto = Json.decodeFromString<TodoRowDto>(todoRow.payload!!)
+        assertEquals("双写", dto.title)
+        assertEquals(inbox, dto.listId)
+    }
+
+    @Test
+    fun deleteForeverWritesDeleteOp() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        repo.insertTodo(inbox, "要删的", "", null, null, false)
+        val item = repo.observeAllActive().first().first()
+        assertTrue(repo.deleteForever(item.id).isRight())
+        val outbox = repo.readOutbox(10).getOrNull()!!
+        assertEquals(SyncAction.DELETE, outbox.last().action)
+        assertEquals(item.id, outbox.last().rowId)
+    }
+
+    @Test
+    fun applyRemoteUpsertObeysLww() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        val fresh = TodoRowDto(1, inbox, "新", "", null, false, null, false, null, null, 0.0, false, 0, 900, "remote")
+        assertTrue(repo.applyRemoteUpsert(fresh).isRight())
+        val stale = fresh.copy(title = "旧", updatedAt = 800)
+        assertTrue(repo.applyRemoteUpsert(stale).isRight())
+        assertEquals("新", repo.observeTodo(1).first()?.title)
     }
 }
