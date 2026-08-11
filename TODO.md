@@ -4,11 +4,11 @@
 
 ## 待办改进
 
-### A. [feature] 移动端待办详情改用 Drawer 组件
+### A. [feature] 移动端待办详情改用抽屉式 Drawer 组件
 
 - 位置：`shared/src/commonMain/kotlin/App.kt` 窄屏分支 + `ui/detail/DetailScreen.kt`
-- 目标：窄屏（<900dp）下待办详情从当前的全屏替换渲染改为侧滑 Drawer（`ModalNavigationDrawer` / `ModalBottomSheet`），提供更流畅的过渡动画，与宽屏的右侧详情栏体验对齐
-- 关注点：返回手势与 `PlatformBackHandler` 联动、键盘弹出时的高度适配、`remember(currentId)` 重建语义
+- 目标：窄屏（<900dp）下待办详情从当前的全屏替换渲染改为**抽屉式 Drawer**（Material 3 `ModalNavigationDrawer` + `ModalDrawerSheet`，从屏幕边缘水平抽出、带遮罩），提供更流畅的过渡动画，与宽屏的右侧详情栏体验对齐
+- 关注点：返回手势与 `PlatformBackHandler` 联动、遮罩点击关闭、键盘弹出时的高度适配、`remember(currentId)` 重建语义
 
 ### B. [improve] 优化同步体验
 
