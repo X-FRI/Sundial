@@ -60,7 +60,7 @@ fun RemDialog(
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                     .padding(16.dp),
             ) {
-                androidx.compose.material3.Text(title, style = RemType.title15, color = colors.textPrimary)
+                androidx.compose.foundation.text.BasicText(title, style = RemType.title15.copy(color = colors.textPrimary))
                 Spacer(Modifier.height(12.dp))
                 content()
                 if (showButtons) {

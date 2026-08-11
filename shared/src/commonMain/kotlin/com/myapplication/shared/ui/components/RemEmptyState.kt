@@ -31,10 +31,10 @@ fun RemEmptyState(
             RemIcon(icon, colors.textTertiary, Modifier.size(40.dp))
             Spacer(Modifier.height(12.dp))
         }
-        androidx.compose.material3.Text(title, style = RemType.title20, color = colors.textPrimary)
+        androidx.compose.foundation.text.BasicText(title, style = RemType.title20.copy(color = colors.textPrimary))
         if (subtitle.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
-            androidx.compose.material3.Text(subtitle, style = RemType.text12, color = colors.textTertiary)
+            androidx.compose.foundation.text.BasicText(subtitle, style = RemType.text12.copy(color = colors.textTertiary))
         }
     }
 }

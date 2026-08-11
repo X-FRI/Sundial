@@ -53,10 +53,9 @@ fun RemButton(
             .padding(horizontal = 12.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.material3.Text(
+        androidx.compose.foundation.text.BasicText(
             text,
-            style = RemType.label13,
-            color = if (danger) colors.danger else colors.textPrimary,
+            style = RemType.label13.copy(color = if (danger) colors.danger else colors.textPrimary),
         )
     }
 }

@@ -71,10 +71,9 @@ fun NarrowTopBar(mainVm: MainViewModel, modifier: Modifier = Modifier) {
             }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                androidx.compose.material3.Text(
+                androidx.compose.foundation.text.BasicText(
                     scopeTitle(scope, query),
-                    style = RemType.title17,
-                    color = colors.textPrimary,
+                    style = RemType.title17.copy(color = colors.textPrimary),
                     modifier = Modifier.weight(1f),
                 )
                 RemIconButton(IconName.Search, "搜索", onClick = { searching = true }, size = 18.dp)
@@ -117,10 +116,10 @@ private fun NavItem(icon: IconName, label: String, selected: Boolean, modifier: 
     ) {
         RemIcon(icon, tint, Modifier.size(20.dp))
         Spacer(Modifier.height(2.dp))
-        androidx.compose.material3.Text(
+        androidx.compose.foundation.text.BasicText(
             label,
-            style = TextStyle(fontSize = 10.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal),
-            color = tint,
+            style = TextStyle(fontSize = 10.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
+                .copy(color = tint),
         )
     }
 }

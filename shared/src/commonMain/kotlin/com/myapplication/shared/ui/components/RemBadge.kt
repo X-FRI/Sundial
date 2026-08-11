@@ -35,6 +35,6 @@ fun RemBadge(
             icon()
             Spacer(Modifier.width(3.dp))
         }
-        androidx.compose.material3.Text(label, style = RemType.text12, color = tint ?: colors.textTertiary)
+        androidx.compose.foundation.text.BasicText(label, style = RemType.text12.copy(color = tint ?: colors.textTertiary))
     }
 }

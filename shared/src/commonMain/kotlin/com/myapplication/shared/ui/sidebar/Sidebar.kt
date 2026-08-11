@@ -68,10 +68,9 @@ fun Sidebar(mainVm: MainViewModel) {
             .background(colors.sidebarBg)
             .padding(vertical = RemSpacing.s16, horizontal = 10.dp),
     ) {
-        androidx.compose.material3.Text(
+        androidx.compose.foundation.text.BasicText(
             "提醒事项",
-            style = RemType.title17,
-            color = colors.textPrimary,
+            style = RemType.title17.copy(color = colors.textPrimary),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
         )
         Spacer(Modifier.height(RemSpacing.s12))
@@ -89,10 +88,9 @@ fun Sidebar(mainVm: MainViewModel) {
                 .height(1.dp)
                 .background(colors.rowDivider),
         )
-        androidx.compose.material3.Text(
+        androidx.compose.foundation.text.BasicText(
             "我的列表",
-            style = RemType.label12,
-            color = colors.textTertiary,
+            style = RemType.label12.copy(color = colors.textTertiary),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
         )
         lists.forEach { list ->
@@ -117,7 +115,7 @@ fun Sidebar(mainVm: MainViewModel) {
         ) {
             RemIcon(IconName.Plus, colors.accent, Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
-            androidx.compose.material3.Text("添加列表", style = RemType.label13, color = colors.accent)
+            androidx.compose.foundation.text.BasicText("添加列表", style = RemType.label13.copy(color = colors.accent))
         }
     }
 
@@ -154,17 +152,18 @@ private fun ScopeRow(icon: IconName, label: String, count: Int, selected: Boolea
     ) {
         RemIcon(icon, if (selected) colors.accent else colors.textTertiary, Modifier.size(16.dp))
         Spacer(Modifier.width(8.dp))
-        androidx.compose.material3.Text(
+        androidx.compose.foundation.text.BasicText(
             label,
-            style = RemType.text13.copy(fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal),
-            color = colors.textPrimary,
+            style = RemType.text13.copy(
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                color = colors.textPrimary,
+            ),
             modifier = Modifier.weight(1f),
         )
         if (count > 0) {
-            androidx.compose.material3.Text(
+            androidx.compose.foundation.text.BasicText(
                 count.toString(),
-                style = RemType.text12,
-                color = if (selected) colors.accent else colors.textTertiary,
+                style = RemType.text12.copy(color = if (selected) colors.accent else colors.textTertiary),
             )
         }
     }
@@ -207,14 +206,13 @@ private fun ListRow(
     ) {
         Box(Modifier.size(10.dp).background(ListColorOf[list.colorKey] ?: Color.Gray, CircleShape))
         Spacer(Modifier.width(8.dp))
-        androidx.compose.material3.Text(
+        androidx.compose.foundation.text.BasicText(
             list.name,
-            style = RemType.text13,
-            color = colors.textPrimary,
+            style = RemType.text13.copy(color = colors.textPrimary),
             modifier = Modifier.weight(1f),
         )
         if (count > 0) {
-            androidx.compose.material3.Text(count.toString(), style = RemType.text12, color = colors.textTertiary)
+            androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = colors.textTertiary))
         }
     }
     if (confirmDelete) {
@@ -222,10 +220,9 @@ private fun ListRow(
             title = "删除列表",
             onDismiss = { confirmDelete = false },
             content = {
-                androidx.compose.material3.Text(
+                androidx.compose.foundation.text.BasicText(
                     "确定删除列表「${list.name}」？该列表的所有待办将移入垃圾箱。",
-                    style = RemType.text13,
-                    color = colors.textSecondary,
+                    style = RemType.text13.copy(color = colors.textSecondary),
                 )
             },
             confirmText = "删除",
@@ -240,7 +237,6 @@ private fun ListRow(
 
 @Composable
 private fun AddListDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
-    val colors = LocalRemColors.current
     val colorNames = mapOf("blue" to "蓝色", "red" to "红色", "orange" to "橙色", "yellow" to "黄色", "green" to "绿色", "teal" to "青色", "purple" to "紫色")
     var name by remember { mutableStateOf("") }
     var colorKey by remember { mutableStateOf(ListColorKeys.first()) }

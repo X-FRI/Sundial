@@ -57,17 +57,15 @@ fun TodoListScreen(mainVm: MainViewModel, modifier: Modifier = Modifier) {
 
     Column(modifier) {
         val activeCount = todos.count { !it.isCompleted }
-        androidx.compose.material3.Text(
+        androidx.compose.foundation.text.BasicText(
             scopeTitle(scope, query),
-            style = RemType.title17,
-            color = colors.textPrimary,
+            style = RemType.title17.copy(color = colors.textPrimary),
             modifier = Modifier.padding(horizontal = RemSpacing.s16, vertical = 14.dp),
         )
         if (scope != Scope.Trash) {
-            androidx.compose.material3.Text(
+            androidx.compose.foundation.text.BasicText(
                 if (scope == Scope.Completed) "${todos.size} 项" else "$activeCount 项未完成",
-                style = RemType.text12,
-                color = colors.textTertiary,
+                style = RemType.text12.copy(color = colors.textTertiary),
                 modifier = Modifier.padding(horizontal = RemSpacing.s16).padding(bottom = 8.dp),
             )
             QuickAddRow(mainVm)
@@ -131,10 +129,9 @@ private fun PlainList(todos: List<TodoItem>, today: kotlinx.datetime.LocalDate, 
         }
         if (completed.isNotEmpty()) {
             item {
-                androidx.compose.material3.Text(
+                androidx.compose.foundation.text.BasicText(
                     "已完成",
-                    style = RemType.label13,
-                    color = colors.textTertiary,
+                    style = RemType.label13.copy(color = colors.textTertiary),
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
                 )
             }
@@ -161,10 +158,9 @@ private fun ScheduledGrouped(todos: List<TodoItem>, today: kotlinx.datetime.Loca
             val items = grouped[bucket].orEmpty()
             if (items.isNotEmpty()) {
                 item {
-                    androidx.compose.material3.Text(
+                    androidx.compose.foundation.text.BasicText(
                         bucketLabel(bucket),
-                        style = RemType.label13,
-                        color = colors.textTertiary,
+                        style = RemType.label13.copy(color = colors.textTertiary),
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
                     )
                 }
@@ -185,10 +181,9 @@ private fun TrashList(todos: List<TodoItem>, mainVm: MainViewModel) {
                     .padding(vertical = 6.dp, horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                androidx.compose.material3.Text(
+                androidx.compose.foundation.text.BasicText(
                     item.title,
-                    style = RemType.text13,
-                    color = colors.textPrimary,
+                    style = RemType.text13.copy(color = colors.textPrimary),
                     modifier = Modifier.weight(1f),
                 )
                 RemButton("恢复", onClick = { mainVm.restore(item) })
@@ -234,11 +229,12 @@ fun TodoRow(
         Column(
             Modifier.weight(1f).clickable { mainVm.openDetail(item.id) },
         ) {
-            androidx.compose.material3.Text(
+            androidx.compose.foundation.text.BasicText(
                 item.title,
-                style = RemType.text13,
-                color = if (item.isCompleted) colors.textTertiary else colors.textPrimary,
-                textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
+                style = RemType.text13.copy(
+                    color = if (item.isCompleted) colors.textTertiary else colors.textPrimary,
+                    textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
+                ),
             )
         }
         if (showChevron) {

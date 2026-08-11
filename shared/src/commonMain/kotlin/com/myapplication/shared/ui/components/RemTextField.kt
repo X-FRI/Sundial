@@ -76,17 +76,16 @@ fun RemTextField(
             keyboardActions = if (onEnter != null) KeyboardActions(onDone = { onEnter() }) else KeyboardActions.Default,
             decorationBox = { inner ->
                 if (value.isEmpty() && placeholder.isNotEmpty()) {
-                    androidx.compose.material3.Text(placeholder, style = style.copy(color = colors.textTertiary))
+                    androidx.compose.foundation.text.BasicText(placeholder, style = style.copy(color = colors.textTertiary))
                 }
                 inner()
             },
         )
         if (trailing != null) {
             Spacer(Modifier.width(6.dp))
-            androidx.compose.material3.Text(
+            androidx.compose.foundation.text.BasicText(
                 trailing.first,
-                style = RemType.label13,
-                color = colors.accent,
+                style = RemType.label13.copy(color = colors.accent),
                 modifier = Modifier.clickable { trailing.second() },
             )
         }

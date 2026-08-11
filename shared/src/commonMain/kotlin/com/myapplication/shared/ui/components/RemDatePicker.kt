@@ -56,12 +56,10 @@ fun RemDatePicker(
         content = {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 RemIconButton(IconName.ChevronBack, "上个月", onClick = { month = month.minusMonth() }, size = 14.dp)
-                androidx.compose.material3.Text(
+                androidx.compose.foundation.text.BasicText(
                     "${month.year} 年 ${month.month.number} 月",
-                    style = RemType.title15,
-                    color = colors.textPrimary,
+                    style = RemType.title15.copy(color = colors.textPrimary, textAlign = TextAlign.Center),
                     modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
                 )
                 RemIconButton(IconName.ChevronRight, "下个月", onClick = { month = month.plusMonth() }, size = 14.dp)
             }
@@ -72,12 +70,10 @@ fun RemDatePicker(
             val weekHeaders = listOf("一", "二", "三", "四", "五", "六", "日")
             Row(Modifier.fillMaxWidth()) {
                 weekHeaders.forEach {
-                    androidx.compose.material3.Text(
+                    androidx.compose.foundation.text.BasicText(
                         it,
-                        style = RemType.label12,
-                        color = colors.textTertiary,
+                        style = RemType.label12.copy(color = colors.textTertiary, textAlign = TextAlign.Center),
                         modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
                     )
                 }
             }
@@ -105,14 +101,15 @@ fun RemDatePicker(
                                     ) { onPick(date); onDismiss() },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                androidx.compose.material3.Text(
+                                androidx.compose.foundation.text.BasicText(
                                     "$d",
-                                    style = RemType.text13,
-                                    color = when {
-                                        isSelected -> Color.White
-                                        isToday -> colors.accent
-                                        else -> colors.textPrimary
-                                    },
+                                    style = RemType.text13.copy(
+                                        color = when {
+                                            isSelected -> Color.White
+                                            isToday -> colors.accent
+                                            else -> colors.textPrimary
+                                        },
+                                    ),
                                 )
                             }
                         }

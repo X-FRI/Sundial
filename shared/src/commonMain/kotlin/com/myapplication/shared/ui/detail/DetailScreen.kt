@@ -2,6 +2,7 @@ package com.myapplication.shared.ui.detail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -116,12 +117,15 @@ fun DetailScreen(
         Row(
             Modifier
                 .fillMaxWidth()
-                .clickable { showDatePicker = true }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { showDatePicker = true }
                 .drawBehind { drawLine(colors.rowDivider, Offset(0f, size.height), Offset(size.width, size.height), 1f) }
                 .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            androidx.compose.material3.Text("日期", style = RemType.text13, color = colors.textSecondary)
+            androidx.compose.foundation.text.BasicText("日期", style = RemType.text13.copy(color = colors.textSecondary))
             Spacer(Modifier.weight(1f))
             if (current.dueDate != null) {
                 RemBadge(
@@ -131,7 +135,7 @@ fun DetailScreen(
                 Spacer(Modifier.width(8.dp))
                 RemButton("清除", onClick = { detailVm.setDueDate(null) })
             } else {
-                androidx.compose.material3.Text("无", style = RemType.text12, color = colors.textTertiary)
+                androidx.compose.foundation.text.BasicText("无", style = RemType.text12.copy(color = colors.textTertiary))
             }
         }
 
@@ -139,34 +143,37 @@ fun DetailScreen(
         Row(
             Modifier
                 .fillMaxWidth()
-                .clickable { showListDialog = true }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { showListDialog = true }
                 .drawBehind { drawLine(colors.rowDivider, Offset(0f, size.height), Offset(size.width, size.height), 1f) }
                 .padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            androidx.compose.material3.Text("列表", style = RemType.text13, color = colors.textSecondary)
+            androidx.compose.foundation.text.BasicText("列表", style = RemType.text13.copy(color = colors.textSecondary))
             Spacer(Modifier.weight(1f))
             Box(Modifier.size(10.dp).background(ListColorOf[currentList?.colorKey] ?: Color.Gray, CircleShape))
             Spacer(Modifier.width(6.dp))
-            androidx.compose.material3.Text(
+            androidx.compose.foundation.text.BasicText(
                 currentList?.name ?: "未知列表",
-                style = RemType.text13,
-                color = colors.textPrimary,
+                style = RemType.text13.copy(color = colors.textPrimary),
             )
         }
         Spacer(Modifier.height(16.dp))
 
-        androidx.compose.material3.Text("子任务", style = RemType.label13, color = colors.textTertiary)
+        androidx.compose.foundation.text.BasicText("子任务", style = RemType.label13.copy(color = colors.textTertiary))
         Spacer(Modifier.height(6.dp))
         subtasks.forEach { sub ->
             Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                 RemCheckbox(sub.isCompleted, { detailVm.toggleSubTask(sub) }, size = 12.dp)
                 Spacer(Modifier.width(8.dp))
-                androidx.compose.material3.Text(
+                androidx.compose.foundation.text.BasicText(
                     sub.title,
-                    style = RemType.text13,
-                    color = if (sub.isCompleted) colors.textTertiary else colors.textPrimary,
-                    textDecoration = if (sub.isCompleted) TextDecoration.LineThrough else null,
+                    style = RemType.text13.copy(
+                        color = if (sub.isCompleted) colors.textTertiary else colors.textPrimary,
+                        textDecoration = if (sub.isCompleted) TextDecoration.LineThrough else null,
+                    ),
                     modifier = Modifier.weight(1f),
                 )
                 RemIconButton(IconName.Trash, "删除子任务", onClick = { detailVm.trashSubTask(sub) }, size = 14.dp)
@@ -224,7 +231,10 @@ fun DetailScreen(
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clickable {
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) {
                                 showListDialog = false
                                 detailVm.moveToList(list.id)
                             }
@@ -233,10 +243,9 @@ fun DetailScreen(
                     ) {
                         Box(Modifier.size(10.dp).background(ListColorOf[list.colorKey] ?: Color.Gray, CircleShape))
                         Spacer(Modifier.width(8.dp))
-                        androidx.compose.material3.Text(
+                        androidx.compose.foundation.text.BasicText(
                             list.name,
-                            style = RemType.text13,
-                            color = colors.textPrimary,
+                            style = RemType.text13.copy(color = colors.textPrimary),
                             modifier = Modifier.weight(1f),
                         )
                         if (list.id == current?.listId) {
