@@ -84,6 +84,8 @@ fun NarrowTopBar(mainVm: MainViewModel, modifier: Modifier = Modifier) {
                     style = RemType.title18.copy(color = colors.textHigh),
                     modifier = Modifier.weight(1f),
                 )
+                RemIconButton(IconName.Settings, "设置", onClick = mainVm::openSettings, size = 18.dp)
+                Spacer(Modifier.width(8.dp))
                 RemIconButton(IconName.Search, "搜索", onClick = { searching = true }, size = 18.dp)
             }
         }
