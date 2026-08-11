@@ -4,6 +4,9 @@ import arrow.core.Either
 import com.myapplication.shared.domain.error.TodoError
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
+import com.myapplication.shared.domain.sync.ListRowDto
+import com.myapplication.shared.domain.sync.SyncRow
+import com.myapplication.shared.domain.sync.TodoRowDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Instant
 
@@ -35,4 +38,15 @@ interface TodoRepository {
     suspend fun trash(id: Long): Either<TodoError, Unit>
     suspend fun restore(id: Long): Either<TodoError, Unit>
     suspend fun deleteForever(id: Long): Either<TodoError, Unit>
+
+    // Sync support
+    suspend fun readOutbox(limit: Int): Either<TodoError, List<SyncRow>>
+    suspend fun clearOutbox(upToSeq: Long): Either<TodoError, Unit>
+    fun observeOutboxCount(): Flow<Int>
+    suspend fun applyRemoteUpsert(row: TodoRowDto): Either<TodoError, Unit>
+    suspend fun applyRemoteUpsertList(row: ListRowDto): Either<TodoError, Unit>
+    suspend fun applyRemoteDelete(table: String, rowId: Long, updatedAt: Long): Either<TodoError, Unit>
+    suspend fun getSetting(key: String): Either<TodoError, String?>
+    suspend fun setSetting(key: String, value: String): Either<TodoError, Unit>
+    suspend fun getSettings(): Either<TodoError, Map<String, String>>
 }
