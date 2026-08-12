@@ -39,6 +39,7 @@ import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
 import com.myapplication.shared.util.formatDueDate
+import com.myapplication.shared.util.todayDate
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -52,7 +53,7 @@ import kotlinx.datetime.toInstant
  * - 表单状态全部是对话框级本地 state，确认时一次性回传给上层（onConfirm），
  *   因此本组件与具体数据源解耦，列表页 FAB 与侧栏都能复用；
  * - 日期分「日期」与「时间」两个字段维护（dueDate / dueTime），确认时拼成
- *   LocalDateTime；未选时间默认 9:00；
+ *   LocalDateTime；未选时间默认 9:00；日期默认今天（新建的待办直接落在今天）；
  * - 打开即自动聚焦标题输入框（FocusRequester + LaunchedEffect）；
  * - 标题为空时确认无效（直接 return，不回调）。
  */
@@ -67,7 +68,7 @@ fun TodoFormDialog(
     // 表单字段：日期/时间分离保存，只在确认时合并。
     var title by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
-    var dueDate by remember { mutableStateOf<LocalDate?>(null) }
+    var dueDate by remember { mutableStateOf<LocalDate?>(todayDate()) }
     var dueTime by remember { mutableStateOf<LocalTime?>(null) }
     var flag by remember { mutableStateOf(false) }
     // 默认列表：来自调用方（FAB 在列表范围内时预选该列表，否则为收件箱 null）。

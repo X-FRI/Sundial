@@ -25,12 +25,12 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Sundial"
-            packageVersion = "1.0.0"
+            packageVersion = "0.1.0"
             macOS {
                 iconFile.set(file("src/jvmMain/resources/icon.icns"))
                 bundleID = "com.sundial.app"
                 infoPlist {
-                    extraKeysRawXml = "<key>CFBundleShortVersionString</key><string>0.0.1</string>"
+                    extraKeysRawXml = "<key>CFBundleShortVersionString</key><string>0.1.0</string>"
                 }
             }
         }

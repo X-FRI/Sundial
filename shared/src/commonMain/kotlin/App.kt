@@ -149,7 +149,7 @@ fun AppRoot(graph: AppGraph) {
                 val detailId = selectedId
                 Box(Modifier.fillMaxSize()) {
                     Column(Modifier.fillMaxSize().background(colors.bgPrimary)) {
-                        NarrowTopBar(mainVm)
+                        NarrowTopBar(mainVm, syncStatus = syncStatus, onSyncNow = { graph.engine.syncNow() })
                         // 下拉刷新：手势触发立即同步，旋转指示器跟随 syncStatus.syncing 动画。
                         PullToRefreshBox(
                             isRefreshing = syncStatus.syncing,

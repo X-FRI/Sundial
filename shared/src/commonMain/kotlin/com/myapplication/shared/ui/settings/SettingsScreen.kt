@@ -35,6 +35,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.myapplication.shared.AppInfo
 import com.myapplication.shared.domain.sync.SyncMode
 import com.myapplication.shared.domain.sync.SyncStatus
 import com.myapplication.shared.ui.components.IconName
@@ -197,6 +198,19 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
             SectionLabel("同步状态")
             Spacer(Modifier.height(8.dp))
             StatusCard(status)
+            // 页脚：版权 / 关于 / 版本 / 许可证（居中展示，不参与任何交互）。
+            Spacer(Modifier.height(32.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                BasicText(
+                    "${AppInfo.COPYRIGHT} · ${AppInfo.DESCRIPTION}",
+                    style = RemType.text12.copy(color = colors.textLow),
+                )
+                Spacer(Modifier.height(4.dp))
+                BasicText(
+                    "版本 ${AppInfo.VERSION} · ${AppInfo.LICENSE}",
+                    style = RemType.text12.copy(color = colors.textLow),
+                )
+            }
         }
     }
 }
