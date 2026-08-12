@@ -85,7 +85,8 @@ class AppGraph(
      * （mode=local，url/key 空串），deviceId 兜底再走一次 loadDeviceId。
      */
     private fun loadSyncConfig(): SyncConfig {
-        val settings = runBlocking(dbDispatcher) { repository.getSettings().getOrNull() ?: emptyMap() }
+        val repo = repository
+        val settings = runBlocking(dbDispatcher) { repo.getSettings().getOrNull() ?: emptyMap() }
         return SyncConfig(
             mode = SyncMode.fromKey(settings["sync.mode"] ?: "local"),
             supabaseUrl = settings["sync.supabase.url"] ?: "",
