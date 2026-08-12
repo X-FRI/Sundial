@@ -42,7 +42,9 @@ import com.myapplication.shared.ui.components.RemBadge
 import com.myapplication.shared.ui.components.RemButton
 import com.myapplication.shared.ui.components.RemButtonVariant
 import com.myapplication.shared.ui.components.RemIcon
+import com.myapplication.shared.ui.components.RemSyncIndicator
 import com.myapplication.shared.ui.components.RemTextField
+import com.myapplication.shared.ui.sync.phase
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
@@ -314,7 +316,8 @@ private fun ModeOption(
  * 同步状态卡片：按引擎状态分支展示。
  *
  * 状态机（由 SyncEngine.status 驱动）：
- * - 本地模式：固定灰点 + 「本地模式」说明，不显示同步细节；
+ * - 同步中：品牌色旋转指示器 + 「同步中…」标题及进行中提示；
+ * - 本地模式：固定灰指示器 + 「本地模式」说明，不显示同步细节；
  * - 云端模式：connected → 绿点「已连接」，否则黄点「未连接」；
  *   下方细分为待同步条数、上次同步相对时间、最近一次错误（有才显示）。
  */
@@ -327,26 +330,30 @@ private fun StatusCard(status: SyncStatus) {
         SyncMode.Supabase -> "Supabase"
         SyncMode.SundialServer -> "Sundial-Server"
     }
-    // 状态点颜色：本地灰、已连接绿、断开黄。
-    val dotColor = when {
-        status.mode == SyncMode.Local -> colors.textLow
-        status.connected -> colors.success
-        else -> colors.warning
-    }
-    // 主标题：本地模式 / 已连接 / 未连接。
+    // 主标题：同步中 / 本地模式 / 已连接 / 未连接。
     val headline = when {
+        status.syncing -> "同步中…"
         status.mode == SyncMode.Local -> "本地模式"
         status.connected -> "已连接"
         else -> "未连接"
     }
+    val headlineColor = if (status.syncing) colors.brand else colors.textHigh
     SettingsCard {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(8.dp).background(dotColor, CircleShape))
+                RemSyncIndicator(state = status.phase(), size = 12.dp)
                 Spacer(Modifier.width(8.dp))
-                BasicText(headline, style = RemType.label12.copy(color = colors.textHigh))
+                BasicText(headline, style = RemType.label12.copy(color = headlineColor))
                 Spacer(Modifier.weight(1f))
                 RemBadge(modeLabel, color = if (status.mode == SyncMode.Supabase) colors.info else null)
+            }
+            if (status.syncing) {
+                // 同步中：显示进行中的文案提示。
+                Spacer(Modifier.height(10.dp))
+                BasicText(
+                    "正在将本地变更同步到云端…",
+                    style = RemType.text12.copy(color = colors.textLow),
+                )
             }
             if (status.mode == SyncMode.Local) {
                 // 本地模式：只给一句隐私说明，不需要同步指标。
