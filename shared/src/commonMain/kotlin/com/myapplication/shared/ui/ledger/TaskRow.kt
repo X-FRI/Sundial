@@ -145,8 +145,9 @@ fun TaskRow(
             IconName.Flag,
             if (item.flag) "取消旗标" else "添加旗标",
             onClick = onToggleFlag,
+            tint = if (item.flag) colors.warning else null,
             size = 14.dp,
-            containerSize = 32.dp,
+            containerSize = RemControlSize.iconSmall,
         )
     }
 }
