@@ -166,10 +166,51 @@ class DateParserTest {
 
     @Test
     fun middayMarker() {
-        // "中午"恒为 12 点
+        // 中午12点 = 12:00（不翻倍）
         val r = DateParser.parse("中午12点 吃饭", today)
         assertEquals("吃饭", r.title)
         assertEquals(LocalTime(12, 0), r.dueDate?.time)
+    }
+
+    @Test
+    fun am12IsMidnight() {
+        // 上午12点 = 午夜 0 点，不是 12 点
+        val r = DateParser.parse("上午12点 接机", today)
+        assertEquals("接机", r.title)
+        assertEquals(LocalTime(0, 0), r.dueDate?.time)
+        assertEquals(LocalDate(2026, 8, 11), r.dueDate?.date)
+    }
+
+    @Test
+    fun earlyMorning12IsMidnight() {
+        // "早上"同"上午"：12 点 = 午夜 0 点
+        val r = DateParser.parse("早上12点 出发", today)
+        assertEquals("出发", r.title)
+        assertEquals(LocalTime(0, 0), r.dueDate?.time)
+    }
+
+    @Test
+    fun amNormalHourUnchanged() {
+        // 上午/早上非 12 点小时原样保留（回归保护）
+        val r = DateParser.parse("上午9点 开会", today)
+        assertEquals("开会", r.title)
+        assertEquals(LocalTime(9, 0), r.dueDate?.time)
+    }
+
+    @Test
+    fun middayNonNoonAddsTwelve() {
+        // 中午 N 点（N≠12）= N+12：中午3点 = 15:00
+        val r = DateParser.parse("中午3点 开会", today)
+        assertEquals("开会", r.title)
+        assertEquals(LocalTime(15, 0), r.dueDate?.time)
+    }
+
+    @Test
+    fun middayOneIsThirteen() {
+        // 中午1点 = 13:00
+        val r = DateParser.parse("中午1点 吃饭", today)
+        assertEquals("吃饭", r.title)
+        assertEquals(LocalTime(13, 0), r.dueDate?.time)
     }
 
     @Test

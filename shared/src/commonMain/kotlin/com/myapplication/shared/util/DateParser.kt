@@ -157,8 +157,9 @@ object DateParser {
      *
      * 时段词规则：
      * - 下午/晚上：小时 < 12 则 +12（12点下午 = 12 不翻倍）；
-     * - 中午：恒为 12 点（忽略数字，符合口语习惯）；
-     * - 上午/早上/无词：原样保留（12点上午会被当作 12 点，属已知取舍）；
+     * - 中午：12 点恒为 12，其余 N 点 = N+12（中午1点 = 13:00，中午3点 = 15:00）；
+     * - 上午/早上：12 点折算为午夜 0 点，其余原样保留（上午9点 = 9:00）；
+     * - 无词：原样保留（12点会被当作 12 点，属已知取舍）；
      * - 非法小时（如 25 点）经 runCatching 返回 null，不污染结果。
      */
     private fun extractTime(text: String): LocalTime? {
@@ -168,7 +169,8 @@ object DateParser {
         val marker = m.groupValues[1]
         val hour = when (marker) {
             "下午", "晚上" -> if (h < 12) h + 12 else h
-            "中午" -> 12
+            "中午" -> if (h == 12) 12 else h + 12
+            "上午", "早上" -> if (h == 12) 0 else h
             else -> h
         }
         return runCatching { LocalTime(hour, min) }.getOrNull()
