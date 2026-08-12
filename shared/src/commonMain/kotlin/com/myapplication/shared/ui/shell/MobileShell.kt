@@ -68,7 +68,7 @@ fun MobileShell(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
-            NarrowBottomNav(mainVm, Modifier.navigationBarsPadding())
+            NarrowBottomNav(mainVm)
         }
         if (selectedId != null) {
             ModalBottomSheet(
@@ -82,7 +82,7 @@ fun MobileShell(
                     graph = graph,
                     todoId = selectedId,
                     showCloseButton = true,
-                    modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(),
+                    modifier = Modifier.fillMaxSize().fillMaxWidth().background(colors.bgPrimary).statusBarsPadding().navigationBarsPadding(),
                 )
             }
         }

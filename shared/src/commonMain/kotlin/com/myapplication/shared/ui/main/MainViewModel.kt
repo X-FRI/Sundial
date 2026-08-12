@@ -27,7 +27,7 @@ import kotlinx.datetime.toInstant
  *
  * 语义：
  * - [Main] 主列表（窄屏还包含顶栏/底栏，宽屏对应三栏中的左两栏）；
- * - [Detail] 选中某个待办详情（todoId 供 DetailScreen 定位数据）；
+ * - [Detail] 选中某个待办详情（todoId 供 DetailContent 定位数据）；
  * - [Settings] 全屏设置页，优先于宽/窄屏分支渲染。
  *
  * 返回语义：任意非 Main 状态调用 [MainViewModel.back] 都会回到 [Main]，
@@ -216,4 +216,16 @@ class MainViewModel(
         viewModelScope.launch { repository.deleteList(list.id).onLeft { lastError.value = it } }
         if (scope.value == Scope.List(list.id)) scope.value = Scope.All
     }
+}
+
+/** 顶栏/页头标题：搜索词非空时统一显示「搜索」，否则按范围取标题。 */
+fun scopeTitle(scope: Scope, query: String): String = when {
+    query.isNotBlank() -> "搜索"
+    scope == Scope.Today -> "今天"
+    scope == Scope.Scheduled -> "计划"
+    scope == Scope.All -> "全部待办"
+    scope == Scope.Completed -> "已完成"
+    scope == Scope.Trash -> "垃圾箱"
+    scope is Scope.List -> "列表"
+    else -> "待办"
 }

@@ -96,7 +96,7 @@ fun AppRoot(graph: AppGraph) {
     }
 
     // 全局错误提示：MainViewModel 的命令失败统一经 lastError 通道上报，这里映射成中文弹窗。
-    // 详情页错误由 DetailScreen 自己消费，不走这里。
+    // 详情页错误由 DetailContent 自己消费，不走这里。
     val error by mainVm.lastError.collectAsState()
     val errorMsg = error?.uiMessage()
     if (errorMsg != null) {

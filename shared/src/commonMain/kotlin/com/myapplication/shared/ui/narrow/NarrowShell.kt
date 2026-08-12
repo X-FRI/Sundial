@@ -45,11 +45,11 @@ import com.myapplication.shared.ui.components.RemSyncIndicator
 import com.myapplication.shared.ui.components.RemTextField
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Scope
+import com.myapplication.shared.ui.main.scopeTitle
 import com.myapplication.shared.ui.sync.phase
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
-import com.myapplication.shared.ui.todolist.scopeTitle
 
 /**
  * 窄屏（<900dp）导航壳：顶部栏 + 底部五格导航。

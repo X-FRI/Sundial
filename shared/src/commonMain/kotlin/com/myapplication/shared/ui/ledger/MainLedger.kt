@@ -28,10 +28,10 @@ import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemTextField
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Scope
+import com.myapplication.shared.ui.main.scopeTitle
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemType
 import com.myapplication.shared.ui.todolist.TodoFormDialog
-import com.myapplication.shared.ui.todolist.scopeTitle
 import com.myapplication.shared.util.todayDate
 import kotlin.time.Clock
 import kotlinx.coroutines.delay

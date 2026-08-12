@@ -24,7 +24,7 @@ import kotlinx.datetime.toLocalDateTime
  * 详情页 ViewModel：以 todoId 为作用域，负责单个待办的读写与子任务管理。
  *
  * 设计要点：
- * - 由 DetailScreen 以 `viewModel(key = "detail-$todoId")` 按 id 隔离实例，
+ * - 由 DetailContent 以 `viewModel(key = "detail-$todoId")` 按 id 隔离实例，
  *   保证每个详情页只观察自己那一条数据；
  * - 标题/备注/日期/列表/子任务等修改全部走「写后即忘」命令（repository.setXxx），
  *   界面数据靠 [todo]/[subtasks] 的 Flow 自动回流刷新，无需手动同步本地状态；
@@ -50,7 +50,7 @@ class DetailViewModel(
     val lists: StateFlow<List<TodoList>> = repository.observeLists()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** 命令失败通道，由 DetailScreen 订阅弹窗。 */
+    /** 命令失败通道，由 DetailContent 订阅弹窗。 */
     val lastError = MutableStateFlow<TodoError?>(null)
 
     fun dismissError() {
