@@ -102,12 +102,14 @@ class SyncEngine(
             try {
                 val drainResult = tryDrainOutbox()
                 val pullResult = tryPullFromRemote()
-                val drainFailed = drainResult?.isLeft() == true
-                val pullFailed = pullResult?.isLeft() == true
+                val drainFailed = drainResult?.isLeft() != false
+                val pullFailed = pullResult?.isLeft() != false
                 if (drainFailed || pullFailed) {
                     val msg = when {
-                        drainFailed -> (drainResult as Either.Left<SyncError>).value.message()
-                        else -> (pullResult as Either.Left<SyncError>).value.message()
+                        drainFailed -> (drainResult as? Either.Left<SyncError>)?.value?.message()
+                            ?: "同步失败: 未知错误"
+                        else -> (pullResult as? Either.Left<SyncError>)?.value?.message()
+                            ?: "同步失败: 未知错误"
                     }
                     _status.update { it.copy(syncing = false, connected = false, lastError = msg) }
                 } else {

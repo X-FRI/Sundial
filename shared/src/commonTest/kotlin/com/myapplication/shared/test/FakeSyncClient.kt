@@ -27,6 +27,7 @@ class FakeSyncClient : SyncClient {
     val remote = MutableStateFlow<List<SyncRow>>(emptyList())
     var pullResult: List<SyncRow> = emptyList()
     var failPull = false
+    var crashPull = false
 
     override suspend fun push(rows: List<SyncRow>): Either<SyncError, Unit> {
         pushAttempts++
@@ -37,7 +38,11 @@ class FakeSyncClient : SyncClient {
     }
 
     override suspend fun pull(): Either<SyncError, List<SyncRow>> =
-        if (failPull) Either.Left(SyncError.Transport("network down")) else Either.Right(pullResult)
+        when {
+            crashPull -> throw RuntimeException("boom")
+            failPull -> Either.Left(SyncError.Transport("network down"))
+            else -> Either.Right(pullResult)
+        }
 
     override fun observeRemoteChanges(): Flow<SyncRow> =
         flow { remote.value.forEach { emit(it) } }

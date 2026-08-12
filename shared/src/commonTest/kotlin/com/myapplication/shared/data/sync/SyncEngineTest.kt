@@ -87,6 +87,19 @@ class SyncEngineTest {
     }
 
     @Test
+    fun syncNowUnexpectedExceptionIsFailureNotSuccess() = runTest {
+        val repo = FakeTodoRepository()
+        val client = FakeSyncClient().apply { crashPull = true }
+        val engine = SyncEngine(backgroundScope, repo, FakeClock(1_000_000)) { client.right() }
+        engine.configure(supabaseConfig())
+        runCurrent() // 首次自动对齐：pull 抛意外异常（null 结果）-> 必须记为失败
+        val status = engine.status.value
+        assertFalse(status.syncing)
+        assertFalse(status.connected)
+        assertEquals("同步失败: 未知错误", status.lastError)
+    }
+
+    @Test
     fun configureToLocalWhileSyncingResetsSyncing() = runTest {
         val repo = FakeTodoRepository()
         val client = FakeSyncClient().apply { pushDelayMs = 1_000 }
