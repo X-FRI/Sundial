@@ -57,6 +57,7 @@ fun RemTextField(
     trailing: Pair<String, () -> Unit>? = null,
     focusRequester: FocusRequester? = null,
     bordered: Boolean = true,
+    readOnly: Boolean = false,
 ) {
     val colors = LocalRemColors.current
     var focused by remember { mutableStateOf(false) }
@@ -90,6 +91,7 @@ fun RemTextField(
                 .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
                 .onFocusChanged { focused = it.isFocused },
             textStyle = style.copy(color = colors.textHigh),
+            readOnly = readOnly,
             cursorBrush = SolidColor(colors.brand),
             singleLine = singleLine,
             minLines = minLines,

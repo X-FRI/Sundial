@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +33,7 @@ import com.myapplication.shared.ui.todolist.TodoFormDialog
 import com.myapplication.shared.ui.todolist.scopeTitle
 import com.myapplication.shared.util.todayDate
 import kotlin.time.Clock
+import kotlinx.coroutines.delay
 import kotlinx.datetime.TimeZone
 
 @Composable
@@ -53,8 +55,16 @@ fun MainLedger(
     val listCounts by mainVm.listCounts.collectAsState()
     var showCreate by remember { mutableStateOf(false) }
     val groups = remember(todos) { buildTaskGroups(todos) }
-    val rhythm = remember(todos, clock, timeZone) { buildTodayRhythmState(todos, clock.now(), timeZone) }
-    val today = todayDate()
+    var now by remember(clock) { mutableStateOf(clock.now()) }
+    LaunchedEffect(clock) {
+        while (true) {
+            now = clock.now()
+            delay(60_000)
+        }
+    }
+    val rhythm = remember(todos, now, timeZone) { buildTodayRhythmState(todos, now, timeZone) }
+    val today = todayDate(clock, timeZone)
+    val inboxId = lists.firstOrNull { it.position == 0 }?.id
 
     Column(modifier.fillMaxSize().background(colors.bgSecondary).padding(horizontal = 24.dp, vertical = 20.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -77,7 +87,8 @@ fun MainLedger(
             todayCount = todayCount,
             scheduledCount = scheduledCount,
             completedCount = completedCount,
-            inboxCount = listCounts.values.firstOrNull() ?: 0,
+            inboxCount = inboxId?.let { listCounts[it] ?: 0 } ?: 0,
+            inboxScope = inboxId?.let { Scope.List(it) },
             onScope = mainVm::selectScope,
         )
         Spacer(Modifier.height(12.dp))
@@ -131,13 +142,14 @@ private fun CompactOverview(
     scheduledCount: Int,
     completedCount: Int,
     inboxCount: Int,
+    inboxScope: Scope?,
     onScope: (Scope) -> Unit,
 ) {
     Row(Modifier.fillMaxWidth()) {
         OverviewCell("待办", todayCount, IconName.Today) { onScope(Scope.Today) }
         OverviewCell("计划", scheduledCount, IconName.Scheduled) { onScope(Scope.Scheduled) }
         OverviewCell("已完成", completedCount, IconName.CheckCircle) { onScope(Scope.Completed) }
-        OverviewCell("收件箱", inboxCount, IconName.Inbox) { onScope(Scope.All) }
+        OverviewCell("收件箱", inboxCount, IconName.Inbox) { onScope(inboxScope ?: Scope.All) }
     }
 }
 
@@ -159,6 +171,7 @@ private fun QuickAddBar(onClick: () -> Unit) {
         onValueChange = {},
         placeholder = "添加待办…",
         leadingIcon = IconName.Plus,
+        readOnly = true,
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
     )
 }
