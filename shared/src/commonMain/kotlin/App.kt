@@ -1,22 +1,15 @@
 package com.myapplication.shared.ui.app
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -28,8 +21,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -47,7 +38,7 @@ import com.myapplication.shared.ui.main.Route
 import com.myapplication.shared.ui.narrow.NarrowBottomNav
 import com.myapplication.shared.ui.narrow.NarrowTopBar
 import com.myapplication.shared.ui.settings.SettingsScreen
-import com.myapplication.shared.ui.sidebar.Sidebar
+import com.myapplication.shared.ui.shell.DesktopShell
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemType
 import com.myapplication.shared.ui.theme.RemindersTheme
@@ -76,7 +67,7 @@ fun App() {
  *
  * 路由三分支（按优先级）：
  * 1. 设置页全屏覆盖（任何屏宽下优先）；
- * 2. 宽屏三栏：Sidebar + 列表 + 右侧详情（AnimatedVisibility 控制详情栏滑入滑出）；
+ * 2. 宽屏桌面外壳：DesktopShell（Sidebar + 主台账 + 右侧详情检查器）；
  * 3. 窄屏：主列表常驻，详情以底部抽屉（ModalBottomSheet）形式从底部滑出。
  */
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
@@ -114,33 +105,9 @@ fun AppRoot(graph: AppGraph) {
                 viewModel { graph.settingsViewModelFactory() },
                 onBack = mainVm::back,
             )
-            // 分支 2：宽屏三栏——Sidebar / 列表 / 详情。
+            // 分支 2：宽屏桌面外壳（Sidebar / 台账 / 详情检查器）。
             wide -> {
-                Row(Modifier.fillMaxSize()) {
-                    Sidebar(mainVm, syncStatus, onSyncNow = { graph.engine.syncNow() })
-                    TodoListScreen(mainVm, Modifier.weight(1f).background(colors.bgSecondary))
-                    // 详情栏固定 340dp 宽；visible 跟随路由，进入/退出各有动画。
-                    // statusBarsPadding 仅对刘海/状态栏区域做避让，drawBehind 画左侧分隔线。
-                    AnimatedVisibility(
-                        visible = selectedId != null,
-                        enter = fadeIn(tween(150)) + slideInHorizontally(initialOffsetX = { it / 8 }),
-                        exit = fadeOut(tween(100)),
-                        modifier = Modifier
-                            .width(340.dp)
-                            .background(colors.bgPrimary)
-                            .statusBarsPadding()
-                            .drawBehind {
-                                drawLine(
-                                    colors.border,
-                                    Offset(0f, 0f),
-                                    Offset(0f, size.height),
-                                    1f,
-                                )
-                            },
-                    ) {
-                        selectedId?.let { DetailScreen(mainVm, graph, it) }
-                    }
-                }
+                DesktopShell(graph = graph, mainVm = mainVm)
             }
             // 分支 3：窄屏——主列表常驻，详情以 ModalBottomSheet 从底部滑出（带遮罩与下滑手势）。
             // 可见性完全由路由派生：Route.Detail 时组合底部抽屉，mainVm.back()（返回键/Escape/
