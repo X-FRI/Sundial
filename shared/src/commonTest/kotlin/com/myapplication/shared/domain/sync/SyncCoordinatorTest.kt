@@ -22,6 +22,7 @@ class FakeSyncClient : SyncClient {
     var failPush = false
     val remote = MutableStateFlow<List<SyncRow>>(emptyList())
     var pullResult: List<SyncRow> = emptyList()
+    var failPull = false
 
     override suspend fun push(rows: List<SyncRow>): Either<SyncError, Unit> {
         if (failPush) return Either.Left(SyncError.Transport("network down"))
@@ -29,7 +30,8 @@ class FakeSyncClient : SyncClient {
         return Either.Right(Unit)
     }
 
-    override suspend fun pull(): Either<SyncError, List<SyncRow>> = Either.Right(pullResult)
+    override suspend fun pull(): Either<SyncError, List<SyncRow>> =
+        if (failPull) Either.Left(SyncError.Transport("network down")) else Either.Right(pullResult)
 
     override fun observeRemoteChanges(): Flow<SyncRow> =
         flow { remote.value.forEach { emit(it) } }
@@ -163,6 +165,34 @@ class SyncCoordinatorTest {
         assertTrue(result.isRight())
         assertEquals(1, result.getOrNull())
         assertEquals(listOf("remote"), repo.appliedUpserts.map { it.title })
+    }
+
+    @Test
+    fun pullSkipsMalformedRowButAppliesValidRows() = runTest {
+        val repo = FakeTodoRepository()
+        val client = FakeSyncClient().apply {
+            pullResult = listOf(
+                row(rowId = 1, payload = "not-json"),
+                row(rowId = 2, payload = todoPayload("ok")),
+            )
+        }
+        val coordinator = SyncCoordinator(repo, client, "device-a")
+        val result = coordinator.pullFromRemote()
+        // 单行应用失败只影响该行，整体返回成功且有效行照常应用
+        assertTrue(result.isRight())
+        assertEquals(1, result.getOrNull())
+        assertEquals(listOf("ok"), repo.appliedUpserts.map { it.title })
+    }
+
+    @Test
+    fun pullPropagatesTransportFailure() = runTest {
+        val repo = FakeTodoRepository()
+        val client = FakeSyncClient().apply { failPull = true }
+        val coordinator = SyncCoordinator(repo, client, "device-a")
+        val result = coordinator.pullFromRemote()
+        // 传输层失败经 bind 直接向上传播，不落入应用管线
+        assertEquals(SyncError.Transport("network down"), result.leftOrNull())
+        assertTrue(repo.appliedUpserts.isEmpty())
     }
 
     private fun todoPayload(title: String) = Json.encodeToString(

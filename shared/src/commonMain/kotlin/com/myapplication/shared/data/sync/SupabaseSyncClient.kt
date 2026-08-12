@@ -132,17 +132,19 @@ class SupabaseSyncClient(
     private suspend fun pullTable(table: String): List<SyncRow> {
         val result = client.from(table).select { filter { gt("updated_at", 0) } }
         val elements = Json.parseToJsonElement(result.data).jsonArray
-        return elements.map { el ->
-            val obj = el.jsonObject
-            SyncRow(
-                seq = 0L,
-                table = table,
-                rowId = obj["id"]!!.jsonPrimitive.longOrNull ?: 0L,
-                action = SyncAction.UPSERT,
-                payload = el.toString(),
-                updatedAt = obj["updated_at"]!!.jsonPrimitive.longOrNull ?: 0L,
-                updatedBy = obj["updated_by"]?.jsonPrimitive?.contentOrNull ?: "",
-            )
+        return elements.mapNotNull { el ->
+            runCatching {
+                val obj = el.jsonObject
+                SyncRow(
+                    seq = 0L,
+                    table = table,
+                    rowId = obj["id"]?.jsonPrimitive?.longOrNull ?: 0L,
+                    action = SyncAction.UPSERT,
+                    payload = el.toString(),
+                    updatedAt = obj["updated_at"]?.jsonPrimitive?.longOrNull ?: 0L,
+                    updatedBy = obj["updated_by"]?.jsonPrimitive?.contentOrNull ?: "",
+                )
+            }.getOrNull()
         }
     }
 
