@@ -10,7 +10,7 @@ import kotlinx.datetime.toLocalDateTime
 
 /**
  * 到期日分组（智能清单的分桶依据）：
- * OVERDUE=过期 / TODAY=今天 / TOMORROW=明天 / THIS_WEEK=本周 / LATER=计划。
+ * OVERDUE=过期 / TODAY=今天 / TOMORROW=明天 / THIS_WEEK=本周（7 日视界内，含跨周）/ LATER=计划。
  */
 enum class DueBucket { OVERDUE, TODAY, TOMORROW, THIS_WEEK, LATER }
 
@@ -22,14 +22,13 @@ fun todayDate(clock: Clock, timeZone: TimeZone): LocalDate =
     clock.now().toLocalDateTime(timeZone).date
 
 /**
- * 按截止日期分桶。
+ * 按截止日期分桶（基于距今天的日差，不依赖星期算术）。
  *
  * 规则：
  * - diff < 0 → OVERDUE；0 → TODAY；1 → TOMORROW；
- * - 2..（本周日距今天的天数）→ THIS_WEEK，边界 = 8 - 今天星期号
- *   （周一为 1，则本周余下 6 天；周日为 7，则余下 0 天——周日没有"本周"桶，
- *   明天起全部落入 LATER，属已知取舍）；
- * - 其余 → LATER。
+ * - 2..7 → THIS_WEEK（含跨周的近未来日期：如周二看下周一 diff=6、周日看下周三 diff=3；
+ *   枚举无"下周"档，7 日视界内一律归本周）；
+ * - 其余（≥8 天）→ LATER。
  */
 fun bucketOf(due: LocalDate, today: LocalDate): DueBucket {
     val diff = today.daysUntil(due)
@@ -37,7 +36,7 @@ fun bucketOf(due: LocalDate, today: LocalDate): DueBucket {
         diff < 0 -> DueBucket.OVERDUE
         diff == 0 -> DueBucket.TODAY
         diff == 1 -> DueBucket.TOMORROW
-        diff < 8 - today.dayOfWeek.isoDayNumber -> DueBucket.THIS_WEEK
+        diff <= 7 -> DueBucket.THIS_WEEK
         else -> DueBucket.LATER
     }
 }
@@ -63,8 +62,7 @@ fun formatDueDate(due: Instant?, tz: TimeZone = TimeZone.currentSystemDefault())
  *
  * 日期部分规则（以 today 为参照）：
  * - 差 0/-1/+1 天 → "今天/昨天/明天"；
- * - 未来 2..7 天内且目标星期号 > 今天星期号 → "周X"
- *   （注意：跨周的未来日期即使很近也走"X月X日"，如周二看到下周一 → 8月17日）；
+ * - 未来 2..7 天内 → "周X"（跨周也显示：如周二看到下周一 → 周一）；
  * - 其余 → "X月X日"。
  *
  * 时间部分：0 点整不显示时间；否则 " HH:MM"（分钟补零，小时不补）。
@@ -74,14 +72,13 @@ fun formatDueDate(due: Instant?, tz: TimeZone, today: LocalDate): String {
     val ldt = due.toLocalDateTime(tz)
     val date = ldt.date
     val days = today.daysUntil(date)
-    // 日期文案：相对词 → 本周星期 → 月日
+    // 日期文案：相对词 → 周X → 月日
     val dateLabel = when (days) {
         0 -> "今天"
         -1 -> "昨天"
         1 -> "明天"
         else -> {
-            val todayDow = today.dayOfWeek.isoDayNumber
-            if (date.dayOfWeek.isoDayNumber > todayDow && days in 2..7) "周${weekdaysZh[date.dayOfWeek.isoDayNumber]}"
+            if (days in 2..7) "周${weekdaysZh[date.dayOfWeek.isoDayNumber]}"
             else "${date.monthNumber}月${date.dayOfMonth}日"
         }
     }
