@@ -3,6 +3,7 @@ package com.myapplication.shared.ui.ledger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -43,6 +44,10 @@ fun MainLedger(
     modifier: Modifier = Modifier,
     clock: Clock = Clock.System,
     timeZone: TimeZone = TimeZone.currentSystemDefault(),
+    showHeader: Boolean = true,
+    showRhythm: Boolean = true,
+    showOverview: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
 ) {
     val colors = LocalRemColors.current
     val todos by mainVm.todos.collectAsState()
@@ -66,32 +71,38 @@ fun MainLedger(
     val today = todayDate(clock, timeZone)
     val inboxId = lists.firstOrNull { it.position == 0 }?.id
 
-    Column(modifier.fillMaxSize().background(colors.bgSecondary).padding(horizontal = 24.dp, vertical = 20.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                androidx.compose.foundation.text.BasicText(
-                    scopeTitle(scope, query),
-                    style = RemType.title24.copy(color = colors.textHigh),
-                )
-                androidx.compose.foundation.text.BasicText(
-                    "${today.year}-${today.monthNumber.toString().padStart(2, '0')}-${today.dayOfMonth.toString().padStart(2, '0')}",
-                    style = RemType.text12.copy(color = colors.textLow),
-                )
+    Column(modifier.fillMaxSize().background(colors.bgSecondary).padding(contentPadding)) {
+        if (showHeader) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    androidx.compose.foundation.text.BasicText(
+                        scopeTitle(scope, query),
+                        style = RemType.title24.copy(color = colors.textHigh),
+                    )
+                    androidx.compose.foundation.text.BasicText(
+                        "${today.year}-${today.monthNumber.toString().padStart(2, '0')}-${today.dayOfMonth.toString().padStart(2, '0')}",
+                        style = RemType.text12.copy(color = colors.textLow),
+                    )
+                }
+                RemButton("添加待办", onClick = { showCreate = true })
             }
-            RemButton("添加待办", onClick = { showCreate = true })
+            Spacer(Modifier.height(16.dp))
         }
-        Spacer(Modifier.height(16.dp))
-        TodayRhythm(rhythm)
-        Spacer(Modifier.height(12.dp))
-        CompactOverview(
-            todayCount = todayCount,
-            scheduledCount = scheduledCount,
-            completedCount = completedCount,
-            inboxCount = inboxId?.let { listCounts[it] ?: 0 } ?: 0,
-            inboxScope = inboxId?.let { Scope.List(it) },
-            onScope = mainVm::selectScope,
-        )
-        Spacer(Modifier.height(12.dp))
+        if (showRhythm) {
+            TodayRhythm(rhythm)
+            Spacer(Modifier.height(12.dp))
+        }
+        if (showOverview) {
+            CompactOverview(
+                todayCount = todayCount,
+                scheduledCount = scheduledCount,
+                completedCount = completedCount,
+                inboxCount = inboxId?.let { listCounts[it] ?: 0 } ?: 0,
+                inboxScope = inboxId?.let { Scope.List(it) },
+                onScope = mainVm::selectScope,
+            )
+            Spacer(Modifier.height(12.dp))
+        }
         QuickAddBar(onClick = { showCreate = true })
         Spacer(Modifier.height(12.dp))
         LazyColumn(Modifier.fillMaxSize()) {
