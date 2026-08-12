@@ -14,6 +14,7 @@ import com.myapplication.shared.util.createDeviceId
 import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.TimeZone
 
@@ -38,8 +39,10 @@ class AppGraph(
     val timeZone: TimeZone = TimeZone.currentSystemDefault(),
 ) {
     private val db = TodoDb(driver)
+    // 所有 SQLite 访问收敛到专用单线程（JdbcDriver 非线程安全，单线程串行化全部 DB 调用）
+    private val dbDispatcher = newSingleThreadContext("sqlite-db")
     // repository 构造时即同步读取/生成 deviceId（见 loadDeviceId 说明）
-    val repository: TodoRepository by lazy { TodoRepositoryImpl(db, clock, timeZone, loadDeviceId()) }
+    val repository: TodoRepository by lazy { TodoRepositoryImpl(db, clock, timeZone, loadDeviceId(), dbDispatcher) }
     val addTodo: AddTodoUseCase by lazy { AddTodoUseCase(repository) }
     val addSubTask: AddSubTaskUseCase by lazy { AddSubTaskUseCase(repository) }
 
@@ -62,15 +65,15 @@ class AppGraph(
      * 先 updateSetting 再 insertSettingIfMissing，覆盖"旧库已有行"与
      * "全新库无行"两种情况（update 无行不报错）。
      */
-    private fun loadDeviceId(): String {
+    private fun loadDeviceId(): String = runBlocking(dbDispatcher) {
         val existing = db.todoDbQueries.getSetting("sync.deviceId").executeAsOneOrNull()
-        if (existing != null) return existing
+        if (existing != null) return@runBlocking existing
         val id = createDeviceId()
         db.transaction {
             db.todoDbQueries.updateSetting(id, "sync.deviceId")
             db.todoDbQueries.insertSettingIfMissing("sync.deviceId", id, "sync.deviceId")
         }
-        return id
+        id
     }
 
     /**
@@ -82,7 +85,7 @@ class AppGraph(
      * （mode=local，url/key 空串），deviceId 兜底再走一次 loadDeviceId。
      */
     private fun loadSyncConfig(): SyncConfig {
-        val settings = runBlocking { repository.getSettings().getOrNull() ?: emptyMap() }
+        val settings = runBlocking(dbDispatcher) { repository.getSettings().getOrNull() ?: emptyMap() }
         return SyncConfig(
             mode = SyncMode.fromKey(settings["sync.mode"] ?: "local"),
             supabaseUrl = settings["sync.supabase.url"] ?: "",

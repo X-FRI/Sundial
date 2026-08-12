@@ -15,8 +15,12 @@ import com.myapplication.shared.domain.sync.SyncRow
 import com.myapplication.shared.domain.sync.TodoRowDto
 import kotlin.time.Clock
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.newSingleThreadContext
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -45,6 +49,7 @@ class TodoRepositoryImpl(
     private val clock: Clock = Clock.System,
     private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
     private val deviceId: String = "local",
+    private val dbDispatcher: CoroutineDispatcher = newSingleThreadContext("sqlite-db"),
 ) : TodoRepository {
 
     // ---- DB 行 <-> 领域/DTO 映射（epoch 毫秒 <-> Instant） ----
@@ -178,12 +183,15 @@ class TodoRepositoryImpl(
 
     override fun observeLists(): Flow<List<TodoList>> =
         db.todoDbQueries.selectLists().asFlow().map { it.executeAsList() }.map { lists -> lists.map { it.toDomain() } }
+            .flowOn(dbDispatcher)
 
     override fun observeAllActive(): Flow<List<TodoItem>> =
         db.todoDbQueries.selectAllActive().asFlow().map { it.executeAsList() }.map { todos -> todos.map { it.toDomain() } }
+            .flowOn(dbDispatcher)
 
     override fun observeByList(listId: Long): Flow<List<TodoItem>> =
         db.todoDbQueries.selectByList(listId).asFlow().map { it.executeAsList() }.map { todos -> todos.map { it.toDomain() } }
+            .flowOn(dbDispatcher)
 
     override fun observeToday(): Flow<List<TodoItem>> {
         // 计算「今天」的 [start, end) 毫秒区间（本地时区零点起 24 小时），交给 SQL 层按区间过滤
@@ -191,33 +199,39 @@ class TodoRepositoryImpl(
         val start = today.atStartOfDayIn(timeZone).toEpochMilliseconds()
         val end = today.plus(1, DateTimeUnit.DAY).atStartOfDayIn(timeZone).toEpochMilliseconds()
         return db.todoDbQueries.selectToday(start, end).asFlow().map { it.executeAsList() }.map { todos -> todos.map { it.toDomain() } }
+            .flowOn(dbDispatcher)
     }
 
     override fun observeScheduled(): Flow<List<TodoItem>> =
         db.todoDbQueries.selectWithDueDate().asFlow().map { it.executeAsList() }.map { todos -> todos.map { it.toDomain() } }
+            .flowOn(dbDispatcher)
 
     override fun observeCompleted(): Flow<List<TodoItem>> =
         db.todoDbQueries.selectCompleted().asFlow().map { it.executeAsList() }.map { todos -> todos.map { it.toDomain() } }
+            .flowOn(dbDispatcher)
 
     override fun observeTrashed(): Flow<List<TodoItem>> =
         db.todoDbQueries.selectTrashed().asFlow().map { it.executeAsList() }.map { todos -> todos.map { it.toDomain() } }
+            .flowOn(dbDispatcher)
 
     override fun observeSubTasks(parentId: Long): Flow<List<TodoItem>> =
         db.todoDbQueries.selectSubTasks(parentId).asFlow().map { it.executeAsList() }.map { todos -> todos.map { it.toDomain() } }
+            .flowOn(dbDispatcher)
 
     override fun observeTodo(id: Long): Flow<TodoItem?> =
         db.todoDbQueries.selectById(id).asFlow().map { it.executeAsOneOrNull() }.map { it?.toDomain() }
+            .flowOn(dbDispatcher)
 
     override fun search(query: String): Flow<List<TodoItem>> {
         // 转义 LIKE 通配符（\ % _），使搜索按字面量匹配而不是通配
         val escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         val pattern = "%$escaped%"
         return db.todoDbQueries.searchTodos(pattern, pattern).asFlow().map { it.executeAsList() }
-            .map { todos -> todos.map { it.toDomain() } }
+            .map { todos -> todos.map { it.toDomain() } }.flowOn(dbDispatcher)
     }
 
     override suspend fun findById(id: Long): Either<TodoError, TodoItem?> =
-        guard { db.todoDbQueries.selectById(id).executeAsOneOrNull()?.toDomain() }
+        guard { withContext(dbDispatcher) { db.todoDbQueries.selectById(id).executeAsOneOrNull()?.toDomain() } }
 
     // ---- 命令（双写 outbox） ----
 
@@ -229,14 +243,16 @@ class TodoRepositoryImpl(
      */
     override suspend fun ensureInbox(): Either<TodoError, Long> = either {
         try {
-            db.transaction {
-                // 1. 事务内检查：列表为空才创建收件箱
-                val lists = db.todoDbQueries.selectLists().executeAsList()
-                if (lists.isEmpty()) {
-                    // 2. 插入收件箱行并读回（拿到自增 id），写 outbox 快照供同步
-                    db.todoDbQueries.insertList("收件箱", "blue", 0, now, now, deviceId)
-                    val row = db.todoDbQueries.selectLists().executeAsList().first()
-                    appendListOutbox(row.toDto())
+            withContext(dbDispatcher) {
+                db.transaction {
+                    // 1. 事务内检查：列表为空才创建收件箱
+                    val lists = db.todoDbQueries.selectLists().executeAsList()
+                    if (lists.isEmpty()) {
+                        // 2. 插入收件箱行并读回（拿到自增 id），写 outbox 快照供同步
+                        db.todoDbQueries.insertList("收件箱", "blue", 0, now, now, deviceId)
+                        val row = db.todoDbQueries.selectLists().executeAsList().first()
+                        appendListOutbox(row.toDto())
+                    }
                 }
             }
         } catch (e: CancellationException) {
@@ -245,19 +261,21 @@ class TodoRepositoryImpl(
             raise(TodoError.Persistence(e.message ?: "初始化收件箱失败"))
         }
         // 3. 事务外读回收件箱 id（创建后必有）
-        guard { db.todoDbQueries.selectLists().executeAsList().firstOrNull()?.id }.bind()
+        guard { withContext(dbDispatcher) { db.todoDbQueries.selectLists().executeAsList().firstOrNull()?.id } }.bind()
             ?: raise(TodoError.InboxNotFound)
     }
 
     override suspend fun addList(name: String, colorKey: String): Either<TodoError, Unit> = either {
         try {
-            db.transaction {
-                // 1. 新列表排到末尾（position = 当前列表数）
-                val position = db.todoDbQueries.selectLists().executeAsList().size
-                // 2. 插入并读回最新行（自增 id），写 outbox 快照
-                db.todoDbQueries.insertList(name, colorKey, position.toLong(), now, now, deviceId)
-                val row = db.todoDbQueries.selectLists().executeAsList().last()
-                appendListOutbox(row.toDto())
+            withContext(dbDispatcher) {
+                db.transaction {
+                    // 1. 新列表排到末尾（position = 当前列表数）
+                    val position = db.todoDbQueries.selectLists().executeAsList().size
+                    // 2. 插入并读回最新行（自增 id），写 outbox 快照
+                    db.todoDbQueries.insertList(name, colorKey, position.toLong(), now, now, deviceId)
+                    val row = db.todoDbQueries.selectLists().executeAsList().last()
+                    appendListOutbox(row.toDto())
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -275,20 +293,22 @@ class TodoRepositoryImpl(
      */
     override suspend fun deleteList(listId: Long): Either<TodoError, Unit> = either {
         try {
-            db.transaction {
-                // 1. 读出列表内全部 todo（后续逐条写快照）
-                val affected = db.todoDbQueries.selectByList(listId).executeAsList()
-                // 2. 级联软删除：列表内所有未删除的 todo 标记为 trash
-                db.todoDbQueries.trashTodosInList(now, now, deviceId, listId)
-                // 3. 逐条读回删除后的最新行，写 outbox UPSERT 快照
-                affected.forEach { todo ->
-                    val updated = db.todoDbQueries.selectById(todo.id).executeAsOne()
-                    appendTodoOutbox(updated.toDto())
+            withContext(dbDispatcher) {
+                db.transaction {
+                    // 1. 读出列表内全部 todo（后续逐条写快照）
+                    val affected = db.todoDbQueries.selectByList(listId).executeAsList()
+                    // 2. 级联软删除：列表内所有未删除的 todo 标记为 trash
+                    db.todoDbQueries.trashTodosInList(now, now, deviceId, listId)
+                    // 3. 逐条读回删除后的最新行，写 outbox UPSERT 快照
+                    affected.forEach { todo ->
+                        val updated = db.todoDbQueries.selectById(todo.id).executeAsOne()
+                        appendTodoOutbox(updated.toDto())
+                    }
+                    // 4. 读回列表行并物理删除，写 outbox DELETE 操作
+                    val list = db.todoDbQueries.selectByIdForList(listId).executeAsOneOrNull()
+                    db.todoDbQueries.deleteList(listId)
+                    if (list != null) appendListOutbox(list.toDto(), SyncAction.DELETE)
                 }
-                // 4. 读回列表行并物理删除，写 outbox DELETE 操作
-                val list = db.todoDbQueries.selectByIdForList(listId).executeAsOneOrNull()
-                db.todoDbQueries.deleteList(listId)
-                if (list != null) appendListOutbox(list.toDto(), SyncAction.DELETE)
             }
         } catch (e: CancellationException) {
             throw e
@@ -306,13 +326,15 @@ class TodoRepositoryImpl(
         flag: Boolean,
     ): Either<TodoError, Unit> = either {
         try {
-            db.transaction {
-                // 1. 插入行（sort_position 默认 0，完成/删除状态为初始值）
-                db.todoDbQueries.insertTodo(listId, title, note, dueDate?.toEpochMilliseconds(), parentId, 0.0, flag, now, now, deviceId)
-                // 2. 事务内读回最新行（拿到自增 id），写 outbox 快照
-                //    读回而非复用参数：快照必须含数据库生成的 id，否则远端行无法按 id 关联
-                val row = db.todoDbQueries.selectByIdLast().executeAsOne()
-                appendTodoOutbox(row.toDto())
+            withContext(dbDispatcher) {
+                db.transaction {
+                    // 1. 插入行（sort_position 默认 0，完成/删除状态为初始值）
+                    db.todoDbQueries.insertTodo(listId, title, note, dueDate?.toEpochMilliseconds(), parentId, 0.0, flag, now, now, deviceId)
+                    // 2. 事务内读回最新行（拿到自增 id），写 outbox 快照
+                    //    读回而非复用参数：快照必须含数据库生成的 id，否则远端行无法按 id 关联
+                    val row = db.todoDbQueries.selectByIdLast().executeAsOne()
+                    appendTodoOutbox(row.toDto())
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -326,12 +348,14 @@ class TodoRepositoryImpl(
 
     override suspend fun setCompleted(id: Long, completed: Boolean): Either<TodoError, Unit> = either {
         try {
-            db.transaction {
-                // 1. 更新完成状态；取消完成时清空 completed_at
-                db.todoDbQueries.updateCompleted(completed, if (completed) now else null, now, deviceId, id)
-                // 2. 读回最新行 -> 3. 写 outbox 快照
-                val row = db.todoDbQueries.selectById(id).executeAsOne()
-                appendTodoOutbox(row.toDto())
+            withContext(dbDispatcher) {
+                db.transaction {
+                    // 1. 更新完成状态；取消完成时清空 completed_at
+                    db.todoDbQueries.updateCompleted(completed, if (completed) now else null, now, deviceId, id)
+                    // 2. 读回最新行 -> 3. 写 outbox 快照
+                    val row = db.todoDbQueries.selectById(id).executeAsOne()
+                    appendTodoOutbox(row.toDto())
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -342,10 +366,12 @@ class TodoRepositoryImpl(
 
     override suspend fun setFlag(id: Long, flag: Boolean): Either<TodoError, Unit> = either {
         try {
-            db.transaction {
-                db.todoDbQueries.updateFlag(flag, now, deviceId, id)
-                val row = db.todoDbQueries.selectById(id).executeAsOne()
-                appendTodoOutbox(row.toDto())
+            withContext(dbDispatcher) {
+                db.transaction {
+                    db.todoDbQueries.updateFlag(flag, now, deviceId, id)
+                    val row = db.todoDbQueries.selectById(id).executeAsOne()
+                    appendTodoOutbox(row.toDto())
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -356,10 +382,12 @@ class TodoRepositoryImpl(
 
     override suspend fun setTitle(id: Long, title: String): Either<TodoError, Unit> = either {
         try {
-            db.transaction {
-                db.todoDbQueries.updateTitle(title, now, deviceId, id)
-                val row = db.todoDbQueries.selectById(id).executeAsOne()
-                appendTodoOutbox(row.toDto())
+            withContext(dbDispatcher) {
+                db.transaction {
+                    db.todoDbQueries.updateTitle(title, now, deviceId, id)
+                    val row = db.todoDbQueries.selectById(id).executeAsOne()
+                    appendTodoOutbox(row.toDto())
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -370,10 +398,12 @@ class TodoRepositoryImpl(
 
     override suspend fun setNote(id: Long, note: String): Either<TodoError, Unit> = either {
         try {
-            db.transaction {
-                db.todoDbQueries.updateNote(note, now, deviceId, id)
-                val row = db.todoDbQueries.selectById(id).executeAsOne()
-                appendTodoOutbox(row.toDto())
+            withContext(dbDispatcher) {
+                db.transaction {
+                    db.todoDbQueries.updateNote(note, now, deviceId, id)
+                    val row = db.todoDbQueries.selectById(id).executeAsOne()
+                    appendTodoOutbox(row.toDto())
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -384,11 +414,13 @@ class TodoRepositoryImpl(
 
     override suspend fun setDueDate(id: Long, dueDate: Instant?): Either<TodoError, Unit> = either {
         try {
-            db.transaction {
-                // 清空日期时传 null，恢复「未安排」状态
-                db.todoDbQueries.updateDueDate(dueDate?.toEpochMilliseconds(), now, deviceId, id)
-                val row = db.todoDbQueries.selectById(id).executeAsOne()
-                appendTodoOutbox(row.toDto())
+            withContext(dbDispatcher) {
+                db.transaction {
+                    // 清空日期时传 null，恢复「未安排」状态
+                    db.todoDbQueries.updateDueDate(dueDate?.toEpochMilliseconds(), now, deviceId, id)
+                    val row = db.todoDbQueries.selectById(id).executeAsOne()
+                    appendTodoOutbox(row.toDto())
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -399,10 +431,12 @@ class TodoRepositoryImpl(
 
     override suspend fun moveToList(id: Long, listId: Long): Either<TodoError, Unit> = either {
         try {
-            db.transaction {
-                db.todoDbQueries.moveToList(listId, now, deviceId, id)
-                val row = db.todoDbQueries.selectById(id).executeAsOne()
-                appendTodoOutbox(row.toDto())
+            withContext(dbDispatcher) {
+                db.transaction {
+                    db.todoDbQueries.moveToList(listId, now, deviceId, id)
+                    val row = db.todoDbQueries.selectById(id).executeAsOne()
+                    appendTodoOutbox(row.toDto())
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -413,10 +447,12 @@ class TodoRepositoryImpl(
 
     override suspend fun trash(id: Long): Either<TodoError, Unit> = either {
         try {
-            db.transaction {
-                db.todoDbQueries.trashTodo(now, now, deviceId, id)
-                val row = db.todoDbQueries.selectById(id).executeAsOne()
-                appendTodoOutbox(row.toDto())
+            withContext(dbDispatcher) {
+                db.transaction {
+                    db.todoDbQueries.trashTodo(now, now, deviceId, id)
+                    val row = db.todoDbQueries.selectById(id).executeAsOne()
+                    appendTodoOutbox(row.toDto())
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -427,11 +463,13 @@ class TodoRepositoryImpl(
 
     override suspend fun restore(id: Long): Either<TodoError, Unit> = either {
         try {
-            db.transaction {
-                // 恢复时清空 trashed_at（软删除时间戳随状态一同复位）
-                db.todoDbQueries.restoreTodo(now, deviceId, id)
-                val row = db.todoDbQueries.selectById(id).executeAsOne()
-                appendTodoOutbox(row.toDto())
+            withContext(dbDispatcher) {
+                db.transaction {
+                    // 恢复时清空 trashed_at（软删除时间戳随状态一同复位）
+                    db.todoDbQueries.restoreTodo(now, deviceId, id)
+                    val row = db.todoDbQueries.selectById(id).executeAsOne()
+                    appendTodoOutbox(row.toDto())
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -442,13 +480,15 @@ class TodoRepositoryImpl(
 
     override suspend fun deleteForever(id: Long): Either<TodoError, Unit> = either {
         try {
-            db.transaction {
-                // 1. 先读回待删行（写 DELETE outbox 需要它，但不需要快照）
-                val row = db.todoDbQueries.selectById(id).executeAsOneOrNull()
-                // 2. 物理删除
-                db.todoDbQueries.deleteTodo(id)
-                // 3. 行存在才写 DELETE 操作（幂等删除，删不存在的行无操作）
-                if (row != null) appendTodoOutbox(row.toDto(), SyncAction.DELETE)
+            withContext(dbDispatcher) {
+                db.transaction {
+                    // 1. 先读回待删行（写 DELETE outbox 需要它，但不需要快照）
+                    val row = db.todoDbQueries.selectById(id).executeAsOneOrNull()
+                    // 2. 物理删除
+                    db.todoDbQueries.deleteTodo(id)
+                    // 3. 行存在才写 DELETE 操作（幂等删除，删不存在的行无操作）
+                    if (row != null) appendTodoOutbox(row.toDto(), SyncAction.DELETE)
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -463,15 +503,15 @@ class TodoRepositoryImpl(
     // 因此刻意不写 outbox（防 ping-pong：不把刚收的远端变更再推回去）。
 
     override suspend fun readOutbox(limit: Int): Either<TodoError, List<SyncRow>> =
-        guard { db.todoDbQueries.selectOutbox(limit.toLong()).executeAsList().map { it.toSyncRow() } }
+        guard { withContext(dbDispatcher) { db.todoDbQueries.selectOutbox(limit.toLong()).executeAsList().map { it.toSyncRow() } } }
 
     /** 按水位线清除：seq <= upToSeq 的行视为已推送成功。 */
     override suspend fun clearOutbox(upToSeq: Long): Either<TodoError, Unit> = guard {
-        db.todoDbQueries.deleteOutboxUpTo(upToSeq)
+        withContext(dbDispatcher) { db.todoDbQueries.deleteOutboxUpTo(upToSeq) }
     }
 
     override fun observeOutboxCount(): Flow<Int> =
-        db.todoDbQueries.selectOutboxCount().asFlow().map { it.executeAsOne().toInt() }
+        db.todoDbQueries.selectOutboxCount().asFlow().map { it.executeAsOne().toInt() }.flowOn(dbDispatcher)
 
     /**
      * 应用远端待办行（LWW：Last-Write-Wins，以 updated_at 判新旧）。
@@ -483,32 +523,36 @@ class TodoRepositoryImpl(
      * 而这两条语句在所有目标平台上都可用。
      */
     override suspend fun applyRemoteUpsert(row: TodoRowDto): Either<TodoError, Unit> = guard {
-        db.transaction {
-            // 1. 本地已有且较旧 -> 覆盖（WHERE updated_at <= 远端 updated_at）
-            db.todoDbQueries.updateTodoIfNewer(
-                row.listId, row.title, row.note, row.dueDate, row.isCompleted, row.completedAt,
-                row.isTrashed, row.trashedAt, row.parentId, row.sortPosition, row.flag,
-                row.createdAt, row.updatedAt, row.updatedBy, row.id, row.updatedAt,
-            )
-            // 2. 本地没有 -> 插入（WHERE NOT EXISTS 原子补插）
-            db.todoDbQueries.insertTodoIfMissing(
-                row.id, row.listId, row.title, row.note, row.dueDate, row.isCompleted, row.completedAt,
-                row.isTrashed, row.trashedAt, row.parentId, row.sortPosition, row.flag,
-                row.createdAt, row.updatedAt, row.updatedBy, row.id,
-            )
+        withContext(dbDispatcher) {
+            db.transaction {
+                // 1. 本地已有且较旧 -> 覆盖（WHERE updated_at <= 远端 updated_at）
+                db.todoDbQueries.updateTodoIfNewer(
+                    row.listId, row.title, row.note, row.dueDate, row.isCompleted, row.completedAt,
+                    row.isTrashed, row.trashedAt, row.parentId, row.sortPosition, row.flag,
+                    row.createdAt, row.updatedAt, row.updatedBy, row.id, row.updatedAt,
+                )
+                // 2. 本地没有 -> 插入（WHERE NOT EXISTS 原子补插）
+                db.todoDbQueries.insertTodoIfMissing(
+                    row.id, row.listId, row.title, row.note, row.dueDate, row.isCompleted, row.completedAt,
+                    row.isTrashed, row.trashedAt, row.parentId, row.sortPosition, row.flag,
+                    row.createdAt, row.updatedAt, row.updatedBy, row.id,
+                )
+            }
         }
     }
 
     /** 远端列表行 LWW，同 applyRemoteUpsert 的双语句实现。 */
     override suspend fun applyRemoteUpsertList(row: ListRowDto): Either<TodoError, Unit> = guard {
-        db.transaction {
-            // 1. 较旧则覆盖 -> 2. 缺失则插入（同一事务，保证半途失败可回滚）
-            db.todoDbQueries.updateListIfNewer(
-                row.name, row.colorKey, row.position.toLong(), row.updatedAt, row.updatedBy, row.id, row.updatedAt,
-            )
-            db.todoDbQueries.insertListIfMissing(
-                row.id, row.name, row.colorKey, row.position.toLong(), row.createdAt, row.updatedAt, row.updatedBy, row.id,
-            )
+        withContext(dbDispatcher) {
+            db.transaction {
+                // 1. 较旧则覆盖 -> 2. 缺失则插入（同一事务，保证半途失败可回滚）
+                db.todoDbQueries.updateListIfNewer(
+                    row.name, row.colorKey, row.position.toLong(), row.updatedAt, row.updatedBy, row.id, row.updatedAt,
+                )
+                db.todoDbQueries.insertListIfMissing(
+                    row.id, row.name, row.colorKey, row.position.toLong(), row.createdAt, row.updatedAt, row.updatedBy, row.id,
+                )
+            }
         }
     }
 
@@ -517,29 +561,33 @@ class TodoRepositoryImpl(
      * 防止「本机刚编辑过、远端收到一条更早的删除」时误删新数据。
      */
     override suspend fun applyRemoteDelete(table: String, rowId: Long, updatedAt: Long): Either<TodoError, Unit> = guard {
-        when (table) {
-            "todo" -> db.todoDbQueries.deleteTodoIfOlder(rowId, updatedAt)
-            "reminder_list" -> db.todoDbQueries.deleteListIfOlder(rowId, updatedAt)
-            else -> Unit
+        withContext(dbDispatcher) {
+            when (table) {
+                "todo" -> db.todoDbQueries.deleteTodoIfOlder(rowId, updatedAt)
+                "reminder_list" -> db.todoDbQueries.deleteListIfOlder(rowId, updatedAt)
+                else -> Unit
+            }
         }
     }
 
     override suspend fun getSetting(key: String): Either<TodoError, String?> =
-        guard { db.todoDbQueries.getSetting(key).executeAsOneOrNull() }
+        guard { withContext(dbDispatcher) { db.todoDbQueries.getSetting(key).executeAsOneOrNull() } }
 
     /**
      * 写设置（同步 token / 设备标识等）。update + insert-if-missing 双语句，
      * 与 applyRemoteUpsert 同理（老 SQLite 无 ON CONFLICT DO UPDATE）。
      */
     override suspend fun setSetting(key: String, value: String): Either<TodoError, Unit> = guard {
-        db.transaction {
-            // 1. 已有键 -> 更新值
-            db.todoDbQueries.updateSetting(value, key)
-            // 2. 不存在 -> 原子插入（WHERE NOT EXISTS）
-            db.todoDbQueries.insertSettingIfMissing(key, value, key)
+        withContext(dbDispatcher) {
+            db.transaction {
+                // 1. 已有键 -> 更新值
+                db.todoDbQueries.updateSetting(value, key)
+                // 2. 不存在 -> 原子插入（WHERE NOT EXISTS）
+                db.todoDbQueries.insertSettingIfMissing(key, value, key)
+            }
         }
     }
 
     override suspend fun getSettings(): Either<TodoError, Map<String, String>> =
-        guard { db.todoDbQueries.selectAllSettings().executeAsList().associate { it.key to it.value_ } }
+        guard { withContext(dbDispatcher) { db.todoDbQueries.selectAllSettings().executeAsList().associate { it.key to it.value_ } } }
 }
