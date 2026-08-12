@@ -15,6 +15,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -108,6 +110,7 @@ fun TaskRow(
             .heightIn(min = RemControlSize.rowDesktop)
             .background(rowBg)
             .clickable(interactionSource = interaction, indication = null, onClick = onOpen)
+            .semantics { contentDescription = "打开待办详情：${item.title}" }
             .padding(horizontal = 10.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
