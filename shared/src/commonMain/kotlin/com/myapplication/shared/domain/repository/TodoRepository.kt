@@ -33,6 +33,7 @@ interface TodoRepository {
     fun observeTodo(id: Long): Flow<TodoItem?>
     fun search(query: String): Flow<List<TodoItem>>
     suspend fun findById(id: Long): Either<TodoError, TodoItem?>
+    suspend fun findByIdActive(id: Long): Either<TodoError, TodoItem?>
 
     // Commands — 类型化错误，纯 Effect
     suspend fun ensureInbox(): Either<TodoError, Long>

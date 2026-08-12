@@ -89,6 +89,9 @@ SELECT * FROM todo WHERE is_trashed = 0 AND parent_id = ? ORDER BY sort_position
 selectById:
 SELECT * FROM todo WHERE id = ?;
 
+selectByIdActive:
+SELECT * FROM todo WHERE id = ? AND is_trashed = 0;
+
 selectByIdLast:
 SELECT * FROM todo ORDER BY id DESC LIMIT 1;
 

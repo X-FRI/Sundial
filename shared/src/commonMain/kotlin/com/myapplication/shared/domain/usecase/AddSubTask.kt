@@ -19,7 +19,7 @@ class AddSubTaskUseCase(private val repository: TodoRepository) {
         // 1. 校验标题非空
         ensure(title.isNotBlank()) { TodoError.EmptyTitle }
         // 2. 校验父任务存在，并取其 listId 作为子任务的归属列表
-        val parent = repository.findById(parentId).bind()
+        val parent = repository.findByIdActive(parentId).bind()
             ?: raise(TodoError.ParentNotFound)
         // 3. 插入子任务（标题去空格；无备注、无到期日、不标记）
         repository.insertTodo(parent.listId, title.trim(), "", null, parentId, false).bind()

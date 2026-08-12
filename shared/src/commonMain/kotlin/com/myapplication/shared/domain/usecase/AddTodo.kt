@@ -30,7 +30,7 @@ class AddTodoUseCase(private val repository: TodoRepository) {
         // 2. 决定目标列表：子任务挂父任务的列表；无父任务时用显式 listId；都缺省则落到收件箱
         val targetListId = when {
             input.parentId != null ->
-                repository.findById(input.parentId).bind()?.listId
+                repository.findByIdActive(input.parentId).bind()?.listId
                     ?: raise(TodoError.ParentNotFound)
             input.listId != null -> input.listId
             else -> repository.ensureInbox().bind()

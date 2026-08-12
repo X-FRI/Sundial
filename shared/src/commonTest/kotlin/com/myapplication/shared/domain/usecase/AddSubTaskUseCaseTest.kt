@@ -41,6 +41,17 @@ class AddSubTaskUseCaseTest {
     }
 
     @Test
+    fun trashedParentReturnsParentNotFound() = runTest {
+        val (repo, parentId) = repoWithParent()
+        // 父任务被软删除（trash 状态）→ 与缺失父任务同一业务错误，且不落库
+        repo.todosState.value = repo.todosState.value.map { it.copy(isTrashed = true) }
+        val todoCount = repo.todosState.value.size
+        val result = AddSubTaskUseCase(repo)(parentId, "子任务")
+        assertEquals(TodoError.ParentNotFound, result.leftOrNull())
+        assertEquals(todoCount, repo.todosState.value.size)
+    }
+
+    @Test
     fun blankTitleReturnsEmptyTitleError() = runTest {
         val (repo, parentId) = repoWithParent()
         val todoCount = repo.todosState.value.size

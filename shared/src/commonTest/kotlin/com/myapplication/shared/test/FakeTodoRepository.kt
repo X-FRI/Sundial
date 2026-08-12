@@ -61,6 +61,9 @@ class FakeTodoRepository : TodoRepository {
     override suspend fun findById(id: Long): Either<TodoError, TodoItem?> =
         Either.Right(todosState.value.firstOrNull { it.id == id })
 
+    override suspend fun findByIdActive(id: Long): Either<TodoError, TodoItem?> =
+        Either.Right(todosState.value.firstOrNull { it.id == id && !it.isTrashed })
+
     // 计数 + 首次调用时创建默认"收件箱"列表（id 恒为 1）
     override suspend fun ensureInbox(): Either<TodoError, Long> {
         ensureInboxCalls++

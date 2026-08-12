@@ -233,6 +233,9 @@ class TodoRepositoryImpl(
     override suspend fun findById(id: Long): Either<TodoError, TodoItem?> =
         guard { withContext(dbDispatcher) { db.todoDbQueries.selectById(id).executeAsOneOrNull()?.toDomain() } }
 
+    override suspend fun findByIdActive(id: Long): Either<TodoError, TodoItem?> =
+        guard { withContext(dbDispatcher) { db.todoDbQueries.selectByIdActive(id).executeAsOneOrNull()?.toDomain() } }
+
     // ---- 命令（双写 outbox） ----
 
     /**
