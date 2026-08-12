@@ -17,6 +17,7 @@ import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.realtime.realtime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
@@ -80,22 +81,25 @@ class SupabaseSyncClient(
     /**
      * UPSERT 推送：再按表分组，把同表行合并成一次批量 upsert 请求。
      * payload 是 outbox 里序列化好的整行快照，直接反序列化为 DTO 上送。
+     *
+     * 坏行隔离：payload 缺失/损坏的行逐行 runCatching 跳过（这类行重试
+     * 也无法修复，阻塞整批只会让全量同步停摆），其余行照常批量上送。
      */
     private suspend fun pushUpserts(rows: List<SyncRow>) {
         rows.groupBy { it.table }.forEach { (table, group) ->
             when (table) {
-                "todo" -> client.from("todo").upsert(group.map { row ->
-                    if (row.payload == null) {
-                        throw IllegalStateException("UPSERT payload missing for row ${row.rowId}")
+                "todo" -> {
+                    val dtos = group.mapNotNull { row ->
+                        runCatching { Json.decodeFromString<TodoRowDto>(row.payload ?: "") }.getOrNull()
                     }
-                    Json.decodeFromString<TodoRowDto>(row.payload)
-                })
-                "reminder_list" -> client.from("reminder_list").upsert(group.map { row ->
-                    if (row.payload == null) {
-                        throw IllegalStateException("UPSERT payload missing for row ${row.rowId}")
+                    if (dtos.isNotEmpty()) client.from("todo").upsert(dtos)
+                }
+                "reminder_list" -> {
+                    val dtos = group.mapNotNull { row ->
+                        runCatching { Json.decodeFromString<ListRowDto>(row.payload ?: "") }.getOrNull()
                     }
-                    Json.decodeFromString<ListRowDto>(row.payload)
-                })
+                    if (dtos.isNotEmpty()) client.from("reminder_list").upsert(dtos)
+                }
             }
         }
     }
@@ -175,6 +179,14 @@ class SupabaseSyncClient(
             channels.forEach { (channel, _) -> runCatching { channel.unsubscribe() } }
         }
     }
+
+    /**
+     * 连接健康度：直接映射 Realtime 连接状态。
+     * Realtime 状态可能滞后于一次成功的 push（状态更新有延迟），引擎的
+     * push 成功置 connected=true 作为兜底，本流负责状态真实变化时收敛。
+     */
+    override fun observeConnectionStatus(): Flow<Boolean> =
+        client.realtime.status.map { it == Realtime.Status.CONNECTED }
 
     override suspend fun close() {
         runCatching { client.close() }

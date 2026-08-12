@@ -36,6 +36,8 @@ class FakeSyncClient : SyncClient {
     override fun observeRemoteChanges(): Flow<SyncRow> =
         flow { remote.value.forEach { emit(it) } }
 
+    override fun observeConnectionStatus(): Flow<Boolean> = MutableStateFlow(false)
+
     override suspend fun close() = Unit
 }
 

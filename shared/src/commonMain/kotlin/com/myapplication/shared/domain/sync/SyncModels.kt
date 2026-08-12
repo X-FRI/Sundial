@@ -101,6 +101,7 @@ data class SyncStatus(
     val pendingCount: Int,
     val lastSyncAt: Long?,
     val lastError: String?,
+    val syncing: Boolean = false,
 ) {
     companion object {
         /** 初始状态：Local 模式、未连接、无待推送、从未同步。 */

@@ -6,6 +6,7 @@ import com.myapplication.shared.domain.sync.SyncClient
 import com.myapplication.shared.domain.sync.SyncError
 import com.myapplication.shared.domain.sync.SyncRow
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 
 /**
@@ -19,5 +20,6 @@ class NoopSyncClient : SyncClient {
     override suspend fun push(rows: List<SyncRow>): Either<SyncError, Unit> = Unit.right()
     override suspend fun pull(): Either<SyncError, List<SyncRow>> = emptyList<SyncRow>().right()
     override fun observeRemoteChanges(): Flow<SyncRow> = flow {}
+    override fun observeConnectionStatus(): Flow<Boolean> = MutableStateFlow(false)
     override suspend fun close() = Unit
 }

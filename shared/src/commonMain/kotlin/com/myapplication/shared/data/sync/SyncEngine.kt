@@ -17,17 +17,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.retryWhen
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * 同步引擎：负责 SyncClient 的生命周期与两条后台循环（push / remote）。
+ * 同步引擎：负责 SyncClient 的生命周期、两条后台循环（push / remote）
+ * 与对外状态（SyncStatus，UI 直接订阅）。
  *
  * 生命周期约定：
  * - configure 每次都会先停掉旧 client 与旧循环再建新（幂等，可反复切换模式）；
  * - Local 模式只建 NoopSyncClient、不启动循环——Noop 的 push 恒成功，
  *   引擎不跑循环 outbox 也不会堆积；
- * - status 是唯一对外暴露的状态源（StateFlow），UI 直接订阅。
+ * - status 是唯一对外暴露的状态源（StateFlow）；
+ * - syncing 表示「正在同步」：outbox 有待推送或 syncNow 执行中时为 true，
+ *   推送排空后复位为 false（驱动 UI 的同步动画）。
  */
 class SyncEngine(
     private val scope: CoroutineScope,
@@ -37,14 +41,20 @@ class SyncEngine(
     private val _status = MutableStateFlow(SyncStatus.initial)
     val status: StateFlow<SyncStatus> = _status
 
+    private val backoffBaseMs = 2_000L
+    private var backoffMs = backoffBaseMs
+
     private var client: SyncClient = NoopSyncClient()
     private var coordinator: SyncCoordinator? = null
     private var pushJob: Job? = null
     private var remoteJob: Job? = null
+    private var statusJob: Job? = null
+    private var statusJob2: Job? = null
+    private var syncNowJob: Job? = null
 
     /**
      * 应用新同步配置：1. 停掉旧 client/循环；2. 按配置建新 client；
-     * 3. 仅非 Local 模式启动 push/remote 循环。
+     * 3. 仅非 Local 模式启动 push/remote/状态循环并立即对齐一次。
      */
     fun configure(newConfig: SyncConfig) {
         // 1. 先停旧（取消循环 + 异步 close 旧 client），再建新，避免新旧并存
@@ -52,9 +62,13 @@ class SyncEngine(
         _status.value = _status.value.copy(mode = newConfig.mode, connected = false)
         SyncClientFactory.create(newConfig).fold(
             ifLeft = { error ->
-                // 配置失败（如缺 URL/Key）：退回 Noop，保本地功能可用
+                // 配置失败（如缺 URL/Key）：退回 Noop，保本地功能可用；
+                // pendingCount 保留现值，避免失败切换把待推送数清零（失真）
                 client = NoopSyncClient()
-                _status.value = SyncStatus(newConfig.mode, false, 0, _status.value.lastSyncAt, error.message())
+                _status.value = SyncStatus(
+                    newConfig.mode, false, _status.value.pendingCount,
+                    _status.value.lastSyncAt, error.message(), syncing = false,
+                )
             },
             ifRight = { newClient ->
                 client = newClient
@@ -63,23 +77,65 @@ class SyncEngine(
                     coordinator = null
                 } else {
                     coordinator = SyncCoordinator(repository, newClient, newConfig.deviceId)
+                    backoffMs = backoffBaseMs
                     startPushLoop()
                     startRemoteLoop()
+                    startStatusWatchers()
+                    syncNow()              // 首次启用自动对齐
                 }
             },
         )
     }
 
     /**
-     * 停掉当前同步：取消两个循环后，把旧 client 先取到局部变量再替换为 Noop，
+     * 立即同步：推本地 outbox + 拉远端全量，供下拉刷新/侧边栏手动触发。
+     * 幂等：coordinator 缺失（Local/未配置）或上一次 syncNow 仍在跑时直接返回。
+     */
+    fun syncNow() {
+        if (coordinator == null || syncNowJob?.isActive == true) return
+        syncNowJob = scope.launch {
+            _status.update { it.copy(syncing = true) }
+            val drainResult = runCatching { coordinator?.drainOutbox() }.getOrNull()
+            val pullResult = runCatching { coordinator?.pullFromRemote() }.getOrNull()
+            val drainFailed = drainResult?.isLeft() == true
+            val pullFailed = pullResult?.isLeft() == true
+            if (drainFailed || pullFailed) {
+                val msg = when {
+                    drainFailed -> (drainResult as Either.Left<SyncError>).value.message()
+                    else -> (pullResult as Either.Left<SyncError>).value.message()
+                }
+                _status.update { it.copy(syncing = false, connected = false, lastError = msg) }
+            } else {
+                val pending = repository.observeOutboxCount().first()
+                _status.update {
+                    it.copy(
+                        syncing = pending > 0,
+                        connected = true,
+                        pendingCount = pending,
+                        lastSyncAt = clock.now().toEpochMilliseconds(),
+                        lastError = null,
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * 停掉当前同步：取消全部循环后，把旧 client 先取到局部变量再替换为 Noop，
      * 最后异步 close。注意必须先捕获 old 再覆盖 client——若先赋 Noop 就丢掉了
      * 需要关闭的引用（会关错对象/泄漏连接）。
      */
     private fun stopCurrent() {
         pushJob?.cancel()
         remoteJob?.cancel()
+        statusJob?.cancel()
+        statusJob2?.cancel()
+        syncNowJob?.cancel()
         pushJob = null
         remoteJob = null
+        statusJob = null
+        statusJob2 = null
+        syncNowJob = null
         val old = client
         client = NoopSyncClient()
         coordinator = null
@@ -87,9 +143,9 @@ class SyncEngine(
     }
 
     /**
-     * 推送循环：每 2 秒尝试 drainOutbox 一次（简单轮询，不需要触发器）。
-     * 单次失败只记录状态（outbox 行保留，下轮重试）；任何异常都兜住并置
-     * connected=false，但不中断循环。
+     * 推送循环：drainOutbox 轮询，失败时指数退避（2s→4s→8s→…→30s 封顶），
+     * 成功后复位退避并刷新状态。单次失败只记录状态（outbox 行保留，下轮重试）；
+     * 任何异常都兜住并置 connected=false，但不中断循环。
      */
     private fun startPushLoop() {
         pushJob = scope.launch {
@@ -97,23 +153,33 @@ class SyncEngine(
                 try {
                     when (val result = coordinator?.drainOutbox()) {
                         null -> Unit
-                        is Either.Left -> _status.value = _status.value.copy(
-                            connected = false,
-                            lastError = result.value.message(),
-                        )
-                        is Either.Right -> _status.value = _status.value.copy(
-                            connected = true,
-                            pendingCount = repository.observeOutboxCount().first(),
-                            lastSyncAt = clock.now().toEpochMilliseconds(),
-                            lastError = null,
-                        )
+                        is Either.Left -> {
+                            _status.update {
+                                it.copy(connected = false, lastError = result.value.message(), syncing = false)
+                            }
+                            backoffMs = (backoffMs * 2).coerceAtMost(30_000L)
+                        }
+                        is Either.Right -> {
+                            backoffMs = backoffBaseMs
+                            val pending = repository.observeOutboxCount().first()
+                            _status.update {
+                                it.copy(
+                                    connected = true,
+                                    pendingCount = pending,
+                                    syncing = pending > 0,
+                                    lastSyncAt = clock.now().toEpochMilliseconds(),
+                                    lastError = null,
+                                )
+                            }
+                        }
                     }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    _status.value = _status.value.copy(connected = false, lastError = "同步失败: ${e.message}")
+                    _status.update { it.copy(connected = false, lastError = "同步失败: ${e.message}", syncing = false) }
+                    backoffMs = (backoffMs * 2).coerceAtMost(30_000L)
                 }
-                delay(2_000)
+                delay(backoffMs)
             }
         }
     }
@@ -150,6 +216,28 @@ class SyncEngine(
                         _status.value = _status.value.copy(lastError = "应用远端变更失败: ${e.message}")
                     }
                 }
+        }
+    }
+
+    /**
+     * 状态观察循环：
+     * - outbox 计数：有本地新写（count > 0）且当前未在同步时，置 syncing=true
+     *   驱动动画，推送排空后由 push 循环复位；
+     * - 连接健康度：跟随 client.observeConnectionStatus（Realtime 真实状态），
+     *   push 成功置 connected=true 作为状态滞后时的兜底。
+     */
+    private fun startStatusWatchers() {
+        statusJob = scope.launch {
+            repository.observeOutboxCount().collect { count ->
+                if (count > 0 && !_status.value.syncing) {
+                    _status.update { it.copy(syncing = true) }
+                }
+            }
+        }
+        statusJob2 = scope.launch {
+            client.observeConnectionStatus().collect { connected ->
+                _status.update { it.copy(connected = connected) }
+            }
         }
     }
 
