@@ -112,7 +112,7 @@ fun AppRoot(graph: AppGraph) {
             // 分支 2：宽屏三栏——Sidebar / 列表 / 详情。
             wide -> {
                 Row(Modifier.fillMaxSize()) {
-                    Sidebar(mainVm, syncStatus)
+                    Sidebar(mainVm, syncStatus, onSyncNow = { graph.engine.syncNow() })
                     TodoListScreen(mainVm, Modifier.weight(1f).background(colors.bgSecondary))
                     // 详情栏固定 340dp 宽；visible 跟随路由，进入/退出各有动画。
                     // statusBarsPadding 仅对刘海/状态栏区域做避让，drawBehind 画左侧分隔线。

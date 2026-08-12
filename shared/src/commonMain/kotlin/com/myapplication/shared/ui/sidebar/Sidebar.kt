@@ -53,9 +53,12 @@ import com.myapplication.shared.domain.sync.SyncStatus
 import com.myapplication.shared.ui.components.IconName
 import com.myapplication.shared.ui.components.RemDialog
 import com.myapplication.shared.ui.components.RemIcon
+import com.myapplication.shared.ui.components.RemIconButton
+import com.myapplication.shared.ui.components.RemSyncIndicator
 import com.myapplication.shared.ui.components.RemTextField
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Scope
+import com.myapplication.shared.ui.sync.phase
 import com.myapplication.shared.ui.theme.ListColorKeys
 import com.myapplication.shared.ui.theme.ListColorOf
 import com.myapplication.shared.ui.theme.LocalRemColors
@@ -103,7 +106,7 @@ private fun SidebarLogo(modifier: Modifier = Modifier) {
  * - 所有 hover 背景用 animateColorAsState 做 200ms 过渡，减少生硬跳变。
  */
 @Composable
-fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) {
+fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial, onSyncNow: (() -> Unit)? = null) {
     val colors = LocalRemColors.current
     val lists by mainVm.lists.collectAsState()
     val scope by mainVm.scope.collectAsState()
@@ -115,11 +118,13 @@ fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) 
     val completedCount by mainVm.completedCount.collectAsState()
     val trashCount by mainVm.trashCount.collectAsState()
     val listCounts by mainVm.listCounts.collectAsState()
-    // 设置入口右侧的同步摘要文案：本地模式 / 已同步 / 同步中断 + 待同步条数。
-    val syncSummary = when (syncStatus.mode) {
-        SyncMode.Local -> "本地模式"
-        else -> (if (syncStatus.connected) "已同步" else "同步中断") + if (syncStatus.pendingCount > 0) " · 待同步 ${syncStatus.pendingCount}" else ""
-    }
+    // 设置入口右侧的同步摘要文案：本地模式 / 同步中 / 已同步 / 同步中断 + 待同步条数。
+    val syncSummary = when {
+        syncStatus.mode == SyncMode.Local -> "本地模式"
+        syncStatus.syncing -> "同步中…"
+        syncStatus.connected -> "已同步"
+        else -> "同步中断"
+    } + if (syncStatus.pendingCount > 0 && syncStatus.mode != SyncMode.Local) " · 待同步 ${syncStatus.pendingCount}" else ""
     var showAddList by remember { mutableStateOf(false) }
     // 「我的列表」默认展开；用户点击头部可折叠。
     var listsExpanded by remember { mutableStateOf(true) }
@@ -217,7 +222,7 @@ fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) 
             androidx.compose.foundation.text.BasicText("添加列表", style = RemType.label12.copy(color = colors.brand))
         }
         Spacer(Modifier.height(RemSpacing.s8))
-        // 7. 设置入口：同步状态指示灯（本地灰 / 已连接绿 / 断开黄）+ 摘要文案。
+        // 7. 设置入口：同步状态指示器（本地灰 / 同步中旋转 / 已同步绿 / 出错红）+ 摘要文案 + 立即同步按钮。
         val settingsSource = remember { MutableInteractionSource() }
         val settingsHovered by settingsSource.collectIsHoveredAsState()
         val settingsBg by animateColorAsState(
@@ -225,11 +230,6 @@ fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) 
             tween(200),
             label = "settings-bg",
         )
-        val syncDot = when {
-            syncStatus.mode == SyncMode.Local -> colors.textLow
-            syncStatus.connected -> colors.success
-            else -> colors.warning
-        }
         Row(
             Modifier
                 .fillMaxWidth()
@@ -240,11 +240,15 @@ fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial) 
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(6.dp).background(syncDot, CircleShape))
+            RemSyncIndicator(state = syncStatus.phase(), size = 10.dp)
             Spacer(Modifier.width(6.dp))
             androidx.compose.foundation.text.BasicText("设置", style = RemType.label12.copy(color = colors.textNormal))
             Spacer(Modifier.weight(1f))
             androidx.compose.foundation.text.BasicText(syncSummary, style = RemType.text10.copy(color = colors.textLow))
+            if (onSyncNow != null && syncStatus.mode != SyncMode.Local) {
+                Spacer(Modifier.width(2.dp))
+                RemIconButton(IconName.Sync, "立即同步", onClick = onSyncNow, size = 12.dp)
+            }
         }
     }
 
