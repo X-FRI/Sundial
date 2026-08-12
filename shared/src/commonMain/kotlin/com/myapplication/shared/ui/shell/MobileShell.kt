@@ -1,12 +1,10 @@
 package com.myapplication.shared.ui.shell
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -36,14 +33,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.di.AppGraph
 import com.myapplication.shared.domain.sync.SyncMode
 import com.myapplication.shared.domain.sync.SyncStatus
 import com.myapplication.shared.ui.components.IconName
-import com.myapplication.shared.ui.components.RemBadge
-import com.myapplication.shared.ui.components.RemBadgeTone
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemIconButton
 import com.myapplication.shared.ui.components.RemSyncIndicator
@@ -51,10 +45,7 @@ import com.myapplication.shared.ui.components.RemTextField
 import com.myapplication.shared.ui.detail.DetailContent
 import com.myapplication.shared.ui.ledger.ContextTimelineCompact
 import com.myapplication.shared.ui.ledger.MainLedger
-import com.myapplication.shared.ui.ledger.TodayRhythmState
-import com.myapplication.shared.ui.ledger.TodayTimelineState
 import com.myapplication.shared.ui.ledger.buildContextTimelineState
-import com.myapplication.shared.ui.ledger.buildTodayRhythmState
 import com.myapplication.shared.ui.ledger.buildTodayTimelineState
 import com.myapplication.shared.ui.ledger.toTimelineScope
 import com.myapplication.shared.ui.main.MainViewModel
@@ -93,7 +84,6 @@ fun MobileShell(
             delay(60_000)
         }
     }
-    val rhythm = remember(todos, now) { buildTodayRhythmState(todos, now, graph.timeZone) }
     val timeline = remember(todos, now) { buildTodayTimelineState(todos, now, graph.timeZone) }
     val inboxListId = remember(lists) { lists.firstOrNull { it.name == "收件箱" }?.id }
     val contextScope = remember(scope, inboxListId) { scope.toTimelineScope(inboxListId) }
@@ -112,7 +102,7 @@ fun MobileShell(
             }
             ContextTimelineCompact(
                 state = contextTimeline,
-                rhythm = rhythm,
+                timeline = timeline,
                 showTodayLabels = scope == Scope.Today,
                 modifier = Modifier.background(colors.surface),
             )
@@ -124,13 +114,14 @@ fun MobileShell(
                 MainLedger(
                     mainVm = mainVm,
                     selectedId = selectedId,
-                    modifier = Modifier.fillMaxSize().padding(bottom = 74.dp),
+                    modifier = Modifier.fillMaxSize(),
                     clock = graph.clock,
                     timeZone = graph.timeZone,
                     showHeader = false,
                     showRhythm = false,
                     compactRows = true,
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                    edgeToEdgeRows = true,
+                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp),
                 )
             }
             MobileBottomNav(mainVm)
@@ -242,70 +233,6 @@ private fun MobileTopBar(
                 RemIconButton(IconName.Search, "搜索", onClick = { searching = true }, size = 18.dp)
             }
         }
-    }
-}
-
-@Composable
-private fun MobileRhythmCard(
-    rhythm: TodayRhythmState,
-    timeline: TodayTimelineState,
-    onOpen: (Long) -> Unit,
-) {
-    val colors = LocalRemColors.current
-    val next = timeline.upcoming.firstOrNull()
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .background(colors.surface)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RemIcon(IconName.Clock, colors.brand, Modifier.size(16.dp))
-            Spacer(Modifier.width(8.dp))
-            androidx.compose.foundation.text.BasicText("现在 ${timeline.nowLabel}", style = RemType.text12.copy(color = colors.textLow))
-            Spacer(Modifier.weight(1f))
-            RemBadge("今日 ${rhythm.pendingTodayCount}", tone = RemBadgeTone.Warning)
-            Spacer(Modifier.width(6.dp))
-            RemBadge("完成 ${timeline.completedTodayCount}", tone = RemBadgeTone.Success)
-        }
-        MobileRail(timeline, Modifier.padding(top = 12.dp))
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .padding(top = 12.dp)
-                .background(colors.brandSubtle, RoundedCornerShape(RemRadii.r4))
-                .clickable(enabled = next != null) { next?.let { onOpen(it.item.id) } }
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-        ) {
-            Column {
-                androidx.compose.foundation.text.BasicText("下一件事", style = RemType.label12.copy(color = colors.brand))
-                Spacer(Modifier.height(3.dp))
-                androidx.compose.foundation.text.BasicText(
-                    next?.let { "${it.timeLabel}  ${it.item.title}" } ?: "今天没有定时待办",
-                    style = RemType.text14.copy(color = colors.textHigh),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun MobileRail(timeline: TodayTimelineState, modifier: Modifier = Modifier) {
-    val colors = LocalRemColors.current
-    BoxWithConstraints(modifier.fillMaxWidth().height(26.dp)) {
-        Canvas(Modifier.fillMaxWidth().height(26.dp)) {
-            val railY = size.height / 2f
-            drawLine(colors.borderSubtle, Offset(0f, railY), Offset(size.width, railY), strokeWidth = 2.dp.toPx())
-            timeline.past.forEach { drawCircle(colors.warning.copy(alpha = 0.5f), radius = 4.dp.toPx(), center = Offset(size.width * it.progress, railY)) }
-            timeline.upcoming.forEach { drawCircle(if (it.isNext) colors.brand else colors.info, radius = if (it.isNext) 5.dp.toPx() else 4.dp.toPx(), center = Offset(size.width * it.progress, railY)) }
-        }
-        Box(
-            Modifier
-                .offset(x = maxWidth * timeline.nowProgress - 1.dp)
-                .width(2.dp)
-                .height(26.dp)
-                .background(colors.brand, RoundedCornerShape(1.dp))
-        )
     }
 }
 

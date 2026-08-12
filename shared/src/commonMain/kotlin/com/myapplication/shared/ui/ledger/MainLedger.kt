@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -22,6 +21,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.myapplication.shared.domain.model.TodoItem
+import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.ui.components.RemButton
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Scope
@@ -33,7 +34,12 @@ import com.myapplication.shared.ui.todolist.TodoFormDialog
 import com.myapplication.shared.util.todayDate
 import kotlin.time.Clock
 import kotlinx.coroutines.delay
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
 
 @Composable
 fun MainLedger(
@@ -45,6 +51,7 @@ fun MainLedger(
     showHeader: Boolean = true,
     showRhythm: Boolean = true,
     compactRows: Boolean = false,
+    edgeToEdgeRows: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
 ) {
     val colors = LocalRemColors.current
@@ -73,13 +80,19 @@ fun MainLedger(
     val today = todayDate(clock, timeZone)
     val rowMinHeight = if (compactRows) RemControlSize.rowMobile else RemControlSize.rowDesktop
     val checkboxSize = if (compactRows) 20.dp else 16.dp
-    val activeById = groups.active.associateBy { it.item.id }
-    val pastRows = timeline.past.mapNotNull { activeById[it.item.id] ?: TaskRowModel(it.item, emptyList()) }
-    val upcomingRows = timeline.upcoming.mapNotNull { activeById[it.item.id] ?: TaskRowModel(it.item, emptyList()) }
-    val shownIds = (pastRows + upcomingRows + timeline.unscheduled).map { it.item.id }.toSet()
-    val laterRows = groups.active.filter { it.item.id !in shownIds }
+    val taskSections = remember(scope, groups, timeline, today, timeZone, inboxListId) {
+        buildLedgerTaskSections(scope, groups, timeline, today, timeZone, inboxListId)
+    }
+    val trashSections = remember(scope, trashGroups, today, timeZone) {
+        buildLedgerTrashSections(scope, trashGroups, today, timeZone)
+    }
 
-    Column(modifier.fillMaxSize().background(colors.bgSecondary).padding(contentPadding)) {
+    Column(
+        modifier
+            .fillMaxSize()
+            .background(if (edgeToEdgeRows) colors.bgPrimary else colors.bgSecondary)
+            .padding(contentPadding),
+    ) {
         if (showHeader) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -108,113 +121,39 @@ fun MainLedger(
         }
         LazyColumn(Modifier.fillMaxSize()) {
             if (trashScope) {
-                item {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.foundation.text.BasicText("垃圾箱", style = RemType.label12.copy(color = colors.textHigh))
-                        Spacer(Modifier.width(6.dp))
-                        androidx.compose.foundation.text.BasicText(trashGroups.size.toString(), style = RemType.text12.copy(color = colors.textLow))
+                trashSections.forEach { section ->
+                    item(key = "trash-${section.title}") {
+                        TrashSection(
+                            title = section.title,
+                            rows = section.items,
+                            onRestore = mainVm::restore,
+                            onDeleteForever = mainVm::deleteForever,
+                            headerColor = section.tone.timelineColor(),
+                            emptyText = section.emptyText,
+                        )
                     }
-                }
-                items(trashGroups, key = { it.item.id }) { row ->
-                    TrashRow(
-                        item = row.item,
-                        onRestore = { mainVm.restore(row.item) },
-                        onDeleteForever = { mainVm.deleteForever(row.item) },
-                    )
+                    item { Spacer(Modifier.height(if (edgeToEdgeRows) 4.dp else 8.dp)) }
                 }
             } else {
-                if (pastRows.isNotEmpty()) {
-                    item {
+                taskSections.forEach { section ->
+                    item(key = "task-${section.title}") {
                         TaskSection(
-                            title = "已错过",
-                            rows = pastRows,
+                            title = section.title,
+                            rows = section.rows,
                             today = today,
                             selectedId = selectedId,
-                            completed = false,
+                            completed = section.completed,
                             onOpen = mainVm::openDetail,
                             onToggleCompleted = mainVm::toggleCompleted,
                             onToggleFlag = mainVm::toggleFlag,
                             rowMinHeight = rowMinHeight,
                             checkboxSize = checkboxSize,
+                            showRowContainer = !edgeToEdgeRows,
+                            headerColor = section.tone.timelineColor(),
+                            emptyText = section.emptyText,
                         )
                     }
-                    item { Spacer(Modifier.height(12.dp)) }
-                }
-                if (upcomingRows.isNotEmpty()) {
-                    item {
-                        TaskSection(
-                            title = "接下来",
-                            rows = upcomingRows,
-                            today = today,
-                            selectedId = selectedId,
-                            completed = false,
-                            onOpen = mainVm::openDetail,
-                            onToggleCompleted = mainVm::toggleCompleted,
-                            onToggleFlag = mainVm::toggleFlag,
-                            rowMinHeight = rowMinHeight,
-                            checkboxSize = checkboxSize,
-                        )
-                    }
-                    item { Spacer(Modifier.height(12.dp)) }
-                }
-                if (timeline.unscheduled.isNotEmpty()) {
-                    item {
-                        TaskSection(
-                            title = "未安排时间",
-                            rows = timeline.unscheduled,
-                            today = today,
-                            selectedId = selectedId,
-                            completed = false,
-                            onOpen = mainVm::openDetail,
-                            onToggleCompleted = mainVm::toggleCompleted,
-                            onToggleFlag = mainVm::toggleFlag,
-                            rowMinHeight = rowMinHeight,
-                            checkboxSize = checkboxSize,
-                        )
-                    }
-                    item { Spacer(Modifier.height(12.dp)) }
-                }
-                if (laterRows.isNotEmpty()) {
-                    item {
-                        TaskSection(
-                            title = "以后",
-                            rows = laterRows,
-                            today = today,
-                            selectedId = selectedId,
-                            completed = false,
-                            onOpen = mainVm::openDetail,
-                            onToggleCompleted = mainVm::toggleCompleted,
-                            onToggleFlag = mainVm::toggleFlag,
-                            rowMinHeight = rowMinHeight,
-                            checkboxSize = checkboxSize,
-                        )
-                    }
-                    item { Spacer(Modifier.height(12.dp)) }
-                }
-                if (pastRows.isEmpty() && upcomingRows.isEmpty() && timeline.unscheduled.isEmpty() && laterRows.isEmpty()) {
-                    item {
-                        androidx.compose.foundation.text.BasicText(
-                            "没有待办，今天可以轻一点。",
-                            style = RemType.text14.copy(color = colors.textLow),
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
-                        )
-                    }
-                }
-                if (groups.completed.isNotEmpty()) {
-                    item {
-                        TaskSection(
-                            title = "已完成",
-                            rows = groups.completed,
-                            today = today,
-                            selectedId = selectedId,
-                            completed = true,
-                            onOpen = mainVm::openDetail,
-                            onToggleCompleted = mainVm::toggleCompleted,
-                            onToggleFlag = mainVm::toggleFlag,
-                            rowMinHeight = rowMinHeight,
-                            checkboxSize = checkboxSize,
-                        )
-                    }
+                    item { Spacer(Modifier.height(if (edgeToEdgeRows) 4.dp else 8.dp)) }
                 }
             }
         }
@@ -245,7 +184,7 @@ fun Scope.toTimelineScope(inboxListId: Long?): TimelineScope = when (this) {
 private fun ledgerTitle(
     scope: Scope,
     query: String,
-    lists: List<com.myapplication.shared.domain.model.TodoList>,
+    lists: List<TodoList>,
     inboxListId: Long?,
 ): String {
     if (query.isNotBlank()) return scopeTitle(scope, query)
@@ -257,3 +196,120 @@ private fun ledgerTitle(
         else -> scopeTitle(scope, query)
     }
 }
+
+private data class LedgerTaskSection(
+    val title: String,
+    val tone: TimelineTone,
+    val rows: List<TaskRowModel>,
+    val completed: Boolean = false,
+    val emptyText: String = "无",
+)
+
+private data class LedgerTrashSection(
+    val title: String,
+    val tone: TimelineTone,
+    val items: List<TodoItem>,
+    val emptyText: String = "无",
+)
+
+private fun buildLedgerTaskSections(
+    scope: Scope,
+    groups: TaskGroups,
+    timeline: TodayTimelineState,
+    today: LocalDate,
+    timeZone: TimeZone,
+    inboxListId: Long?,
+): List<LedgerTaskSection> {
+    val active = groups.active
+    val completed = groups.completed
+    return when (scope) {
+        Scope.Today -> {
+            val activeById = active.associateBy { it.item.id }
+            val pastRows = timeline.past.mapNotNull { activeById[it.item.id] ?: TaskRowModel(it.item, emptyList()) }
+            val upcomingRows = timeline.upcoming.mapNotNull { activeById[it.item.id] ?: TaskRowModel(it.item, emptyList()) }
+            listOf(
+                LedgerTaskSection("已错过", TimelineTone.Danger, pastRows, emptyText = "没有错过的待办"),
+                LedgerTaskSection("接下来", TimelineTone.Brand, upcomingRows, emptyText = "没有接下来的定时待办"),
+                LedgerTaskSection("未安排时间", TimelineTone.Neutral, timeline.unscheduled, emptyText = "没有未安排时间的待办"),
+                LedgerTaskSection("已完成", TimelineTone.Success, completed, completed = true, emptyText = "今天还没有完成记录"),
+            )
+        }
+        Scope.Scheduled -> listOf(
+            LedgerTaskSection("今天", TimelineTone.Brand, active.filter { it.isDueOn(today, timeZone) }, emptyText = "今天没有计划待办"),
+            LedgerTaskSection("明天", TimelineTone.Info, active.filter { it.isDueOn(today.plus(1, DateTimeUnit.DAY), timeZone) }, emptyText = "明天没有计划待办"),
+            LedgerTaskSection("本周", TimelineTone.Warning, active.filter { it.isDueBetween(today, 2, 7, timeZone) }, emptyText = "本周没有更多计划"),
+            LedgerTaskSection("以后", TimelineTone.Neutral, active.filter { it.isDueAfter(today.plus(7, DateTimeUnit.DAY), timeZone) }, emptyText = "没有更晚的计划"),
+        )
+        Scope.Completed -> listOf(
+            LedgerTaskSection("今天完成", TimelineTone.Success, completed.filter { it.item.completedAt?.toLocalDateTime(timeZone)?.date == today }, completed = true, emptyText = "今天还没有完成记录"),
+            LedgerTaskSection("本周完成", TimelineTone.Info, completed.filter { row ->
+                row.item.completedAt?.toLocalDateTime(timeZone)?.date?.let { it < today && it.daysUntil(today) in 1..7 } == true
+            }, completed = true, emptyText = "本周没有其他完成记录"),
+            LedgerTaskSection("更早完成", TimelineTone.Neutral, completed.filter { row ->
+                row.item.completedAt?.toLocalDateTime(timeZone)?.date?.let { it.daysUntil(today) > 7 } ?: true
+            }, completed = true, emptyText = "没有更早完成记录"),
+        )
+        Scope.Trash -> emptyList()
+        Scope.All -> workbenchSections(active, today, timeZone, inboxListId)
+        is Scope.List -> {
+            val isInbox = inboxListId == scope.listId
+            if (isInbox) {
+                listOf(
+                    LedgerTaskSection("待整理", TimelineTone.Warning, active, emptyText = "收件箱已清空"),
+                    LedgerTaskSection("已有日期", TimelineTone.Info, active.filter { it.item.dueDate != null }, emptyText = "没有已安排日期的收件箱待办"),
+                    LedgerTaskSection("无日期", TimelineTone.Neutral, active.filter { it.item.dueDate == null }, emptyText = "没有无日期待办"),
+                    LedgerTaskSection("逾期", TimelineTone.Danger, active.filter { it.isOverdue(today, timeZone) }, emptyText = "没有逾期待整理项"),
+                )
+            } else {
+                workbenchSections(active, today, timeZone, inboxListId = null)
+            }
+        }
+    }
+}
+
+private fun workbenchSections(
+    active: List<TaskRowModel>,
+    today: LocalDate,
+    timeZone: TimeZone,
+    inboxListId: Long?,
+): List<LedgerTaskSection> = listOf(
+    LedgerTaskSection("逾期", TimelineTone.Danger, active.filter { it.isOverdue(today, timeZone) }, emptyText = "没有逾期待办"),
+    LedgerTaskSection("今天", TimelineTone.Brand, active.filter { it.isDueOn(today, timeZone) }, emptyText = "今天没有待办"),
+    LedgerTaskSection("未来 7 天", TimelineTone.Info, active.filter { it.isDueBetween(today, 1, 7, timeZone) }, emptyText = "未来 7 天没有待办"),
+    LedgerTaskSection("无日期", TimelineTone.Neutral, active.filter { it.item.dueDate == null }, emptyText = "没有无日期待办"),
+    LedgerTaskSection("待整理", TimelineTone.Warning, active.filter { inboxListId != null && it.item.listId == inboxListId }, emptyText = "没有待整理任务"),
+)
+
+private fun buildLedgerTrashSections(
+    scope: Scope,
+    trashGroups: List<TaskRowModel>,
+    today: LocalDate,
+    timeZone: TimeZone,
+): List<LedgerTrashSection> {
+    if (scope != Scope.Trash) return emptyList()
+    val items = trashGroups.map { it.item }
+    return listOf(
+        LedgerTrashSection("最近删除", TimelineTone.Warning, items.filter { it.trashedAt?.toLocalDateTime(timeZone)?.date == today }, emptyText = "今天没有删除项目"),
+        LedgerTrashSection("可恢复", TimelineTone.Info, items, emptyText = "垃圾箱为空"),
+        LedgerTrashSection("无日期", TimelineTone.Neutral, items.filter { it.dueDate == null }, emptyText = "没有无日期项目"),
+    )
+}
+
+private fun TaskRowModel.localDueDate(timeZone: TimeZone): LocalDate? =
+    item.dueDate?.toLocalDateTime(timeZone)?.date
+
+private fun TaskRowModel.isOverdue(today: LocalDate, timeZone: TimeZone): Boolean =
+    localDueDate(timeZone)?.let { it < today } == true
+
+private fun TaskRowModel.isDueOn(date: LocalDate, timeZone: TimeZone): Boolean =
+    localDueDate(timeZone) == date
+
+private fun TaskRowModel.isDueBetween(today: LocalDate, startOffset: Int, endOffset: Int, timeZone: TimeZone): Boolean {
+    val due = localDueDate(timeZone) ?: return false
+    val from = today.plus(startOffset, DateTimeUnit.DAY)
+    val to = today.plus(endOffset, DateTimeUnit.DAY)
+    return due >= from && due <= to
+}
+
+private fun TaskRowModel.isDueAfter(date: LocalDate, timeZone: TimeZone): Boolean =
+    localDueDate(timeZone)?.let { it > date } == true

@@ -3,18 +3,24 @@ package com.myapplication.shared.ui.ledger
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -54,29 +60,56 @@ fun TaskSection(
     modifier: Modifier = Modifier,
     rowMinHeight: androidx.compose.ui.unit.Dp = RemControlSize.rowDesktop,
     checkboxSize: androidx.compose.ui.unit.Dp = 16.dp,
+    showRowContainer: Boolean = true,
+    headerColor: Color? = null,
+    emptyText: String = "没有待办",
 ) {
     val colors = LocalRemColors.current
+    var expanded by remember(title) { mutableStateOf(true) }
+    val titleColor = headerColor ?: if (completed) colors.textLow else colors.textHigh
     Column(modifier.fillMaxWidth()) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+            Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(horizontal = if (showRowContainer) 4.dp else 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            RemIcon(if (expanded) IconName.ChevronDown else IconName.ChevronRight, titleColor, Modifier.size(14.dp))
+            Spacer(Modifier.width(7.dp))
             androidx.compose.foundation.text.BasicText(
                 title,
-                style = RemType.label12.copy(color = if (completed) colors.textLow else colors.textHigh),
+                style = RemType.label12.copy(color = titleColor),
             )
             Spacer(Modifier.width(6.dp))
             androidx.compose.foundation.text.BasicText(
                 rows.size.toString(),
-                style = RemType.text12.copy(color = colors.textLow),
+                style = RemType.label12.copy(color = titleColor),
             )
+            Spacer(Modifier.weight(1f))
         }
-        Column(
+        if (!expanded) return@Column
+        val rowContainerModifier = if (showRowContainer) {
             Modifier
                 .fillMaxWidth()
-                .background(colors.surface),
+                .background(colors.surface)
+        } else {
+            Modifier.fillMaxWidth()
+        }
+        Column(
+            rowContainerModifier,
         ) {
-            rows.forEach { row ->
+            if (rows.isEmpty()) {
+                androidx.compose.foundation.text.BasicText(
+                    emptyText,
+                    style = RemType.text12.copy(color = colors.textLow),
+                    modifier = Modifier.padding(
+                        horizontal = if (showRowContainer) 10.dp else 37.dp,
+                        vertical = 10.dp,
+                    ),
+                )
+            }
+            rows.forEachIndexed { index, row ->
                 TaskRow(
                     model = row,
                     today = today,
@@ -86,6 +119,70 @@ fun TaskSection(
                     onToggleFlag = { onToggleFlag(row.item) },
                     rowMinHeight = rowMinHeight,
                     checkboxSize = checkboxSize,
+                )
+                if (!showRowContainer && index < rows.lastIndex) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 64.dp)
+                            .height(1.dp)
+                            .background(colors.borderSubtle),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TrashSection(
+    title: String,
+    rows: List<TodoItem>,
+    onRestore: (TodoItem) -> Unit,
+    onDeleteForever: (TodoItem) -> Unit,
+    modifier: Modifier = Modifier,
+    headerColor: Color? = null,
+    emptyText: String = "没有待清理项目",
+) {
+    val colors = LocalRemColors.current
+    var expanded by remember(title) { mutableStateOf(true) }
+    val titleColor = headerColor ?: colors.textHigh
+    Column(modifier.fillMaxWidth()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RemIcon(if (expanded) IconName.ChevronDown else IconName.ChevronRight, titleColor, Modifier.size(14.dp))
+            Spacer(Modifier.width(7.dp))
+            androidx.compose.foundation.text.BasicText(title, style = RemType.label12.copy(color = titleColor))
+            Spacer(Modifier.width(6.dp))
+            androidx.compose.foundation.text.BasicText(rows.size.toString(), style = RemType.label12.copy(color = titleColor))
+            Spacer(Modifier.weight(1f))
+        }
+        if (!expanded) return@Column
+        if (rows.isEmpty()) {
+            androidx.compose.foundation.text.BasicText(
+                emptyText,
+                style = RemType.text12.copy(color = colors.textLow),
+                modifier = Modifier.padding(horizontal = 37.dp, vertical = 10.dp),
+            )
+        }
+        rows.forEachIndexed { index, item ->
+            TrashRow(
+                item = item,
+                onRestore = { onRestore(item) },
+                onDeleteForever = { onDeleteForever(item) },
+            )
+            if (index < rows.lastIndex) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp)
+                        .height(1.dp)
+                        .background(colors.borderSubtle),
                 )
             }
         }
