@@ -10,12 +10,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -70,13 +74,12 @@ fun App() {
 /**
  * 应用根容器：单一 `when` 路由状态机 + 900dp 宽度断点的响应式布局。
  *
- * 路由四分支（按优先级）：
+ * 路由三分支（按优先级）：
  * 1. 设置页全屏覆盖（任何屏宽下优先）；
  * 2. 宽屏三栏：Sidebar + 列表 + 右侧详情（AnimatedVisibility 控制详情栏滑入滑出）；
- * 3. 窄屏且选中详情：详情页占满整屏（手机/平板竖屏的二级页面）；
- * 4. 窄屏主列表：顶栏 + 列表 + FAB + 底部分栏导航。
+ * 3. 窄屏：主列表常驻，详情以底部抽屉（ModalBottomSheet）形式从底部滑出。
  */
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun AppRoot(graph: AppGraph) {
     val mainVm: MainViewModel = viewModel { MainViewModel(graph.repository, graph.addTodo, graph.timeZone) }
@@ -139,41 +142,58 @@ fun AppRoot(graph: AppGraph) {
                     }
                 }
             }
-            // 分支 3：窄屏详情页占满全屏（视为独立页面，可返回）。
-            selectedId != null -> {
-                DetailScreen(
-                    mainVm,
-                    graph,
-                    selectedId,
-                    Modifier
-                        .fillMaxSize()
-                        .background(colors.bgPrimary)
-                        .statusBarsPadding()
-                        .navigationBarsPadding(),
-                )
-            }
-            // 分支 4：窄屏主列表（顶栏 + 列表 + FAB + 底部分栏）。
+            // 分支 3：窄屏——主列表常驻，详情以 ModalBottomSheet 从底部滑出（带遮罩与下滑手势）。
+            // 可见性完全由路由派生：Route.Detail 时组合底部抽屉，mainVm.back()（返回键/Escape/
+            // 遮罩点击/下滑/详情页关闭按钮）回到 Route.Main 即移除抽屉，天然满足「先关抽屉，再回主列表」。
             else -> {
-                Column(Modifier.fillMaxSize().background(colors.bgPrimary)) {
-                    NarrowTopBar(mainVm)
-                    // 下拉刷新：手势触发立即同步，旋转指示器跟随 syncStatus.syncing 动画。
-                    PullToRefreshBox(
-                        isRefreshing = syncStatus.syncing,
-                        onRefresh = { graph.engine.syncNow() },
-                        modifier = Modifier.weight(1f).fillMaxWidth(),
-                    ) {
-                        Box(Modifier.fillMaxSize()) {
-                            TodoListScreen(mainVm, Modifier.fillMaxSize(), showHeader = false)
-                            // FAB 叠在列表右下角。
-                            TodoFAB(
+                val detailId = selectedId
+                Box(Modifier.fillMaxSize()) {
+                    Column(Modifier.fillMaxSize().background(colors.bgPrimary)) {
+                        NarrowTopBar(mainVm)
+                        // 下拉刷新：手势触发立即同步，旋转指示器跟随 syncStatus.syncing 动画。
+                        PullToRefreshBox(
+                            isRefreshing = syncStatus.syncing,
+                            onRefresh = { graph.engine.syncNow() },
+                            modifier = Modifier.weight(1f).fillMaxWidth(),
+                        ) {
+                            Box(Modifier.fillMaxSize()) {
+                                TodoListScreen(mainVm, Modifier.fillMaxSize(), showHeader = false)
+                                // FAB 叠在列表右下角。
+                                TodoFAB(
+                                    mainVm,
+                                    Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(16.dp),
+                                )
+                            }
+                        }
+                        NarrowBottomNav(mainVm)
+                    }
+                    // 选中待办时从底部滑出详情抽屉；Dismiss（下滑/遮罩/返回）统一收敛到
+                    // onDismissRequest → mainVm.back()，与宽屏详情栏同一路由语义。
+                    if (detailId != null) {
+                        ModalBottomSheet(
+                            onDismissRequest = mainVm::back,
+                            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                            modifier = Modifier.fillMaxWidth(),
+                            dragHandle = null,
+                            // 抽屉内部不再吃系统 insets：DetailScreen 自带
+                            // statusBarsPadding/navigationBarsPadding（与旧全屏详情分支一致），
+                            // 避免上下各重复避让一次。
+                            contentWindowInsets = { WindowInsets(0.dp) },
+                        ) {
+                            DetailScreen(
                                 mainVm,
+                                graph,
+                                detailId,
                                 Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(16.dp),
+                                    .fillMaxSize()
+                                    .background(colors.bgPrimary)
+                                    .statusBarsPadding()
+                                    .navigationBarsPadding(),
                             )
                         }
                     }
-                    NarrowBottomNav(mainVm)
                 }
             }
         }
