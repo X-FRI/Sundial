@@ -1,5 +1,9 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
+val displayVersion = "0.2.0"
+// jpackage rejects app-version values whose first number is 0.
+val desktopPackageVersion = "1.2.0"
+
 plugins {
     kotlin("multiplatform")
     id("org.jetbrains.compose")
@@ -25,12 +29,13 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "Sundial"
-            packageVersion = "0.1.0"
+            packageVersion = desktopPackageVersion
+            modules("java.instrument", "java.sql", "jdk.unsupported")
             macOS {
                 iconFile.set(file("src/jvmMain/resources/icon.icns"))
                 bundleID = "com.sundial.app"
                 infoPlist {
-                    extraKeysRawXml = "<key>CFBundleShortVersionString</key><string>0.1.0</string>"
+                    extraKeysRawXml = "<key>CFBundleShortVersionString</key><string>$displayVersion</string>"
                 }
             }
         }
