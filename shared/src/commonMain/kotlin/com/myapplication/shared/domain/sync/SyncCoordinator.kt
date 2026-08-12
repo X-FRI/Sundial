@@ -38,6 +38,23 @@ class SyncCoordinator(
     }
 
     /**
+     * 全量拉取远端状态并逐行应用（复用 [applyRemote] 的 LWW 与回声过滤）。
+     *
+     * 应用前先过滤掉本设备写出的回声行（updatedBy == deviceId），保证返回值
+     * 是「真实应用的远端行数」；逐行应用失败只影响该行（applyRemote 内部已把
+     * 解析/持久化错误归一为 SyncError.Transport 并跳过），不中断整体。
+     * 调用方（SyncEngine.syncNow）可据此感知远端是否有新数据。
+     */
+    suspend fun pullFromRemote(): Either<SyncError, Int> = either {
+        val rows = client.pull().bind()
+        var applied = 0
+        rows.filter { it.updatedBy != deviceId }.forEach { row ->
+            applyRemote(row).onRight { applied++ }
+        }
+        applied
+    }
+
+    /**
      * 应用一条远端变更到本地。行内已含 updatedBy，用于回声过滤。
      *
      * 处理顺序：

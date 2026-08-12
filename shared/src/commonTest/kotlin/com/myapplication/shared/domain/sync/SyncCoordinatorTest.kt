@@ -21,12 +21,15 @@ class FakeSyncClient : SyncClient {
     val pushed = mutableListOf<List<SyncRow>>()
     var failPush = false
     val remote = MutableStateFlow<List<SyncRow>>(emptyList())
+    var pullResult: List<SyncRow> = emptyList()
 
     override suspend fun push(rows: List<SyncRow>): Either<SyncError, Unit> {
         if (failPush) return Either.Left(SyncError.Transport("network down"))
         pushed += rows
         return Either.Right(Unit)
     }
+
+    override suspend fun pull(): Either<SyncError, List<SyncRow>> = Either.Right(pullResult)
 
     override fun observeRemoteChanges(): Flow<SyncRow> =
         flow { remote.value.forEach { emit(it) } }
@@ -127,4 +130,42 @@ class SyncCoordinatorTest {
         assertTrue(result.isRight())
         assertEquals("todo" to 7L, repo.appliedDeletes.single())
     }
+
+    @Test
+    fun pullAppliesRemoteRows() = runTest {
+        val repo = FakeTodoRepository()
+        val client = FakeSyncClient().apply {
+            pullResult = listOf(
+                row(rowId = 1, payload = todoPayload("a")),
+                row(rowId = 2, payload = todoPayload("b")),
+            )
+        }
+        val coordinator = SyncCoordinator(repo, client, "device-a")
+        val result = coordinator.pullFromRemote()
+        // 两行远端 todo 全部应用，返回应用行数 2
+        assertTrue(result.isRight())
+        assertEquals(2, result.getOrNull())
+        assertEquals(listOf("a", "b"), repo.appliedUpserts.map { it.title })
+    }
+
+    @Test
+    fun pullSkipsOwnDeviceRows() = runTest {
+        val repo = FakeTodoRepository()
+        val client = FakeSyncClient().apply {
+            pullResult = listOf(
+                row(rowId = 1, updatedBy = "device-a", payload = todoPayload("own")),
+                row(rowId = 2, updatedBy = "device-b", payload = todoPayload("remote")),
+            )
+        }
+        val coordinator = SyncCoordinator(repo, client, "device-a")
+        val result = coordinator.pullFromRemote()
+        // 自设备行被回声过滤，只应用远端行
+        assertTrue(result.isRight())
+        assertEquals(1, result.getOrNull())
+        assertEquals(listOf("remote"), repo.appliedUpserts.map { it.title })
+    }
+
+    private fun todoPayload(title: String) = Json.encodeToString(
+        TodoRowDto(0, 1, title, "", null, false, null, false, null, null, 0.0, false, 0, 100, "device-b"),
+    )
 }

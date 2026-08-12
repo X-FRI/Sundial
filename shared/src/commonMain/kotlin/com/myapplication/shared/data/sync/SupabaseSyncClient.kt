@@ -27,6 +27,9 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
@@ -103,6 +106,43 @@ class SupabaseSyncClient(
             when (row.table) {
                 "todo", "reminder_list" -> client.from(row.table).delete { filter { eq("id", row.rowId) } }
             }
+        }
+    }
+
+    /**
+     * 全量拉取两张业务表，对齐 Realtime 流之外的远端状态。
+     *
+     * 返回的行统一为 seq = 0 的 SyncRow（seq 只属于本地 outbox，见
+     * toSyncRow），action 恒为 UPSERT——已删除的远端行不在表中，
+     * 全量拉取天然看不到删除，只做状态对齐兜底；
+     * 回声过滤（updatedBy == deviceId）交给 coordinator 的 applyRemote。
+     */
+    override suspend fun pull(): Either<SyncError, List<SyncRow>> =
+        try {
+            buildList {
+                addAll(pullTable("todo"))
+                addAll(pullTable("reminder_list"))
+            }.right()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            SyncError.Transport(e.message ?: "拉取失败").left()
+        }
+
+    private suspend fun pullTable(table: String): List<SyncRow> {
+        val result = client.from(table).select { filter { gt("updated_at", 0) } }
+        val elements = Json.parseToJsonElement(result.data).jsonArray
+        return elements.map { el ->
+            val obj = el.jsonObject
+            SyncRow(
+                seq = 0L,
+                table = table,
+                rowId = obj["id"]!!.jsonPrimitive.longOrNull ?: 0L,
+                action = SyncAction.UPSERT,
+                payload = el.toString(),
+                updatedAt = obj["updated_at"]!!.jsonPrimitive.longOrNull ?: 0L,
+                updatedBy = obj["updated_by"]?.jsonPrimitive?.contentOrNull ?: "",
+            )
         }
     }
 
