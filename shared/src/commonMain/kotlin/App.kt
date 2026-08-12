@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -154,15 +156,22 @@ fun AppRoot(graph: AppGraph) {
             else -> {
                 Column(Modifier.fillMaxSize().background(colors.bgPrimary)) {
                     NarrowTopBar(mainVm)
-                    Box(Modifier.weight(1f)) {
-                        TodoListScreen(mainVm, Modifier.fillMaxSize(), showHeader = false)
-                        // FAB 叠在列表右下角。
-                        TodoFAB(
-                            mainVm,
-                            Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(16.dp),
-                        )
+                    // 下拉刷新：手势触发立即同步，旋转指示器跟随 syncStatus.syncing 动画。
+                    PullToRefreshBox(
+                        isRefreshing = syncStatus.syncing,
+                        onRefresh = { graph.engine.syncNow() },
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                    ) {
+                        Box(Modifier.fillMaxSize()) {
+                            TodoListScreen(mainVm, Modifier.fillMaxSize(), showHeader = false)
+                            // FAB 叠在列表右下角。
+                            TodoFAB(
+                                mainVm,
+                                Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(16.dp),
+                            )
+                        }
                     }
                     NarrowBottomNav(mainVm)
                 }
