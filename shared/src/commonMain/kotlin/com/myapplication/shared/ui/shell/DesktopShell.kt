@@ -3,6 +3,7 @@ package com.myapplication.shared.ui.shell
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -33,7 +34,7 @@ fun DesktopShell(
         MainLedger(
             mainVm = mainVm,
             selectedId = selectedId,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).statusBarsPadding(),
             clock = graph.clock,
             timeZone = graph.timeZone,
         )
@@ -41,6 +42,7 @@ fun DesktopShell(
             mainVm = mainVm,
             graph = graph,
             todoId = selectedId,
+            modifier = Modifier.statusBarsPadding(),
         )
     }
 }
