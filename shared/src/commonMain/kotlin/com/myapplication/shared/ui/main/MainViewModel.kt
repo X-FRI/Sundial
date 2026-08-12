@@ -8,6 +8,7 @@ import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.usecase.AddTodoInput
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
+import com.myapplication.shared.ui.effects.launchTodoEffect
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +18,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
@@ -139,7 +139,7 @@ class MainViewModel(
     init {
         // 启动时确保「收件箱」列表存在：它是所有新待办的默认归属，
         // 若初始化失败则记录到 lastError（此时 UI 仍可进入，但新建可能失败）。
-        viewModelScope.launch { repository.ensureInbox().onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { repository.ensureInbox() }
     }
 
     fun dismissError() {
@@ -178,7 +178,7 @@ class MainViewModel(
 
     /** 新建待办：同步校验在 usecase 内，失败统一进 [lastError]。 */
     fun createTodo(title: String, note: String, due: LocalDateTime?, flag: Boolean = false, listId: Long? = null) {
-        viewModelScope.launch {
+        launchTodoEffect(lastError) {
             addTodo(
                 AddTodoInput(
                     listId = listId,
@@ -188,35 +188,35 @@ class MainViewModel(
                     dueDate = due?.toInstant(timeZone),
                     flag = flag,
                 ),
-            ).onLeft { lastError.value = it }
+            )
         }
     }
 
     fun toggleCompleted(item: TodoItem) {
-        viewModelScope.launch { repository.setCompleted(item.id, !item.isCompleted).onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { repository.setCompleted(item.id, !item.isCompleted) }
     }
 
     fun toggleFlag(item: TodoItem) {
-        viewModelScope.launch { repository.setFlag(item.id, !item.flag).onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { repository.setFlag(item.id, !item.flag) }
     }
 
     fun trash(item: TodoItem) {
-        viewModelScope.launch { repository.trash(item.id).onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { repository.trash(item.id) }
     }
 
     fun restore(item: TodoItem) {
-        viewModelScope.launch { repository.restore(item.id).onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { repository.restore(item.id) }
     }
 
     fun deleteForever(item: TodoItem) {
-        viewModelScope.launch { repository.deleteForever(item.id).onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { repository.deleteForever(item.id) }
     }
 
     /** 新建自定义列表；空名称直接忽略。 */
     fun addList(name: String, colorKey: String) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
-        viewModelScope.launch { repository.addList(trimmed, colorKey).onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { repository.addList(trimmed, colorKey) }
     }
 
     /**
@@ -224,7 +224,7 @@ class MainViewModel(
      * 避免 UI 停留在已不存在的范围上（此处为乐观切换，不等待删除结果）。
      */
     fun deleteList(list: TodoList) {
-        viewModelScope.launch { repository.deleteList(list.id).onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { repository.deleteList(list.id) }
         if (scope.value == Scope.List(list.id)) scope.value = Scope.All
     }
 }

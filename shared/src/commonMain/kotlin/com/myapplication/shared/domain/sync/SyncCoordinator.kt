@@ -1,8 +1,9 @@
 package com.myapplication.shared.domain.sync
 
 import arrow.core.Either
-import arrow.core.raise.either
-import com.myapplication.shared.domain.error.TodoError
+import com.myapplication.shared.effects.bindLocal
+import com.myapplication.shared.effects.catchTransport
+import com.myapplication.shared.effects.runSyncEffect
 import com.myapplication.shared.domain.repository.TodoRepository
 import kotlinx.serialization.json.Json
 
@@ -29,13 +30,16 @@ class SyncCoordinator(
      * 3. 按最后一条的 seq 清水位线——由于 seq 单调递增且本地命令都在
      *    同一事务内追加，push 成功后这批之前的行必然已推送过，不会重复推。
      */
-    suspend fun drainOutbox(): Either<SyncError, Int> = either {
-        val rows = repository.readOutbox(100).mapLeftToSync().bind()
-        if (rows.isEmpty()) return@either 0
-        val rowsToPush = rows.coalesceUpsertsForPush()
-        client.push(rowsToPush).bind()
-        repository.clearOutbox(rows.last().seq).mapLeftToSync().bind()
-        rows.size
+    suspend fun drainOutbox(): Either<SyncError, Int> = runSyncEffect {
+        val rows = bindLocal(repository.readOutbox(100))
+        if (rows.isEmpty()) {
+            0
+        } else {
+            val rowsToPush = rows.coalesceUpsertsForPush()
+            client.push(rowsToPush).bind()
+            bindLocal(repository.clearOutbox(rows.last().seq))
+            rows.size
+        }
     }
 
     /**
@@ -46,7 +50,7 @@ class SyncCoordinator(
      * 解析/持久化错误归一为 SyncError.Transport 并跳过），不中断整体。
      * 调用方（SyncEngine.syncNow）可据此感知远端是否有新数据。
      */
-    suspend fun pullFromRemote(): Either<SyncError, Int> = either {
+    suspend fun pullFromRemote(): Either<SyncError, Int> = runSyncEffect {
         val rows = client.pull().bind()
         var applied = 0
         rows.filter { it.updatedBy != deviceId }.forEach { row ->
@@ -66,34 +70,28 @@ class SyncCoordinator(
      *    保持单一错误通道；
      * 3. DELETE 不做表内分发，直接按表名 + rowId 应用（LWW 由 SQL 层保证）。
      */
-    suspend fun applyRemote(row: SyncRow): Either<SyncError, Unit> = either {
-        if (row.updatedBy == deviceId) return@either
-        when (row.action) {
-            SyncAction.UPSERT -> when (row.table) {
-                "todo" -> {
-                    val dto = try {
-                        Json.decodeFromString<TodoRowDto>(row.payload ?: "")
-                    } catch (e: Exception) {
-                        raise(SyncError.Transport("解析远端 todo 行失败: ${e.message}"))
+    suspend fun applyRemote(row: SyncRow): Either<SyncError, Unit> = runSyncEffect {
+        if (row.updatedBy != deviceId) {
+            when (row.action) {
+                SyncAction.UPSERT -> when (row.table) {
+                    "todo" -> {
+                        val dto = catchTransport("解析远端 todo 行失败") {
+                            Json.decodeFromString<TodoRowDto>(row.payload ?: "")
+                        }
+                        bindLocal(repository.applyRemoteUpsert(dto))
                     }
-                    repository.applyRemoteUpsert(dto).mapLeftToSync().bind()
-                }
-                "reminder_list" -> {
-                    val dto = try {
-                        Json.decodeFromString<ListRowDto>(row.payload ?: "")
-                    } catch (e: Exception) {
-                        raise(SyncError.Transport("解析远端列表行失败: ${e.message}"))
+                    "reminder_list" -> {
+                        val dto = catchTransport("解析远端列表行失败") {
+                            Json.decodeFromString<ListRowDto>(row.payload ?: "")
+                        }
+                        bindLocal(repository.applyRemoteUpsertList(dto))
                     }
-                    repository.applyRemoteUpsertList(dto).mapLeftToSync().bind()
+                    else -> Unit
                 }
-                else -> Unit
+                SyncAction.DELETE -> bindLocal(repository.applyRemoteDelete(row.table, row.rowId, row.updatedAt))
             }
-            SyncAction.DELETE -> repository.applyRemoteDelete(row.table, row.rowId, row.updatedAt).mapLeftToSync().bind()
         }
     }
-
-    private fun <A> Either<TodoError, A>.mapLeftToSync(): Either<SyncError, A> =
-        mapLeft { SyncError.Transport((it as? TodoError.Persistence)?.message ?: "本地读取失败") }
 
     /**
      * PostgREST cannot upsert the same constrained row twice in one command.

@@ -1,8 +1,11 @@
 package com.myapplication.shared.data.sync
 
 import arrow.core.Either
-import arrow.core.left
-import arrow.core.right
+import arrow.fx.coroutines.Resource
+import arrow.fx.coroutines.resource
+import arrow.fx.coroutines.use
+import com.myapplication.shared.effects.catchTransport
+import com.myapplication.shared.effects.runSyncEffect
 import com.myapplication.shared.domain.sync.ListRowDto
 import com.myapplication.shared.domain.sync.SyncAction
 import com.myapplication.shared.domain.sync.SyncClient
@@ -18,8 +21,8 @@ import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.realtime
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -69,24 +72,20 @@ class SupabaseSyncClient(
      * 跳过数作为内部细节仅用于判定整批失败。
      */
     override suspend fun push(rows: List<SyncRow>): Either<SyncError, Unit> =
-        try {
+        runSyncEffect {
             var skipped = 0
-            // 1. 先按 action 分组（UPSERT 与 DELETE 的传输方式不同）
-            rows.groupBy { it.action }.forEach { (action, group) ->
-                when (action) {
-                    SyncAction.UPSERT -> skipped += pushUpserts(group)
-                    SyncAction.DELETE -> pushDeletes(group)
+            catchTransport("同步失败") {
+                // 1. 先按 action 分组（UPSERT 与 DELETE 的传输方式不同）
+                rows.groupBy { it.action }.forEach { (action, group) ->
+                    when (action) {
+                        SyncAction.UPSERT -> skipped += pushUpserts(group)
+                        SyncAction.DELETE -> pushDeletes(group)
+                    }
                 }
             }
             if (skipped > 0 && skipped == rows.size) {
-                SyncError.Transport("${rows.size} 行 payload 损坏被全部跳过，无数据上送").left()
-            } else {
-                Unit.right()
+                raise(SyncError.Transport("${rows.size} 行 payload 损坏被全部跳过，无数据上送"))
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            SyncError.Transport(e.message ?: "同步失败").left()
         }
 
     /**
@@ -139,15 +138,13 @@ class SupabaseSyncClient(
      * 回声过滤（updatedBy == deviceId）交给 coordinator 的 applyRemote。
      */
     override suspend fun pull(): Either<SyncError, List<SyncRow>> =
-        try {
-            buildList {
-                addAll(pullTable("todo"))
-                addAll(pullTable("reminder_list"))
-            }.right()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            SyncError.Transport(e.message ?: "拉取失败").left()
+        runSyncEffect {
+            catchTransport("拉取失败") {
+                buildList {
+                    addAll(pullTable("todo"))
+                    addAll(pullTable("reminder_list"))
+                }
+            }
         }
 
     private suspend fun pullTable(table: String): List<SyncRow> {
@@ -175,26 +172,28 @@ class SupabaseSyncClient(
      * 过滤链：
      * 1. 丢弃 Select 事件（订阅时的初始快照，不是真实变更）；
      * 2. 回声过滤 updated_by == deviceId——本设备的写操作直接跳过。
-     * 退订收尾：流结束/取消时对每个 channel 尝试退订（runCatching 吞掉失败）。
+     * 退订收尾：channel 生命周期由 Resource 管理，流结束/取消时统一释放。
      */
-    override fun observeRemoteChanges(): Flow<SyncRow> = flow {
+    override fun observeRemoteChanges(): Flow<SyncRow> =
+        flow { remoteChangesResource().use { emitAll(it) } }
+
+    private fun remoteChangesResource(): Resource<Flow<SyncRow>> = resource {
         val tables = listOf(
             "todo" to "sundial-todo",
             "reminder_list" to "sundial-lists",
         )
         val channels = tables.map { (table, channelId) -> client.channel(channelId) to table }
+        onRelease {
+            channels.forEach { (channel, _) -> runCatching { channel.unsubscribe() } }
+        }
         val flows = channels.map { (channel, table) ->
             channel.postgresChangeFlow<PostgresAction>("public") { this.table = table }
                 .filter { it !is PostgresAction.Select }
                 .map { it.toSyncRow(table) }
                 .filter { it.updatedBy != deviceId }
         }
-        try {
-            channels.forEach { (channel, _) -> channel.subscribe() }
-            merge(*flows.toTypedArray()).collect { emit(it) }
-        } finally {
-            channels.forEach { (channel, _) -> runCatching { channel.unsubscribe() } }
-        }
+        channels.forEach { (channel, _) -> channel.subscribe() }
+        merge(*flows.toTypedArray())
     }
 
     /**

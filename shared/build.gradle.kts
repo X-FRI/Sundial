@@ -46,6 +46,8 @@ kotlin {
                 implementation("app.cash.sqldelight:runtime:$sqlDelightVersion")
                 implementation("app.cash.sqldelight:coroutines-extensions:$sqlDelightVersion")
                 api("io.arrow-kt:arrow-core:$arrowVersion")
+                api("io.arrow-kt:arrow-fx-coroutines:$arrowVersion")
+                api("io.arrow-kt:arrow-resilience:$arrowVersion")
                 implementation(project.dependencies.platform("io.github.jan-tennert.supabase:bom:$supabaseVersion"))
                 implementation("io.github.jan-tennert.supabase:postgrest-kt")
                 implementation("io.github.jan-tennert.supabase:realtime-kt")

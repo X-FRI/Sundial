@@ -122,6 +122,33 @@ class SyncEngineTest {
     }
 
     @Test
+    fun configureReleasesOldClientBeforeStartingNewRuntime() = runTest {
+        val repo = FakeTodoRepository()
+        val oldClient = FakeSyncClient().apply { closeDelayMs = 1_000 }
+        val newClient = FakeSyncClient()
+        val clients = ArrayDeque(listOf(oldClient, newClient))
+        var factoryCalls = 0
+        val engine = SyncEngine(backgroundScope, repo, FakeClock(1_000_000)) {
+            factoryCalls++
+            clients.removeFirst().right()
+        }
+        engine.configure(supabaseConfig("old-device"))
+        runCurrent()
+        assertEquals(SyncMode.Supabase, engine.status.value.mode)
+        assertEquals(1, factoryCalls)
+
+        engine.configure(supabaseConfig("new-device"))
+        runCurrent()
+
+        assertEquals(1, oldClient.closeAttempts)
+        assertEquals(1, factoryCalls)
+        assertEquals(0, newClient.pushAttempts)
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(2, factoryCalls)
+    }
+
+    @Test
     fun pushLoopFailureBacksOffAndKeepsRetrying() = runTest {
         val repo = FakeTodoRepository()
         val client = FakeSyncClient().apply { failPush = true }

@@ -23,6 +23,8 @@ class FakeSyncClient : SyncClient {
     val pushed = mutableListOf<List<SyncRow>>()
     var pushAttempts = 0
     var pushDelayMs = 0L
+    var closeAttempts = 0
+    var closeDelayMs = 0L
     var failPush = false
     val remote = MutableStateFlow<List<SyncRow>>(emptyList())
     var pullResult: List<SyncRow> = emptyList()
@@ -49,5 +51,8 @@ class FakeSyncClient : SyncClient {
 
     override fun observeConnectionStatus(): Flow<Boolean> = MutableStateFlow(false)
 
-    override suspend fun close() = Unit
+    override suspend fun close() {
+        closeAttempts++
+        if (closeDelayMs > 0) delay(closeDelayMs)
+    }
 }

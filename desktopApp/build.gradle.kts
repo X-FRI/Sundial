@@ -1,6 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
-val displayVersion = "0.5.0"
+val displayVersion = "0.6.0"
 // jpackage rejects app-version values whose first number is 0.
 val desktopPackageVersion = "1.2.0"
 

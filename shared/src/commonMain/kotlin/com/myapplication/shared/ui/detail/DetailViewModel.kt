@@ -7,13 +7,13 @@ import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.usecase.AddSubTaskUseCase
+import com.myapplication.shared.ui.effects.launchTodoEffect
 import com.myapplication.shared.util.todayDate
 import kotlin.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -59,19 +59,17 @@ class DetailViewModel(
 
     /** 标题：输入框每次 onValueChange 直接落库（写后即忘）。 */
     fun setTitle(title: String) {
-        viewModelScope.launch { repository.setTitle(todoId, title).onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { repository.setTitle(todoId, title) }
     }
 
     /** 备注：与标题相同，随输入实时写入。 */
     fun setNote(note: String) {
-        viewModelScope.launch { repository.setNote(todoId, note).onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { repository.setNote(todoId, note) }
     }
 
     /** 设置截止时间；传 null 表示清除日期。 */
     fun setDueDate(due: LocalDateTime?) {
-        viewModelScope.launch {
-            repository.setDueDate(todoId, due?.toInstant(timeZone)).onLeft { lastError.value = it }
-        }
+        launchTodoEffect(lastError) { repository.setDueDate(todoId, due?.toInstant(timeZone)) }
     }
 
     /**
@@ -84,9 +82,7 @@ class DetailViewModel(
             ?.toLocalDateTime(timeZone)
             ?: LocalDateTime(todayDate(clock, timeZone), LocalTime(hour, minute))
         val ldt = LocalDateTime(base.date, LocalTime(hour, minute))
-        viewModelScope.launch {
-            repository.setDueDate(todoId, ldt.toInstant(timeZone)).onLeft { lastError.value = it }
-        }
+        launchTodoEffect(lastError) { repository.setDueDate(todoId, ldt.toInstant(timeZone)) }
     }
 
     /**
@@ -98,28 +94,26 @@ class DetailViewModel(
         if (current.dueDate == null) return
         val ldt = current.dueDate.toLocalDateTime(timeZone)
         val noTime = LocalDateTime(ldt.date, LocalTime(0, 0))
-        viewModelScope.launch {
-            repository.setDueDate(todoId, noTime.toInstant(timeZone)).onLeft { lastError.value = it }
-        }
+        launchTodoEffect(lastError) { repository.setDueDate(todoId, noTime.toInstant(timeZone)) }
     }
 
     /** 把待办移到另一个列表。 */
     fun moveToList(listId: Long) {
-        viewModelScope.launch { repository.moveToList(todoId, listId).onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { repository.moveToList(todoId, listId) }
     }
 
     /** 新增子任务（usecase 内部处理 parentId 关联）。 */
     fun addSubTask(title: String) {
-        viewModelScope.launch { addSubTask(todoId, title).onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { addSubTask(todoId, title) }
     }
 
     /** 勾选/取消子任务：子任务本身也是 TodoItem，复用同一写接口。 */
     fun toggleSubTask(item: TodoItem) {
-        viewModelScope.launch { repository.setCompleted(item.id, !item.isCompleted).onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { repository.setCompleted(item.id, !item.isCompleted) }
     }
 
     /** 删除子任务（软删除，进垃圾箱）。 */
     fun trashSubTask(item: TodoItem) {
-        viewModelScope.launch { repository.trash(item.id).onLeft { lastError.value = it } }
+        launchTodoEffect(lastError) { repository.trash(item.id) }
     }
 }
