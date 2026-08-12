@@ -37,6 +37,7 @@ class SyncEngine(
     private val scope: CoroutineScope,
     private val repository: TodoRepository,
     private val clock: Clock,
+    private val clientFactory: (SyncConfig) -> Either<SyncError, SyncClient> = SyncClientFactory::create,
 ) {
     private val _status = MutableStateFlow(SyncStatus.initial)
     val status: StateFlow<SyncStatus> = _status
@@ -59,8 +60,8 @@ class SyncEngine(
     fun configure(newConfig: SyncConfig) {
         // 1. 先停旧（取消循环 + 异步 close 旧 client），再建新，避免新旧并存
         stopCurrent()
-        _status.value = _status.value.copy(mode = newConfig.mode, connected = false)
-        SyncClientFactory.create(newConfig).fold(
+        _status.value = _status.value.copy(mode = newConfig.mode, connected = false, syncing = false)
+        clientFactory(newConfig).fold(
             ifLeft = { error ->
                 // 配置失败（如缺 URL/Key）：退回 Noop，保本地功能可用；
                 // pendingCount 保留现值，避免失败切换把待推送数清零（失真）
@@ -90,34 +91,62 @@ class SyncEngine(
     /**
      * 立即同步：推本地 outbox + 拉远端全量，供下拉刷新/侧边栏手动触发。
      * 幂等：coordinator 缺失（Local/未配置）或上一次 syncNow 仍在跑时直接返回。
+     * 异常兜底：syncing=true 之后的整段逻辑都在 try/catch 内，任何意外异常
+     * （含 observeOutboxCount 抛错）都会复位 syncing=false 并记录 lastError，
+     * 保证 UI 同步动画不会卡死在 true。
      */
     fun syncNow() {
         if (coordinator == null || syncNowJob?.isActive == true) return
         syncNowJob = scope.launch {
             _status.update { it.copy(syncing = true) }
-            val drainResult = runCatching { coordinator?.drainOutbox() }.getOrNull()
-            val pullResult = runCatching { coordinator?.pullFromRemote() }.getOrNull()
-            val drainFailed = drainResult?.isLeft() == true
-            val pullFailed = pullResult?.isLeft() == true
-            if (drainFailed || pullFailed) {
-                val msg = when {
-                    drainFailed -> (drainResult as Either.Left<SyncError>).value.message()
-                    else -> (pullResult as Either.Left<SyncError>).value.message()
+            try {
+                val drainResult = tryDrainOutbox()
+                val pullResult = tryPullFromRemote()
+                val drainFailed = drainResult?.isLeft() == true
+                val pullFailed = pullResult?.isLeft() == true
+                if (drainFailed || pullFailed) {
+                    val msg = when {
+                        drainFailed -> (drainResult as Either.Left<SyncError>).value.message()
+                        else -> (pullResult as Either.Left<SyncError>).value.message()
+                    }
+                    _status.update { it.copy(syncing = false, connected = false, lastError = msg) }
+                } else {
+                    val pending = repository.observeOutboxCount().first()
+                    _status.update {
+                        it.copy(
+                            syncing = pending > 0,
+                            connected = true,
+                            pendingCount = pending,
+                            lastSyncAt = clock.now().toEpochMilliseconds(),
+                            lastError = null,
+                        )
+                    }
                 }
-                _status.update { it.copy(syncing = false, connected = false, lastError = msg) }
-            } else {
-                val pending = repository.observeOutboxCount().first()
-                _status.update {
-                    it.copy(
-                        syncing = pending > 0,
-                        connected = true,
-                        pendingCount = pending,
-                        lastSyncAt = clock.now().toEpochMilliseconds(),
-                        lastError = null,
-                    )
-                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _status.update { it.copy(syncing = false, connected = false, lastError = "同步失败: ${e.message}") }
             }
         }
+    }
+
+    /** drainOutbox 的安全包装：业务异常吞掉返回 null（交给成功分支重查 pending），
+     *  但 CancellationException 必须重抛，保证协程可被干净取消。 */
+    private suspend fun tryDrainOutbox(): Either<SyncError, Int>? = try {
+        coordinator?.drainOutbox()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
+    }
+
+    /** pullFromRemote 的安全包装，语义同 [tryDrainOutbox]。 */
+    private suspend fun tryPullFromRemote(): Either<SyncError, Int>? = try {
+        coordinator?.pullFromRemote()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        null
     }
 
     /**

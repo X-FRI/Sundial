@@ -1,10 +1,8 @@
 package com.myapplication.shared.domain.sync
 
 import arrow.core.Either
+import com.myapplication.shared.test.FakeSyncClient
 import com.myapplication.shared.test.FakeTodoRepository
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
@@ -12,37 +10,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * 内存版 SyncClient 假实现：
- * - [pushed] 记录每次 push 的行，[failPush] 注入传输失败；
- * - [remote] 是远端行列表的状态流，observeRemoteChanges 一次性重放
- *   （模拟"拉取当前远端快照"而非实时订阅）。
- */
-class FakeSyncClient : SyncClient {
-    val pushed = mutableListOf<List<SyncRow>>()
-    var failPush = false
-    val remote = MutableStateFlow<List<SyncRow>>(emptyList())
-    var pullResult: List<SyncRow> = emptyList()
-    var failPull = false
-
-    override suspend fun push(rows: List<SyncRow>): Either<SyncError, Unit> {
-        if (failPush) return Either.Left(SyncError.Transport("network down"))
-        pushed += rows
-        return Either.Right(Unit)
-    }
-
-    override suspend fun pull(): Either<SyncError, List<SyncRow>> =
-        if (failPull) Either.Left(SyncError.Transport("network down")) else Either.Right(pullResult)
-
-    override fun observeRemoteChanges(): Flow<SyncRow> =
-        flow { remote.value.forEach { emit(it) } }
-
-    override fun observeConnectionStatus(): Flow<Boolean> = MutableStateFlow(false)
-
-    override suspend fun close() = Unit
-}
-
-/**
- * SyncCoordinator 的契约测试（配合 FakeTodoRepository / FakeSyncClient）。
+ * SyncCoordinator 的契约测试（配合 FakeTodoRepository / FakeSyncClient，
+ * 假实现见 com.myapplication.shared.test.FakeSyncClient）。
  *
  * 覆盖的四类契约：
  * 1. 出站：drainOutbox 把 outbox 全部 push 并清空；push 失败则保留 outbox；

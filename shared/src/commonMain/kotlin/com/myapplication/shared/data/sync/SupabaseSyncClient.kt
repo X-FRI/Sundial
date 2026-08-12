@@ -61,17 +61,28 @@ class SupabaseSyncClient(
     /**
      * 推送一批 outbox 行。任一步失败抛异常，整批返回 Left，
      * 由协调层保留 outbox 行等待重试。
+     *
+     * 坏行隔离：payload 无法解码的行由 [pushUpserts] 跳过（不送远端），
+     * 正常行照常上送。整批全部损坏时返回 Left（跳过数计入错误文案，
+     * 由协调层保留水位线，错误可被引擎暴露给 UI）；部分损坏时仍返回
+     * Right——损坏行随后会随水位线被清除、不参与重试（重试也无法修复），
+     * 跳过数作为内部细节仅用于判定整批失败。
      */
     override suspend fun push(rows: List<SyncRow>): Either<SyncError, Unit> =
         try {
+            var skipped = 0
             // 1. 先按 action 分组（UPSERT 与 DELETE 的传输方式不同）
             rows.groupBy { it.action }.forEach { (action, group) ->
                 when (action) {
-                    SyncAction.UPSERT -> pushUpserts(group)
+                    SyncAction.UPSERT -> skipped += pushUpserts(group)
                     SyncAction.DELETE -> pushDeletes(group)
                 }
             }
-            Unit.right()
+            if (skipped > 0 && skipped == rows.size) {
+                SyncError.Transport("${rows.size} 行 payload 损坏被全部跳过，无数据上送").left()
+            } else {
+                Unit.right()
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -84,24 +95,30 @@ class SupabaseSyncClient(
      *
      * 坏行隔离：payload 缺失/损坏的行逐行 runCatching 跳过（这类行重试
      * 也无法修复，阻塞整批只会让全量同步停摆），其余行照常批量上送。
+     * 返回被跳过的行数，由 push() 汇总并计入错误（全部跳过视为失败），
+     * 避免损坏行静默消失零痕迹。
      */
-    private suspend fun pushUpserts(rows: List<SyncRow>) {
+    private suspend fun pushUpserts(rows: List<SyncRow>): Int {
+        var skipped = 0
         rows.groupBy { it.table }.forEach { (table, group) ->
             when (table) {
                 "todo" -> {
                     val dtos = group.mapNotNull { row ->
-                        runCatching { Json.decodeFromString<TodoRowDto>(row.payload ?: "") }.getOrNull()
+                        runCatching { Json.decodeFromString<TodoRowDto>(row.payload ?: "") }
+                            .getOrElse { skipped++; null }
                     }
                     if (dtos.isNotEmpty()) client.from("todo").upsert(dtos)
                 }
                 "reminder_list" -> {
                     val dtos = group.mapNotNull { row ->
-                        runCatching { Json.decodeFromString<ListRowDto>(row.payload ?: "") }.getOrNull()
+                        runCatching { Json.decodeFromString<ListRowDto>(row.payload ?: "") }
+                            .getOrElse { skipped++; null }
                     }
                     if (dtos.isNotEmpty()) client.from("reminder_list").upsert(dtos)
                 }
             }
         }
+        return skipped
     }
 
     /** DELETE 推送：按行 id 逐条删除（PostgREST 删除需指定主键）。 */
