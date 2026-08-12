@@ -52,6 +52,8 @@ fun TaskSection(
     onToggleCompleted: (TodoItem) -> Unit,
     onToggleFlag: (TodoItem) -> Unit,
     modifier: Modifier = Modifier,
+    rowMinHeight: androidx.compose.ui.unit.Dp = RemControlSize.rowDesktop,
+    checkboxSize: androidx.compose.ui.unit.Dp = 16.dp,
 ) {
     val colors = LocalRemColors.current
     Column(modifier.fillMaxWidth()) {
@@ -82,6 +84,8 @@ fun TaskSection(
                     onOpen = { onOpen(row.item.id) },
                     onToggleCompleted = { onToggleCompleted(row.item) },
                     onToggleFlag = { onToggleFlag(row.item) },
+                    rowMinHeight = rowMinHeight,
+                    checkboxSize = checkboxSize,
                 )
             }
         }
@@ -97,6 +101,8 @@ fun TaskRow(
     onToggleCompleted: () -> Unit,
     onToggleFlag: () -> Unit,
     modifier: Modifier = Modifier,
+    rowMinHeight: androidx.compose.ui.unit.Dp = RemControlSize.rowDesktop,
+    checkboxSize: androidx.compose.ui.unit.Dp = 16.dp,
 ) {
     val colors = LocalRemColors.current
     val item = model.item
@@ -109,14 +115,14 @@ fun TaskRow(
     Row(
         modifier
             .fillMaxWidth()
-            .heightIn(min = RemControlSize.rowDesktop)
+            .heightIn(min = rowMinHeight)
             .background(rowBg)
             .clickable(interactionSource = interaction, indication = null, onClick = onOpen)
             .semantics { contentDescription = "打开待办详情：${item.title}" }
-            .padding(horizontal = 10.dp, vertical = 7.dp),
+            .padding(horizontal = 10.dp, vertical = if (rowMinHeight > RemControlSize.rowDesktop) 9.dp else 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RemCheckbox(item.isCompleted, onToggleCompleted, size = 16.dp)
+        RemCheckbox(item.isCompleted, onToggleCompleted, size = checkboxSize)
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             androidx.compose.foundation.text.BasicText(

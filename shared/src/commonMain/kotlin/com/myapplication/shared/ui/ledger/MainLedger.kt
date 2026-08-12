@@ -1,12 +1,9 @@
 package com.myapplication.shared.ui.ledger
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,13 +22,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.myapplication.shared.ui.components.IconName
 import com.myapplication.shared.ui.components.RemButton
-import com.myapplication.shared.ui.components.RemIcon
-import com.myapplication.shared.ui.components.RemTextField
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Scope
 import com.myapplication.shared.ui.main.scopeTitle
+import com.myapplication.shared.ui.theme.RemControlSize
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemType
 import com.myapplication.shared.ui.todolist.TodoFormDialog
@@ -49,7 +44,7 @@ fun MainLedger(
     timeZone: TimeZone = TimeZone.currentSystemDefault(),
     showHeader: Boolean = true,
     showRhythm: Boolean = true,
-    showOverview: Boolean = true,
+    compactRows: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
 ) {
     val colors = LocalRemColors.current
@@ -57,10 +52,6 @@ fun MainLedger(
     val scope by mainVm.scope.collectAsState()
     val query by mainVm.searchQuery.collectAsState()
     val lists by mainVm.lists.collectAsState()
-    val todayCount by mainVm.todayCount.collectAsState()
-    val scheduledCount by mainVm.scheduledCount.collectAsState()
-    val completedCount by mainVm.completedCount.collectAsState()
-    val listCounts by mainVm.listCounts.collectAsState()
     var showCreate by remember { mutableStateOf(false) }
     val groups = remember(todos) { buildTaskGroups(todos) }
     val trashGroups = remember(todos) { buildTrashGroups(todos) }
@@ -73,8 +64,15 @@ fun MainLedger(
         }
     }
     val rhythm = remember(todos, now, timeZone) { buildTodayRhythmState(todos, now, timeZone) }
+    val timeline = remember(todos, now, timeZone) { buildTodayTimelineState(todos, now, timeZone) }
     val today = todayDate(clock, timeZone)
-    val inboxId = lists.firstOrNull { it.position == 0 }?.id
+    val rowMinHeight = if (compactRows) RemControlSize.rowMobile else RemControlSize.rowDesktop
+    val checkboxSize = if (compactRows) 20.dp else 16.dp
+    val activeById = groups.active.associateBy { it.item.id }
+    val pastRows = timeline.past.mapNotNull { activeById[it.item.id] ?: TaskRowModel(it.item, emptyList()) }
+    val upcomingRows = timeline.upcoming.mapNotNull { activeById[it.item.id] ?: TaskRowModel(it.item, emptyList()) }
+    val shownIds = (pastRows + upcomingRows + timeline.unscheduled).map { it.item.id }.toSet()
+    val laterRows = groups.active.filter { it.item.id !in shownIds }
 
     Column(modifier.fillMaxSize().background(colors.bgSecondary).padding(contentPadding)) {
         if (showHeader) {
@@ -94,23 +92,8 @@ fun MainLedger(
             Spacer(Modifier.height(16.dp))
         }
         if (showRhythm && !trashScope) {
-            TodayRhythm(rhythm)
-            Spacer(Modifier.height(12.dp))
-        }
-        if (showOverview && !trashScope) {
-            CompactOverview(
-                todayCount = todayCount,
-                scheduledCount = scheduledCount,
-                completedCount = completedCount,
-                inboxCount = inboxId?.let { listCounts[it] ?: 0 } ?: 0,
-                inboxScope = inboxId?.let { Scope.List(it) },
-                onScope = mainVm::selectScope,
-            )
-            Spacer(Modifier.height(12.dp))
-        }
-        if (!trashScope) {
-            QuickAddBar(onClick = { showCreate = true })
-            Spacer(Modifier.height(12.dp))
+            TodayRhythm(rhythm, timeline, onOpen = mainVm::openDetail)
+            Spacer(Modifier.height(18.dp))
         }
         LazyColumn(Modifier.fillMaxSize()) {
             if (trashScope) {
@@ -129,30 +112,98 @@ fun MainLedger(
                     )
                 }
             } else {
-                item {
-                    TaskSection(
-                        title = "待办",
-                        rows = groups.active,
-                        today = today,
-                        selectedId = selectedId,
-                        completed = false,
-                        onOpen = mainVm::openDetail,
-                        onToggleCompleted = mainVm::toggleCompleted,
-                        onToggleFlag = mainVm::toggleFlag,
-                    )
+                if (pastRows.isNotEmpty()) {
+                    item {
+                        TaskSection(
+                            title = "已错过",
+                            rows = pastRows,
+                            today = today,
+                            selectedId = selectedId,
+                            completed = false,
+                            onOpen = mainVm::openDetail,
+                            onToggleCompleted = mainVm::toggleCompleted,
+                            onToggleFlag = mainVm::toggleFlag,
+                            rowMinHeight = rowMinHeight,
+                            checkboxSize = checkboxSize,
+                        )
+                    }
+                    item { Spacer(Modifier.height(12.dp)) }
                 }
-                item { Spacer(Modifier.height(12.dp)) }
-                item {
-                    TaskSection(
-                        title = "已完成",
-                        rows = groups.completed,
-                        today = today,
-                        selectedId = selectedId,
-                        completed = true,
-                        onOpen = mainVm::openDetail,
-                        onToggleCompleted = mainVm::toggleCompleted,
-                        onToggleFlag = mainVm::toggleFlag,
-                    )
+                if (upcomingRows.isNotEmpty()) {
+                    item {
+                        TaskSection(
+                            title = "接下来",
+                            rows = upcomingRows,
+                            today = today,
+                            selectedId = selectedId,
+                            completed = false,
+                            onOpen = mainVm::openDetail,
+                            onToggleCompleted = mainVm::toggleCompleted,
+                            onToggleFlag = mainVm::toggleFlag,
+                            rowMinHeight = rowMinHeight,
+                            checkboxSize = checkboxSize,
+                        )
+                    }
+                    item { Spacer(Modifier.height(12.dp)) }
+                }
+                if (timeline.unscheduled.isNotEmpty()) {
+                    item {
+                        TaskSection(
+                            title = "未安排时间",
+                            rows = timeline.unscheduled,
+                            today = today,
+                            selectedId = selectedId,
+                            completed = false,
+                            onOpen = mainVm::openDetail,
+                            onToggleCompleted = mainVm::toggleCompleted,
+                            onToggleFlag = mainVm::toggleFlag,
+                            rowMinHeight = rowMinHeight,
+                            checkboxSize = checkboxSize,
+                        )
+                    }
+                    item { Spacer(Modifier.height(12.dp)) }
+                }
+                if (laterRows.isNotEmpty()) {
+                    item {
+                        TaskSection(
+                            title = "以后",
+                            rows = laterRows,
+                            today = today,
+                            selectedId = selectedId,
+                            completed = false,
+                            onOpen = mainVm::openDetail,
+                            onToggleCompleted = mainVm::toggleCompleted,
+                            onToggleFlag = mainVm::toggleFlag,
+                            rowMinHeight = rowMinHeight,
+                            checkboxSize = checkboxSize,
+                        )
+                    }
+                    item { Spacer(Modifier.height(12.dp)) }
+                }
+                if (pastRows.isEmpty() && upcomingRows.isEmpty() && timeline.unscheduled.isEmpty() && laterRows.isEmpty()) {
+                    item {
+                        androidx.compose.foundation.text.BasicText(
+                            "没有待办，今天可以轻一点。",
+                            style = RemType.text14.copy(color = colors.textLow),
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 12.dp),
+                        )
+                    }
+                }
+                if (groups.completed.isNotEmpty()) {
+                    item {
+                        TaskSection(
+                            title = "已完成",
+                            rows = groups.completed,
+                            today = today,
+                            selectedId = selectedId,
+                            completed = true,
+                            onOpen = mainVm::openDetail,
+                            onToggleCompleted = mainVm::toggleCompleted,
+                            onToggleFlag = mainVm::toggleFlag,
+                            rowMinHeight = rowMinHeight,
+                            checkboxSize = checkboxSize,
+                        )
+                    }
                 }
             }
         }
@@ -167,51 +218,6 @@ fun MainLedger(
                 mainVm.createTodo(title, note, due, flag, listId)
                 showCreate = false
             },
-        )
-    }
-}
-
-@Composable
-private fun CompactOverview(
-    todayCount: Int,
-    scheduledCount: Int,
-    completedCount: Int,
-    inboxCount: Int,
-    inboxScope: Scope?,
-    onScope: (Scope) -> Unit,
-) {
-    Row(Modifier.fillMaxWidth()) {
-        OverviewCell("待办", todayCount, IconName.Today) { onScope(Scope.Today) }
-        OverviewCell("计划", scheduledCount, IconName.Scheduled) { onScope(Scope.Scheduled) }
-        OverviewCell("已完成", completedCount, IconName.CheckCircle) { onScope(Scope.Completed) }
-        OverviewCell("收件箱", inboxCount, IconName.Inbox) { onScope(inboxScope ?: Scope.All) }
-    }
-}
-
-@Composable
-private fun RowScope.OverviewCell(label: String, count: Int, icon: IconName, onClick: () -> Unit) {
-    Row(
-        Modifier.weight(1f).clickable(onClick = onClick).padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RemIcon(icon, LocalRemColors.current.brand)
-        androidx.compose.foundation.text.BasicText(" $label $count", style = RemType.text12.copy(color = LocalRemColors.current.textNormal))
-    }
-}
-
-@Composable
-private fun QuickAddBar(onClick: () -> Unit) {
-    Box(Modifier.fillMaxWidth()) {
-        RemTextField(
-            value = "",
-            onValueChange = {},
-            placeholder = "添加待办…",
-            leadingIcon = IconName.Plus,
-            readOnly = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Box(
-            Modifier.matchParentSize().clickable(onClick = onClick)
         )
     }
 }

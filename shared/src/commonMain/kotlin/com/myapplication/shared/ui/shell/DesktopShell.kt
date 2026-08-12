@@ -38,11 +38,13 @@ fun DesktopShell(
             clock = graph.clock,
             timeZone = graph.timeZone,
         )
-        DetailInspector(
-            mainVm = mainVm,
-            graph = graph,
-            todoId = selectedId,
-            modifier = Modifier.statusBarsPadding(),
-        )
+        if (selectedId != null) {
+            DetailInspector(
+                mainVm = mainVm,
+                graph = graph,
+                todoId = selectedId,
+                modifier = Modifier.statusBarsPadding(),
+            )
+        }
     }
 }

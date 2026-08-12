@@ -4,6 +4,7 @@ import com.myapplication.shared.domain.model.TodoItem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 
@@ -78,10 +79,46 @@ class LedgerUiModelsTest {
         assert(groups.all { it.subtasks.isEmpty() })
     }
 
+    @Test
+    fun timelineSeparatesPastUpcomingAndUnscheduledWork() {
+        val todos = listOf(
+            item(id = 1, title = "missed", due = "2026-08-12T08:30:00Z", completed = false),
+            item(id = 2, title = "next", due = "2026-08-12T13:00:00Z", completed = false),
+            item(id = 3, title = "loose", due = null, completed = false),
+            item(id = 4, title = "done", due = "2026-08-12T09:00:00Z", completed = true),
+            item(id = 5, title = "tomorrow", due = "2026-08-13T09:00:00Z", completed = false),
+        )
+
+        val timeline = buildTodayTimelineState(
+            todos = todos,
+            now = Instant.parse("2026-08-12T12:00:00Z"),
+            timeZone = tz,
+        )
+
+        assertEquals("06:00", timeline.startLabel)
+        assertEquals("24:00", timeline.endLabel)
+        assertEquals(listOf(1L), timeline.past.map { it.item.id })
+        assertEquals(listOf(2L), timeline.upcoming.map { it.item.id })
+        assertEquals(listOf(3L), timeline.unscheduled.map { it.item.id })
+        assertEquals(1, timeline.completedTodayCount)
+        assertEquals(1, timeline.futureCount)
+    }
+
+    @Test
+    fun timelineCalculatesCurrentTimeProgressThroughDay() {
+        val timeline = buildTodayTimelineState(
+            todos = emptyList(),
+            now = Instant.parse("2026-08-12T12:00:00Z"),
+            timeZone = tz,
+        )
+
+        assertTrue(timeline.nowProgress in 0.33f..0.34f)
+    }
+
     private fun item(
         id: Long,
         title: String,
-        due: String,
+        due: String?,
         completed: Boolean,
         parentId: Long? = null,
         isTrashed: Boolean = false,
@@ -91,10 +128,10 @@ class LedgerUiModelsTest {
         listId = 1,
         title = title,
         note = "",
-        dueDate = Instant.parse(due),
+        dueDate = due?.let { Instant.parse(it) },
         isCompleted = completed,
         flag = false,
-        completedAt = if (completed) Instant.parse(due) else null,
+        completedAt = if (completed) due?.let { Instant.parse(it) } else null,
         isTrashed = isTrashed,
         trashedAt = trashedAt?.let { Instant.parse(it) },
         parentId = parentId,
