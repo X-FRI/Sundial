@@ -25,6 +25,8 @@ import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.ui.components.IconName
 import com.myapplication.shared.ui.components.RemBadge
 import com.myapplication.shared.ui.components.RemBadgeTone
+import com.myapplication.shared.ui.components.RemButton
+import com.myapplication.shared.ui.components.RemButtonVariant
 import com.myapplication.shared.ui.components.RemCheckbox
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemIconButton
@@ -156,8 +158,43 @@ fun TaskRow(
 }
 
 @Composable
-private fun DueBadge(item: TodoItem, today: LocalDate) {
-    val due = item.dueDate ?: return
+fun TrashRow(
+    item: TodoItem,
+    onRestore: () -> Unit,
+    onDeleteForever: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalRemColors.current
+    Row(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = RemControlSize.rowDesktop)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            androidx.compose.foundation.text.BasicText(
+                item.title,
+                style = RemType.text14.copy(color = colors.textHigh),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            item.trashedAt?.let {
+                androidx.compose.foundation.text.BasicText(
+                    "删除于 ${formatDueDate(it)}",
+                    style = RemType.text12.copy(color = colors.textLow),
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        RemButton("恢复", onClick = onRestore)
+        Spacer(Modifier.width(8.dp))
+        RemButton("彻底删除", onClick = onDeleteForever, variant = RemButtonVariant.Danger)
+    }
+}
+
+@Composable
+private fun DueBadge(item: TodoItem, today: LocalDate) {    val due = item.dueDate ?: return
     val tz = TimeZone.currentSystemDefault()
     val bucket = bucketOf(due.toLocalDateTime(tz).date, today)
     val tone = when (bucket) {

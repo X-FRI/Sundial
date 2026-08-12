@@ -299,16 +299,28 @@ fun DetailContent(
         Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
             RemButton("移到列表", onClick = { showListDialog = true }, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(8.dp))
-            // 移到垃圾箱：软删后立即返回主列表（窄屏下的常规退场路径）。
-            RemButton(
-                "移到垃圾箱",
-                onClick = {
-                    mainVm.trash(current)
-                    mainVm.back()
-                },
-                variant = RemButtonVariant.Danger,
-                modifier = Modifier.weight(1f),
-            )
+            if (current.isTrashed) {
+                // 已删除待办：恢复后立即返回主列表。
+                RemButton(
+                    "恢复",
+                    onClick = {
+                        mainVm.restore(current)
+                        mainVm.back()
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                // 移到垃圾箱：软删后立即返回主列表（窄屏下的常规退场路径）。
+                RemButton(
+                    "移到垃圾箱",
+                    onClick = {
+                        mainVm.trash(current)
+                        mainVm.back()
+                    },
+                    variant = RemButtonVariant.Danger,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 

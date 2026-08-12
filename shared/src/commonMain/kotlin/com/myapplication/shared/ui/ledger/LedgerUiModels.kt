@@ -60,6 +60,11 @@ fun buildTaskGroups(todos: List<TodoItem>): TaskGroups {
     return TaskGroups(active = active, completed = completed)
 }
 
+fun buildTrashGroups(todos: List<TodoItem>): List<TaskRowModel> =
+    todos.filter { it.isTrashed }
+        .sortedWith(compareByDescending<TodoItem> { it.trashedAt ?: it.createdAt })
+        .map { TaskRowModel(it, emptyList()) }
+
 fun formatLedgerTime(instant: Instant, timeZone: TimeZone): String {
     val time = instant.toLocalDateTime(timeZone).time
     return "${time.hour.toString().padStart(2, '0')}:${time.minute.toString().padStart(2, '0')}"

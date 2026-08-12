@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -61,6 +63,8 @@ fun MainLedger(
     val listCounts by mainVm.listCounts.collectAsState()
     var showCreate by remember { mutableStateOf(false) }
     val groups = remember(todos) { buildTaskGroups(todos) }
+    val trashGroups = remember(todos) { buildTrashGroups(todos) }
+    val trashScope = scope == Scope.Trash
     var now by remember(clock) { mutableStateOf(clock.now()) }
     LaunchedEffect(clock) {
         while (true) {
@@ -89,11 +93,11 @@ fun MainLedger(
             }
             Spacer(Modifier.height(16.dp))
         }
-        if (showRhythm) {
+        if (showRhythm && !trashScope) {
             TodayRhythm(rhythm)
             Spacer(Modifier.height(12.dp))
         }
-        if (showOverview) {
+        if (showOverview && !trashScope) {
             CompactOverview(
                 todayCount = todayCount,
                 scheduledCount = scheduledCount,
@@ -104,33 +108,52 @@ fun MainLedger(
             )
             Spacer(Modifier.height(12.dp))
         }
-        QuickAddBar(onClick = { showCreate = true })
-        Spacer(Modifier.height(12.dp))
+        if (!trashScope) {
+            QuickAddBar(onClick = { showCreate = true })
+            Spacer(Modifier.height(12.dp))
+        }
         LazyColumn(Modifier.fillMaxSize()) {
-            item {
-                TaskSection(
-                    title = "待办",
-                    rows = groups.active,
-                    today = today,
-                    selectedId = selectedId,
-                    completed = false,
-                    onOpen = mainVm::openDetail,
-                    onToggleCompleted = mainVm::toggleCompleted,
-                    onToggleFlag = mainVm::toggleFlag,
-                )
-            }
-            item { Spacer(Modifier.height(12.dp)) }
-            item {
-                TaskSection(
-                    title = "已完成",
-                    rows = groups.completed,
-                    today = today,
-                    selectedId = selectedId,
-                    completed = true,
-                    onOpen = mainVm::openDetail,
-                    onToggleCompleted = mainVm::toggleCompleted,
-                    onToggleFlag = mainVm::toggleFlag,
-                )
+            if (trashScope) {
+                item {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.foundation.text.BasicText("垃圾箱", style = RemType.label12.copy(color = colors.textHigh))
+                        Spacer(Modifier.width(6.dp))
+                        androidx.compose.foundation.text.BasicText(trashGroups.size.toString(), style = RemType.text12.copy(color = colors.textLow))
+                    }
+                }
+                items(trashGroups, key = { it.item.id }) { row ->
+                    TrashRow(
+                        item = row.item,
+                        onRestore = { mainVm.restore(row.item) },
+                        onDeleteForever = { mainVm.deleteForever(row.item) },
+                    )
+                }
+            } else {
+                item {
+                    TaskSection(
+                        title = "待办",
+                        rows = groups.active,
+                        today = today,
+                        selectedId = selectedId,
+                        completed = false,
+                        onOpen = mainVm::openDetail,
+                        onToggleCompleted = mainVm::toggleCompleted,
+                        onToggleFlag = mainVm::toggleFlag,
+                    )
+                }
+                item { Spacer(Modifier.height(12.dp)) }
+                item {
+                    TaskSection(
+                        title = "已完成",
+                        rows = groups.completed,
+                        today = today,
+                        selectedId = selectedId,
+                        completed = true,
+                        onOpen = mainVm::openDetail,
+                        onToggleCompleted = mainVm::toggleCompleted,
+                        onToggleFlag = mainVm::toggleFlag,
+                    )
+                }
             }
         }
     }

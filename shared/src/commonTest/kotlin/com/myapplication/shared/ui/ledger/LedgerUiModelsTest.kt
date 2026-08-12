@@ -64,12 +64,28 @@ class LedgerUiModelsTest {
         assertEquals(listOf(2L), groups.completed.map { it.item.id })
     }
 
+    @Test
+    fun trashGroupsKeepsOnlyTrashedSortedByTrashedAtDesc() {
+        val todos = listOf(
+            item(id = 1, title = "old", due = "2026-08-12T09:00:00Z", completed = false, isTrashed = true, trashedAt = "2026-08-12T09:00:00Z"),
+            item(id = 2, title = "active", due = "2026-08-12T10:00:00Z", completed = false),
+            item(id = 3, title = "recent", due = "2026-08-12T11:00:00Z", completed = false, isTrashed = true, trashedAt = "2026-08-12T10:00:00Z"),
+        )
+
+        val groups = buildTrashGroups(todos)
+
+        assertEquals(listOf(3L, 1L), groups.map { it.item.id })
+        assert(groups.all { it.subtasks.isEmpty() })
+    }
+
     private fun item(
         id: Long,
         title: String,
         due: String,
         completed: Boolean,
         parentId: Long? = null,
+        isTrashed: Boolean = false,
+        trashedAt: String? = null,
     ): TodoItem = TodoItem(
         id = id,
         listId = 1,
@@ -79,8 +95,8 @@ class LedgerUiModelsTest {
         isCompleted = completed,
         flag = false,
         completedAt = if (completed) Instant.parse(due) else null,
-        isTrashed = false,
-        trashedAt = null,
+        isTrashed = isTrashed,
+        trashedAt = trashedAt?.let { Instant.parse(it) },
         parentId = parentId,
         sortPosition = id.toDouble(),
         createdAt = Instant.parse("2026-08-12T00:00:00Z"),
