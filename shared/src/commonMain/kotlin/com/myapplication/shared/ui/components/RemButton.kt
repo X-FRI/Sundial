@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.ui.theme.LocalRemColors
+import com.myapplication.shared.ui.theme.RemControlSize
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
 
@@ -109,7 +110,7 @@ fun RemButton(
 }
 
 /**
- * 图标按钮：默认 14dp 图标、点击热区为图标 + 8dp 内边距。
+ * 图标按钮：默认 16dp 图标、触达热区 = [containerSize]（默认 [RemControlSize.iconSmall]）。
  *
  * 与 [RemButton] 相同的交互自绘思路：hover 浮现 bgSecondary，pressed 时
  * 图标透明度降为 80%。contentDescription 通过 semantics 暴露给无障碍层，
@@ -122,7 +123,8 @@ fun RemIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     tint: Color? = null,
-    size: Dp = 14.dp,
+    size: Dp = 16.dp,
+    containerSize: Dp = RemControlSize.iconSmall,
 ) {
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
@@ -131,7 +133,7 @@ fun RemIconButton(
     val bg by animateColorAsState(if (hovered) colors.bgSecondary else Color.Transparent, tween(200), label = "ib-bg")
     Box(
         modifier
-            .size(size + 8.dp)
+            .size(containerSize)
             .clip(RoundedCornerShape(RemRadii.r2))
             .background(bg)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)

@@ -21,7 +21,7 @@ import androidx.compose.ui.semantics.semantics
  * 新增图标流程：在此加枚举值 → 在 RemIcon 的 when 中补绘制分支 →
  * 调用方通过 contentDescription 提供无障碍文案。
  */
-enum class IconName { Calendar, Today, Scheduled, Tray, CheckCircle, Trash, Search, Plus, Close, ChevronBack, ChevronRight, ChevronDown, Flag, DotsThree, Cloud, Server, Device, Key, Settings, Sync }
+enum class IconName { Calendar, Today, Scheduled, Tray, CheckCircle, Trash, Search, Plus, Close, ChevronBack, ChevronRight, ChevronDown, Flag, DotsThree, Cloud, Server, Device, Key, Settings, Sync, Clock, Inbox, Layers, Send }
 
 /**
  * 矢量手绘图标组件（Canvas 绘制，不依赖图片资源）。
@@ -167,6 +167,27 @@ fun RemIcon(
                 circle(12f, 12f, 7.5f)
                 poly(12f, 3.5f, 8.4f, 7f, 15.6f, 7f, filled = true)
                 poly(12f, 20.5f, 8.4f, 17f, 15.6f, 17f, filled = true)
+            }
+            IconName.Clock -> {
+                circle(12f, 12f, 8f)
+                line(12f, 7.5f, 12f, 12f)
+                line(12f, 12f, 15.5f, 14.2f)
+            }
+            IconName.Inbox -> {
+                box(4f, 6f, 16f, 12f, r = 2.5f)
+                line(4f, 12f, 8.5f, 12f)
+                line(15.5f, 12f, 20f, 12f)
+                line(8.5f, 12f, 10f, 15f)
+                line(14f, 15f, 15.5f, 12f)
+                line(10f, 15f, 14f, 15f)
+            }
+            IconName.Layers -> {
+                poly(12f, 4.5f, 20f, 9f, 12f, 13.5f, 4f, 9f, 12f, 4.5f)
+                poly(5.5f, 13f, 12f, 16.7f, 18.5f, 13f)
+                poly(5.5f, 16.5f, 12f, 20.2f, 18.5f, 16.5f)
+            }
+            IconName.Send -> {
+                poly(4f, 12f, 20f, 5f, 15f, 20f, 12f, 14f, 4f, 12f)
             }
         }
     }

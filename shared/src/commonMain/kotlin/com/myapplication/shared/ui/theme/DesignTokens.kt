@@ -52,6 +52,10 @@ data class RemColors(
     val bgPrimary: Color,
     val bgSecondary: Color,
     val bgPanel: Color,
+    val surface: Color,
+    val surfaceAlt: Color,
+    val brandSubtle: Color,
+    val borderSubtle: Color,
     val textHigh: Color,
     val textNormal: Color,
     val textLow: Color,
@@ -75,6 +79,10 @@ val LightRemColors = RemColors(
     bgPrimary = Color(0xFFFFFFFF),
     bgSecondary = Color(0xFFF2F2F2),
     bgPanel = Color(0xFFE3E3E3),
+    surface = Color(0xFFFFFFFF),
+    surfaceAlt = Color(0xFFF7F7F5),
+    brandSubtle = Color(0xFFFFF2E8),
+    borderSubtle = Color(0xFFEAE7E2),
     textHigh = Color(0xFF0D0D0D),
     textNormal = Color(0xFF333333),
     textLow = Color(0xFF636363),
@@ -94,6 +102,10 @@ val DarkRemColors = RemColors(
     bgPrimary = Color(0xFF212121),
     bgSecondary = Color(0xFF1C1C1C),
     bgPanel = Color(0xFF292929),
+    surface = Color(0xFF242424),
+    surfaceAlt = Color(0xFF1B1B1B),
+    brandSubtle = Color(0xFF3A2416),
+    borderSubtle = Color(0xFF363331),
     textHigh = Color(0xFFF5F5F5),
     textNormal = Color(0xFFC4C4C4),
     textLow = Color(0xFF8F8F8F),
@@ -120,8 +132,22 @@ object RemType {
     val text14 = TextStyle(fontFamily = FontFamily.Default, fontSize = 14.sp)
     val text16 = TextStyle(fontFamily = FontFamily.Default, fontSize = 16.sp)
     val title18 = TextStyle(fontFamily = FontFamily.Default, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+    val title20 = TextStyle(fontFamily = FontFamily.Default, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+    val title24 = TextStyle(fontFamily = FontFamily.Default, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
     val label10 = TextStyle(fontFamily = FontFamily.Default, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
     val label12 = TextStyle(fontFamily = FontFamily.Default, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+}
+
+/**
+ * 控件尺寸令牌：图标按钮外触达热区（iconSmall/iconMedium/touch）、
+ * 行高（rowDesktop/rowMobile），组件触达尺寸应从这里取。
+ */
+object RemControlSize {
+    val iconSmall = 32.dp
+    val iconMedium = 36.dp
+    val touch = 44.dp
+    val rowDesktop = 42.dp
+    val rowMobile = 48.dp
 }
 
 /** 间距令牌：4 档幂级步长（2/4/8/12/16），组件间距应从这里取。 */
