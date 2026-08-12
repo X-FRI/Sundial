@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -26,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -104,18 +106,13 @@ fun DetailContent(
             RemEmptyState("待办不存在或已删除")
             return@Column
         }
-        // 标题行：完成勾选 + 标题输入框 + 截止日期徽标 + 关闭按钮。
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // 顶部状态行：只放状态、日期和关闭动作；标题作为正文主内容单独展示。
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             RemCheckbox(current.isCompleted, { mainVm.toggleCompleted(current) })
-            Spacer(Modifier.width(10.dp))
-            RemTextField(
-                value = titleText,
-                onValueChange = {
-                    titleText = it
-                    detailVm.setTitle(it)
-                },
-                style = RemType.text16.copy(fontWeight = FontWeight.SemiBold),
-                modifier = Modifier.weight(1f),
+            Spacer(Modifier.width(8.dp))
+            androidx.compose.foundation.text.BasicText(
+                if (current.isCompleted) "已完成" else "待办",
+                style = RemType.label12.copy(color = if (current.isCompleted) colors.textLow else colors.textNormal),
             )
             // 已有截止日期时显示可点击的日期徽标（点击重新打开日期选择器）。
             if (current.dueDate != null) {
@@ -133,19 +130,29 @@ fun DetailContent(
                     )
                 }
             }
+            Spacer(Modifier.weight(1f))
             if (showCloseButton) {
                 RemIconButton(IconName.Close, "关闭详情", onClick = mainVm::back, size = 16.dp)
             }
         }
+        Spacer(Modifier.height(12.dp))
+        DetailTitleField(
+            value = titleText,
+            onValueChange = {
+                titleText = it
+                detailVm.setTitle(it)
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
         // 已完成时间提示（仅已完成且记录了完成时间时显示）。
         if (current.isCompleted && current.completedAt != null) {
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
             androidx.compose.foundation.text.BasicText(
                 "已完成 ${formatDueDate(current.completedAt)}",
                 style = RemType.text12.copy(color = colors.textLow),
             )
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(14.dp))
         // 备注编辑区：独立圆角容器内的多行输入。
         Box(
             Modifier
@@ -397,4 +404,37 @@ fun DetailContent(
             },
         )
     }
+}
+
+@Composable
+private fun DetailTitleField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalRemColors.current
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier.padding(horizontal = 2.dp, vertical = 2.dp),
+        textStyle = RemType.title20.copy(
+            color = colors.textHigh,
+            fontWeight = FontWeight.SemiBold,
+        ),
+        cursorBrush = SolidColor(colors.brand),
+        singleLine = false,
+        minLines = 1,
+        decorationBox = { inner ->
+            if (value.isEmpty()) {
+                androidx.compose.foundation.text.BasicText(
+                    "标题",
+                    style = RemType.title20.copy(
+                        color = colors.textLow,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                )
+            }
+            inner()
+        },
+    )
 }

@@ -21,7 +21,7 @@ import androidx.compose.ui.semantics.semantics
  * 新增图标流程：在此加枚举值 → 在 RemIcon 的 when 中补绘制分支 →
  * 调用方通过 contentDescription 提供无障碍文案。
  */
-enum class IconName { Calendar, Today, Scheduled, Tray, CheckCircle, Trash, Search, Plus, Close, ChevronBack, ChevronRight, ChevronDown, Flag, DotsThree, Cloud, Server, Device, Key, Settings, Sync, Clock, Inbox, Layers, Send }
+enum class IconName { Calendar, Today, Scheduled, Tray, CheckCircle, Trash, Search, Plus, Close, ChevronBack, ChevronRight, ChevronDown, Flag, DotsThree, Cloud, Server, Device, Key, Settings, Sync, Clock, Inbox, Layers, Chart, Send }
 
 /**
  * 矢量手绘图标组件（Canvas 绘制，不依赖图片资源）。
@@ -185,6 +185,12 @@ fun RemIcon(
                 poly(12f, 4.5f, 20f, 9f, 12f, 13.5f, 4f, 9f, 12f, 4.5f)
                 poly(5.5f, 13f, 12f, 16.7f, 18.5f, 13f)
                 poly(5.5f, 16.5f, 12f, 20.2f, 18.5f, 16.5f)
+            }
+            IconName.Chart -> {
+                line(5f, 19f, 20f, 19f)
+                line(6f, 19f, 6f, 12f)
+                line(12f, 19f, 12f, 7f)
+                line(18f, 19f, 18f, 10f)
             }
             IconName.Send -> {
                 poly(4f, 12f, 20f, 5f, 15f, 20f, 12f, 14f, 4f, 12f)

@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.myapplication.shared.di.AppGraph
 import com.myapplication.shared.domain.sync.SyncMode
 import com.myapplication.shared.domain.sync.SyncStatus
+import com.myapplication.shared.ui.analytics.AnalyticsScreen
 import com.myapplication.shared.ui.components.IconName
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemIconButton
@@ -95,34 +96,50 @@ fun MobileShell(
     Box(modifier.fillMaxSize().background(colors.bgSecondary)) {
         Column(Modifier.fillMaxSize()) {
             MobileTopBar(mainVm, syncStatus, onSyncNow = { graph.engine.syncNow() }, onCreate = { showCreate = true })
-            if (scope is Scope.List) {
-                MobileListStrip(mainVm)
+            if (scope == Scope.Analytics) {
+                PullToRefreshBox(
+                    isRefreshing = syncStatus.syncing,
+                    onRefresh = { graph.engine.syncNow() },
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                ) {
+                    AnalyticsScreen(
+                        mainVm = mainVm,
+                        clock = graph.clock,
+                        timeZone = graph.timeZone,
+                        compact = true,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             } else {
-                MobileWorkbenchFilters(mainVm)
-            }
-            ContextTimelineCompact(
-                state = contextTimeline,
-                timeline = timeline,
-                showTodayLabels = scope == Scope.Today,
-                modifier = Modifier.background(colors.surface),
-            )
-            PullToRefreshBox(
-                isRefreshing = syncStatus.syncing,
-                onRefresh = { graph.engine.syncNow() },
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-            ) {
-                MainLedger(
-                    mainVm = mainVm,
-                    selectedId = selectedId,
-                    modifier = Modifier.fillMaxSize(),
-                    clock = graph.clock,
-                    timeZone = graph.timeZone,
-                    showHeader = false,
-                    showRhythm = false,
-                    compactRows = true,
-                    edgeToEdgeRows = true,
-                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp),
+                if (scope is Scope.List) {
+                    MobileListStrip(mainVm)
+                } else {
+                    MobileWorkbenchFilters(mainVm)
+                }
+                ContextTimelineCompact(
+                    state = contextTimeline,
+                    timeline = timeline,
+                    showTodayLabels = scope == Scope.Today,
+                    modifier = Modifier.background(colors.surface),
                 )
+                PullToRefreshBox(
+                    isRefreshing = syncStatus.syncing,
+                    onRefresh = { graph.engine.syncNow() },
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                ) {
+                    MainLedger(
+                        mainVm = mainVm,
+                        selectedId = selectedId,
+                        modifier = Modifier.fillMaxSize(),
+                        clock = graph.clock,
+                        timeZone = graph.timeZone,
+                        showHeader = false,
+                        showRhythm = false,
+                        compactRows = true,
+                        edgeToEdgeRows = true,
+                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp),
+                    )
+                }
             }
             MobileBottomNav(mainVm)
         }
@@ -249,10 +266,11 @@ private fun MobileBottomNav(mainVm: MainViewModel) {
             .padding(horizontal = 10.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        MobileNavItem(IconName.Layers, "工作台", scope !is Scope.List, Modifier.weight(1f)) { mainVm.selectScope(Scope.All) }
+        MobileNavItem(IconName.Layers, "工作台", scope !is Scope.List && scope != Scope.Analytics, Modifier.weight(1f)) { mainVm.selectScope(Scope.All) }
         MobileNavItem(IconName.Tray, "列表", scope is Scope.List, Modifier.weight(1f)) {
             lists.firstOrNull()?.let { mainVm.selectScope(Scope.List(it.id)) } ?: mainVm.selectScope(Scope.All)
         }
+        MobileNavItem(IconName.Chart, "分析", scope == Scope.Analytics, Modifier.weight(1f)) { mainVm.selectScope(Scope.Analytics) }
     }
 }
 

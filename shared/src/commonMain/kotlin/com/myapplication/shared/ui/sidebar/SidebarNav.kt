@@ -69,10 +69,11 @@ fun SidebarNav(
         RemTextField(value = query, onValueChange = mainVm::setSearch, placeholder = "搜索", leadingIcon = IconName.Search)
         Spacer(Modifier.height(18.dp))
         val listMode = scope is Scope.List
-        NavRow(IconName.Layers, "工作台", allCount, !listMode) { mainVm.selectScope(Scope.All) }
+        NavRow(IconName.Layers, "工作台", allCount, !listMode && scope != Scope.Analytics) { mainVm.selectScope(Scope.All) }
         NavRow(IconName.Tray, "列表", lists.size, listMode) {
             lists.firstOrNull()?.let { mainVm.selectScope(Scope.List(it.id)) } ?: mainVm.selectScope(Scope.All)
         }
+        NavRow(IconName.Chart, "分析", completedCount, scope == Scope.Analytics) { mainVm.selectScope(Scope.Analytics) }
         Spacer(Modifier.height(18.dp))
         if (listMode) {
             androidx.compose.foundation.text.BasicText("我的列表", style = RemType.label12.copy(color = colors.textLow))

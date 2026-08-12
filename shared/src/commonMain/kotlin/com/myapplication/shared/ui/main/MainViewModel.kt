@@ -47,6 +47,7 @@ sealed interface Route {
  * - 范围与搜索互斥——有搜索词时忽略范围（见 [MainViewModel.todos] 的 combine 逻辑）。
  */
 sealed interface Scope {
+    data object Analytics : Scope
     data object Today : Scope
     data object Scheduled : Scope
     data object All : Scope
@@ -105,10 +106,17 @@ class MainViewModel(
                     Scope.All -> repository.observeAllActive()
                     Scope.Completed -> repository.observeCompleted()
                     Scope.Trash -> repository.observeTrashed()
+                    Scope.Analytics -> repository.observeAllActive()
                     is Scope.List -> repository.observeByList(s.listId)
                 }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** 分析页数据：排除垃圾箱，合并活动与已完成记录，供趋势和输出图表使用。 */
+    val analyticsTodos: StateFlow<List<TodoItem>> =
+        combine(repository.observeAllActive(), repository.observeCompleted()) { active, completed ->
+            (active + completed).distinctBy { it.id }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** 把查询流折叠成计数流；各智能列表徽标共用这一条逻辑。 */
     private fun count(flow: Flow<List<TodoItem>>): StateFlow<Int> =
@@ -149,6 +157,9 @@ class MainViewModel(
     }
 
     fun setSearch(q: String) {
+        if (q.isNotBlank() && scope.value == Scope.Analytics) {
+            scope.value = Scope.All
+        }
         searchQuery.value = q
     }
 
@@ -224,6 +235,7 @@ fun scopeTitle(scope: Scope, query: String): String = when {
     scope == Scope.Today -> "今天"
     scope == Scope.Scheduled -> "计划"
     scope == Scope.All -> "工作台"
+    scope == Scope.Analytics -> "分析"
     scope == Scope.Completed -> "已完成"
     scope == Scope.Trash -> "垃圾箱"
     scope is Scope.List -> "列表"

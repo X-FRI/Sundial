@@ -9,10 +9,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.myapplication.shared.di.AppGraph
+import com.myapplication.shared.ui.analytics.AnalyticsScreen
 import com.myapplication.shared.ui.detail.DetailInspector
 import com.myapplication.shared.ui.ledger.MainLedger
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Route
+import com.myapplication.shared.ui.main.Scope
 import com.myapplication.shared.ui.sidebar.Sidebar
 import com.myapplication.shared.ui.theme.LocalRemColors
 
@@ -27,18 +29,28 @@ fun DesktopShell(
     modifier: Modifier = Modifier,
 ) {
     val route by mainVm.route.collectAsState()
+    val scope by mainVm.scope.collectAsState()
     val syncStatus by graph.engine.status.collectAsState()
     val selectedId = (route as? Route.Detail)?.todoId
     Row(modifier.fillMaxSize().background(LocalRemColors.current.bgSecondary)) {
         Sidebar(mainVm, syncStatus, onSyncNow = { graph.engine.syncNow() })
-        MainLedger(
-            mainVm = mainVm,
-            selectedId = selectedId,
-            modifier = Modifier.weight(1f).statusBarsPadding(),
-            clock = graph.clock,
-            timeZone = graph.timeZone,
-        )
-        if (selectedId != null) {
+        if (scope == Scope.Analytics) {
+            AnalyticsScreen(
+                mainVm = mainVm,
+                clock = graph.clock,
+                timeZone = graph.timeZone,
+                modifier = Modifier.weight(1f).statusBarsPadding(),
+            )
+        } else {
+            MainLedger(
+                mainVm = mainVm,
+                selectedId = selectedId,
+                modifier = Modifier.weight(1f).statusBarsPadding(),
+                clock = graph.clock,
+                timeZone = graph.timeZone,
+            )
+        }
+        if (selectedId != null && scope != Scope.Analytics) {
             DetailInspector(
                 mainVm = mainVm,
                 graph = graph,

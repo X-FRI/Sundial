@@ -176,6 +176,7 @@ fun Scope.toTimelineScope(inboxListId: Long?): TimelineScope = when (this) {
     Scope.Today -> TimelineScope.Today
     Scope.Scheduled -> TimelineScope.Scheduled
     Scope.All -> TimelineScope.Workbench
+    Scope.Analytics -> TimelineScope.Workbench
     Scope.Completed -> TimelineScope.Completed
     Scope.Trash -> TimelineScope.Trash
     is Scope.List -> TimelineScope.List(listId = listId, isInbox = inboxListId == listId)
@@ -193,6 +194,7 @@ private fun ledgerTitle(
             val list = lists.firstOrNull { it.id == scope.listId }
             if (scope.listId == inboxListId) "收件箱 · 待整理" else list?.name ?: "列表"
         }
+        Scope.Analytics -> "分析"
         else -> scopeTitle(scope, query)
     }
 }
@@ -250,6 +252,7 @@ private fun buildLedgerTaskSections(
             }, completed = true, emptyText = "没有更早完成记录"),
         )
         Scope.Trash -> emptyList()
+        Scope.Analytics -> workbenchSections(active, today, timeZone, inboxListId)
         Scope.All -> workbenchSections(active, today, timeZone, inboxListId)
         is Scope.List -> {
             val isInbox = inboxListId == scope.listId
