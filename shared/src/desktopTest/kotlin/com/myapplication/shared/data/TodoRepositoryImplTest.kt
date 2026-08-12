@@ -121,6 +121,41 @@ class TodoRepositoryImplTest {
     }
 
     @Test
+    fun trashAndRestoreParentIncludesSubtasks() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        assertTrue(repo.insertTodo(inbox, "父任务", "", null, null, false).isRight())
+        val parent = repo.observeAllActive().first().first()
+        assertTrue(AddSubTaskUseCase(repo)(parent.id, "子任务").isRight())
+
+        assertTrue(repo.trash(parent.id).isRight())
+        assertTrue(repo.observeAllActive().first().isEmpty())
+        assertEquals(setOf("父任务", "子任务"), repo.observeTrashed().first().map { it.title }.toSet())
+
+        assertTrue(repo.restore(parent.id).isRight())
+        val active = repo.observeAllActive().first()
+        assertEquals(listOf("父任务"), active.filter { it.parentId == null }.map { it.title })
+        assertEquals(listOf("子任务"), repo.observeSubTasks(parent.id).first().map { it.title })
+    }
+
+    @Test
+    fun deleteForeverParentDeletesSubtasksAndWritesDeleteOps() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        assertTrue(repo.insertTodo(inbox, "父任务", "", null, null, false).isRight())
+        val parent = repo.observeAllActive().first().first()
+        assertTrue(AddSubTaskUseCase(repo)(parent.id, "子任务").isRight())
+        val child = repo.observeSubTasks(parent.id).first().single()
+
+        assertTrue(repo.deleteForever(parent.id).isRight())
+
+        assertNull(repo.findById(parent.id).getOrNull())
+        assertNull(repo.findById(child.id).getOrNull())
+        val deleteRows = repo.readOutbox(20).getOrNull()!!.filter { it.action == SyncAction.DELETE }
+        assertEquals(setOf(parent.id, child.id), deleteRows.map { it.rowId }.toSet())
+    }
+
+    @Test
     fun searchMatchesTitleAndNote() = runTest {
         val repo = newRepo()
         val inbox = repo.inbox()
@@ -200,6 +235,17 @@ class TodoRepositoryImplTest {
         assertTrue(repo.ensureInbox().isRight())
         assertTrue(repo.ensureInbox().isRight())
         assertEquals(1, repo.observeLists().first().size)
+    }
+
+    @Test
+    fun deleteListDoesNotRemoveInbox() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+
+        val result = repo.deleteList(inbox)
+
+        assertTrue(result.isLeft())
+        assertEquals(listOf("收件箱"), repo.observeLists().first().map { it.name })
     }
 
     @Test

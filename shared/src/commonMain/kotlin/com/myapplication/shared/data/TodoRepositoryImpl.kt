@@ -298,6 +298,10 @@ class TodoRepositoryImpl(
         try {
             withContext(dbDispatcher) {
                 db.transaction {
+                    val list = db.todoDbQueries.selectByIdForList(listId).executeAsOneOrNull()
+                    if (list?.name == "收件箱" && list.position == 0L) {
+                        raise(TodoError.Persistence("收件箱是系统待整理池，不能删除"))
+                    }
                     // 1. 读出列表内全部 todo（后续逐条写快照）
                     val affected = db.todoDbQueries.selectByList(listId).executeAsList()
                     // 2. 级联软删除：列表内所有未删除的 todo 标记为 trash
@@ -308,7 +312,6 @@ class TodoRepositoryImpl(
                         appendTodoOutbox(updated.toDto())
                     }
                     // 4. 读回列表行并物理删除，写 outbox DELETE 操作
-                    val list = db.todoDbQueries.selectByIdForList(listId).executeAsOneOrNull()
                     db.todoDbQueries.deleteList(listId)
                     if (list != null) appendListOutbox(list.toDto(), SyncAction.DELETE)
                 }
@@ -452,9 +455,15 @@ class TodoRepositoryImpl(
         try {
             withContext(dbDispatcher) {
                 db.transaction {
-                    db.todoDbQueries.trashTodo(now, now, deviceId, id)
-                    val row = db.todoDbQueries.selectById(id).executeAsOne()
-                    appendTodoOutbox(row.toDto())
+                    val affected = listOfNotNull(db.todoDbQueries.selectById(id).executeAsOneOrNull()) +
+                        db.todoDbQueries.selectChildrenByParent(id).executeAsList()
+                    val timestamp = now
+                    affected.forEach { row ->
+                        db.todoDbQueries.trashTodo(timestamp, timestamp, deviceId, row.id)
+                    }
+                    affected.forEach { row ->
+                        db.todoDbQueries.selectById(row.id).executeAsOneOrNull()?.let { appendTodoOutbox(it.toDto()) }
+                    }
                 }
             }
         } catch (e: CancellationException) {
@@ -468,10 +477,16 @@ class TodoRepositoryImpl(
         try {
             withContext(dbDispatcher) {
                 db.transaction {
-                    // 恢复时清空 trashed_at（软删除时间戳随状态一同复位）
-                    db.todoDbQueries.restoreTodo(now, deviceId, id)
-                    val row = db.todoDbQueries.selectById(id).executeAsOne()
-                    appendTodoOutbox(row.toDto())
+                    val affected = listOfNotNull(db.todoDbQueries.selectById(id).executeAsOneOrNull()) +
+                        db.todoDbQueries.selectChildrenByParent(id).executeAsList()
+                    val timestamp = now
+                    affected.forEach { row ->
+                        // 恢复时清空 trashed_at（软删除时间戳随状态一同复位）
+                        db.todoDbQueries.restoreTodo(timestamp, deviceId, row.id)
+                    }
+                    affected.forEach { row ->
+                        db.todoDbQueries.selectById(row.id).executeAsOneOrNull()?.let { appendTodoOutbox(it.toDto()) }
+                    }
                 }
             }
         } catch (e: CancellationException) {
@@ -485,12 +500,15 @@ class TodoRepositoryImpl(
         try {
             withContext(dbDispatcher) {
                 db.transaction {
-                    // 1. 先读回待删行（写 DELETE outbox 需要它，但不需要快照）
-                    val row = db.todoDbQueries.selectById(id).executeAsOneOrNull()
-                    // 2. 物理删除
-                    db.todoDbQueries.deleteTodo(id)
+                    // 1. 先读回待删行与直接子任务（写 DELETE outbox 需要 id，但不需要快照）
+                    val affected = listOfNotNull(db.todoDbQueries.selectById(id).executeAsOneOrNull()) +
+                        db.todoDbQueries.selectChildrenByParent(id).executeAsList()
+                    // 2. 物理删除；先删子任务再删父任务，语义上保持从叶子到根
+                    affected.sortedByDescending { it.parent_id != null }.forEach { row ->
+                        db.todoDbQueries.deleteTodo(row.id)
+                    }
                     // 3. 行存在才写 DELETE 操作（幂等删除，删不存在的行无操作）
-                    if (row != null) appendTodoOutbox(row.toDto(), SyncAction.DELETE)
+                    affected.forEach { row -> appendTodoOutbox(row.toDto(), SyncAction.DELETE) }
                 }
             }
         } catch (e: CancellationException) {

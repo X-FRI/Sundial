@@ -68,18 +68,28 @@ fun SidebarNav(
         Spacer(Modifier.height(18.dp))
         RemTextField(value = query, onValueChange = mainVm::setSearch, placeholder = "搜索", leadingIcon = IconName.Search)
         Spacer(Modifier.height(18.dp))
-        NavRow(IconName.Today, "今天", todayCount, scope == Scope.Today) { mainVm.selectScope(Scope.Today) }
-        NavRow(IconName.Scheduled, "计划", scheduledCount, scope == Scope.Scheduled) { mainVm.selectScope(Scope.Scheduled) }
-        NavRow(IconName.Layers, "全部", allCount, scope == Scope.All) { mainVm.selectScope(Scope.All) }
-        NavRow(IconName.CheckCircle, "已完成", completedCount, scope == Scope.Completed) { mainVm.selectScope(Scope.Completed) }
-        NavRow(IconName.Trash, "垃圾箱", trashCount, scope == Scope.Trash) { mainVm.selectScope(Scope.Trash) }
+        val listMode = scope is Scope.List
+        NavRow(IconName.Layers, "工作台", allCount, !listMode) { mainVm.selectScope(Scope.All) }
+        NavRow(IconName.Tray, "列表", lists.size, listMode) {
+            lists.firstOrNull()?.let { mainVm.selectScope(Scope.List(it.id)) } ?: mainVm.selectScope(Scope.All)
+        }
         Spacer(Modifier.height(18.dp))
-        androidx.compose.foundation.text.BasicText("我的列表", style = RemType.label12.copy(color = colors.textLow))
-        Spacer(Modifier.height(6.dp))
-        lists.forEach { list ->
-            NavRow(IconName.Inbox, list.name, listCounts[list.id] ?: 0, scope == Scope.List(list.id)) {
-                mainVm.selectScope(Scope.List(list.id))
+        if (listMode) {
+            androidx.compose.foundation.text.BasicText("我的列表", style = RemType.label12.copy(color = colors.textLow))
+            Spacer(Modifier.height(6.dp))
+            lists.forEach { list ->
+                NavRow(IconName.Inbox, list.name, listCounts[list.id] ?: 0, scope == Scope.List(list.id)) {
+                    mainVm.selectScope(Scope.List(list.id))
+                }
             }
+        } else {
+            androidx.compose.foundation.text.BasicText("工作台视图", style = RemType.label12.copy(color = colors.textLow))
+            Spacer(Modifier.height(6.dp))
+            NavRow(IconName.Layers, "全部", allCount, scope == Scope.All) { mainVm.selectScope(Scope.All) }
+            NavRow(IconName.Today, "今天", todayCount, scope == Scope.Today) { mainVm.selectScope(Scope.Today) }
+            NavRow(IconName.Scheduled, "计划", scheduledCount, scope == Scope.Scheduled) { mainVm.selectScope(Scope.Scheduled) }
+            NavRow(IconName.CheckCircle, "已完成", completedCount, scope == Scope.Completed) { mainVm.selectScope(Scope.Completed) }
+            NavRow(IconName.Trash, "垃圾箱", trashCount, scope == Scope.Trash) { mainVm.selectScope(Scope.Trash) }
         }
         Spacer(Modifier.weight(1f))
         SyncFooter(syncStatus, mainVm::openSettings, onSyncNow)

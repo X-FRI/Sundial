@@ -11,6 +11,7 @@ val keystoreProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) load(f.inputStream())
 }
+val glanceVersion = findProperty("glance.version") as String
 
 kotlin {
     androidTarget()
@@ -18,6 +19,7 @@ kotlin {
         val androidMain by getting {
             dependencies {
                 implementation(project(":shared"))
+                implementation("androidx.glance:glance-appwidget:$glanceVersion")
             }
         }
     }
@@ -33,8 +35,8 @@ android {
         applicationId = "com.myapplication.MyApplication"
         minSdk = (findProperty("android.minSdk") as String).toInt()
         targetSdk = (findProperty("android.targetSdk") as String).toInt()
-        versionCode = 3
-        versionName = "0.2.0"
+        versionCode = 4
+        versionName = "0.3.0"
     }
     signingConfigs {
         if (keystoreProps.getProperty("keystore.storeFile") != null) {

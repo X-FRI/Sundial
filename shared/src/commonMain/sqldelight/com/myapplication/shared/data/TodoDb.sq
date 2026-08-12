@@ -86,6 +86,9 @@ SELECT * FROM todo WHERE is_trashed = 1 ORDER BY trashed_at DESC;
 selectSubTasks:
 SELECT * FROM todo WHERE is_trashed = 0 AND parent_id = ? ORDER BY sort_position, id;
 
+selectChildrenByParent:
+SELECT * FROM todo WHERE parent_id = ? ORDER BY sort_position, id;
+
 selectById:
 SELECT * FROM todo WHERE id = ?;
 

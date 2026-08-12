@@ -223,7 +223,7 @@ fun scopeTitle(scope: Scope, query: String): String = when {
     query.isNotBlank() -> "搜索"
     scope == Scope.Today -> "今天"
     scope == Scope.Scheduled -> "计划"
-    scope == Scope.All -> "全部待办"
+    scope == Scope.All -> "工作台"
     scope == Scope.Completed -> "已完成"
     scope == Scope.Trash -> "垃圾箱"
     scope is Scope.List -> "列表"

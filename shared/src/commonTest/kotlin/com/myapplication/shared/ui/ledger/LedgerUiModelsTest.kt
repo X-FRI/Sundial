@@ -5,8 +5,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 
 class LedgerUiModelsTest {
     private val tz = TimeZone.UTC
@@ -115,6 +117,66 @@ class LedgerUiModelsTest {
         assertTrue(timeline.nowProgress in 0.33f..0.34f)
     }
 
+    @Test
+    fun workbenchTimelineShowsGlobalDistribution() {
+        val todos = listOf(
+            item(id = 1, title = "overdue", due = "2026-08-11T09:00:00Z", completed = false),
+            item(id = 2, title = "today", due = "2026-08-12T09:00:00Z", completed = false),
+            item(id = 3, title = "future", due = "2026-08-15T09:00:00Z", completed = false),
+            item(id = 4, title = "loose", due = null, completed = false),
+            item(id = 5, title = "inbox", due = null, completed = false, listId = 9),
+            item(id = 6, title = "done", due = "2026-08-12T09:00:00Z", completed = true),
+        )
+
+        val state = buildContextTimelineState(
+            todos = todos,
+            scope = TimelineScope.Workbench,
+            now = Instant.parse("2026-08-12T12:00:00Z"),
+            timeZone = tz,
+            inboxListId = 9,
+        )
+
+        assertEquals("工作台时间线", state.title)
+        assertEquals(listOf("逾期" to 1, "今天" to 1, "未来 7 天" to 1, "无日期" to 2, "待整理" to 1), state.segments.map { it.label to it.count })
+    }
+
+    @Test
+    fun scheduledTimelineBucketsFutureDates() {
+        val now = Instant.parse("2026-08-12T12:00:00Z")
+        val todayStart = Instant.parse("2026-08-12T00:00:00Z")
+        val todos = listOf(
+            item(id = 1, title = "today", due = "2026-08-12T09:00:00Z", completed = false),
+            item(id = 2, title = "tomorrow", due = "2026-08-13T09:00:00Z", completed = false),
+            item(id = 3, title = "week", due = "2026-08-16T09:00:00Z", completed = false),
+            item(id = 4, title = "later", due = todayStart.plus(12, DateTimeUnit.DAY, tz).toString(), completed = false),
+        )
+
+        val state = buildContextTimelineState(todos, TimelineScope.Scheduled, now, tz, inboxListId = null)
+
+        assertEquals(listOf("今天" to 1, "明天" to 1, "本周" to 1, "以后" to 1), state.segments.map { it.label to it.count })
+    }
+
+    @Test
+    fun inboxTimelineTreatsInboxAsTriagePool() {
+        val todos = listOf(
+            item(id = 1, title = "dated", due = "2026-08-12T09:00:00Z", completed = false, listId = 9),
+            item(id = 2, title = "loose", due = null, completed = false, listId = 9),
+            item(id = 3, title = "overdue", due = "2026-08-11T09:00:00Z", completed = false, listId = 9),
+            item(id = 4, title = "other", due = null, completed = false, listId = 1),
+        )
+
+        val state = buildContextTimelineState(
+            todos = todos,
+            scope = TimelineScope.List(listId = 9, isInbox = true),
+            now = Instant.parse("2026-08-12T12:00:00Z"),
+            timeZone = tz,
+            inboxListId = 9,
+        )
+
+        assertEquals("收件箱 · 待整理", state.title)
+        assertEquals(listOf("待整理" to 3, "已有日期" to 2, "无日期" to 1, "逾期" to 1), state.segments.map { it.label to it.count })
+    }
+
     private fun item(
         id: Long,
         title: String,
@@ -123,9 +185,10 @@ class LedgerUiModelsTest {
         parentId: Long? = null,
         isTrashed: Boolean = false,
         trashedAt: String? = null,
+        listId: Long = 1,
     ): TodoItem = TodoItem(
         id = id,
-        listId = 1,
+        listId = listId,
         title = title,
         note = "",
         dueDate = due?.let { Instant.parse(it) },

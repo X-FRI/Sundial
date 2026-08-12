@@ -65,6 +65,11 @@ fun MainLedger(
     }
     val rhythm = remember(todos, now, timeZone) { buildTodayRhythmState(todos, now, timeZone) }
     val timeline = remember(todos, now, timeZone) { buildTodayTimelineState(todos, now, timeZone) }
+    val inboxListId = remember(lists) { lists.firstOrNull { it.name == "收件箱" }?.id }
+    val contextScope = remember(scope, inboxListId) { scope.toTimelineScope(inboxListId) }
+    val contextTimeline = remember(todos, contextScope, now, timeZone, inboxListId) {
+        buildContextTimelineState(todos, contextScope, now, timeZone, inboxListId)
+    }
     val today = todayDate(clock, timeZone)
     val rowMinHeight = if (compactRows) RemControlSize.rowMobile else RemControlSize.rowDesktop
     val checkboxSize = if (compactRows) 20.dp else 16.dp
@@ -79,7 +84,7 @@ fun MainLedger(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     androidx.compose.foundation.text.BasicText(
-                        scopeTitle(scope, query),
+                        ledgerTitle(scope, query, lists, inboxListId),
                         style = RemType.title24.copy(color = colors.textHigh),
                     )
                     androidx.compose.foundation.text.BasicText(
@@ -91,8 +96,14 @@ fun MainLedger(
             }
             Spacer(Modifier.height(16.dp))
         }
-        if (showRhythm && !trashScope) {
-            TodayRhythm(rhythm, timeline, onOpen = mainVm::openDetail)
+        if (showRhythm) {
+            ContextTimeline(
+                state = contextTimeline,
+                rhythm = rhythm,
+                timeline = timeline,
+                showDayRail = scope == Scope.Today && !trashScope,
+                onOpen = mainVm::openDetail,
+            )
             Spacer(Modifier.height(18.dp))
         }
         LazyColumn(Modifier.fillMaxSize()) {
@@ -219,5 +230,30 @@ fun MainLedger(
                 showCreate = false
             },
         )
+    }
+}
+
+fun Scope.toTimelineScope(inboxListId: Long?): TimelineScope = when (this) {
+    Scope.Today -> TimelineScope.Today
+    Scope.Scheduled -> TimelineScope.Scheduled
+    Scope.All -> TimelineScope.Workbench
+    Scope.Completed -> TimelineScope.Completed
+    Scope.Trash -> TimelineScope.Trash
+    is Scope.List -> TimelineScope.List(listId = listId, isInbox = inboxListId == listId)
+}
+
+private fun ledgerTitle(
+    scope: Scope,
+    query: String,
+    lists: List<com.myapplication.shared.domain.model.TodoList>,
+    inboxListId: Long?,
+): String {
+    if (query.isNotBlank()) return scopeTitle(scope, query)
+    return when (scope) {
+        is Scope.List -> {
+            val list = lists.firstOrNull { it.id == scope.listId }
+            if (scope.listId == inboxListId) "收件箱 · 待整理" else list?.name ?: "列表"
+        }
+        else -> scopeTitle(scope, query)
     }
 }
