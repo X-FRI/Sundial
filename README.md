@@ -15,7 +15,7 @@
   <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.4.10-purple.svg?logo=kotlin" />
   <img alt="Compose Multiplatform" src="https://img.shields.io/badge/Compose_Multiplatform-1.11.1-orange.svg?logo=jetpackcompose" />
   <img alt="Platforms" src="https://img.shields.io/badge/Platforms-Android%20%7C%20iOS%20%7C%20Desktop-green.svg" />
-  <img alt="Tests" src="https://img.shields.io/badge/Tests-74%20passing-brightgreen.svg" />
+  <img alt="Tests" src="https://img.shields.io/badge/Tests-90%20passing-brightgreen.svg" />
 </p>
 
 ---
