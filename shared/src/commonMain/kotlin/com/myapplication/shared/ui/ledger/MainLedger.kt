@@ -2,6 +2,7 @@ package com.myapplication.shared.ui.ledger
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -177,12 +178,17 @@ private fun RowScope.OverviewCell(label: String, count: Int, icon: IconName, onC
 
 @Composable
 private fun QuickAddBar(onClick: () -> Unit) {
-    RemTextField(
-        value = "",
-        onValueChange = {},
-        placeholder = "添加待办…",
-        leadingIcon = IconName.Plus,
-        readOnly = true,
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-    )
+    Box(Modifier.fillMaxWidth()) {
+        RemTextField(
+            value = "",
+            onValueChange = {},
+            placeholder = "添加待办…",
+            leadingIcon = IconName.Plus,
+            readOnly = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Box(
+            Modifier.matchParentSize().clickable(onClick = onClick)
+        )
+    }
 }
