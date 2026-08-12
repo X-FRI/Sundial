@@ -62,6 +62,26 @@ class SyncCoordinatorTest {
     }
 
     @Test
+    fun drainCoalescesDuplicateUpsertsBeforePush() = runTest {
+        val repo = FakeTodoRepository()
+        repo.outboxState.value = listOf(
+            row(seq = 1, table = "todo", rowId = 10, updatedAt = 100),
+            row(seq = 2, table = "todo", rowId = 10, updatedAt = 200),
+            row(seq = 3, table = "reminder_list", rowId = 1, updatedAt = 150),
+            row(seq = 4, table = "todo", rowId = 11, updatedAt = 300),
+        )
+        val client = FakeSyncClient()
+        val coordinator = SyncCoordinator(repo, client, "device-a")
+        val result = coordinator.drainOutbox()
+
+        assertTrue(result.isRight())
+        assertEquals(4, result.getOrNull())
+        assertEquals(listOf(2L, 3L, 4L), client.pushed.single().map { it.seq })
+        assertEquals(listOf(10L, 1L, 11L), client.pushed.single().map { it.rowId })
+        assertTrue(repo.outboxState.value.isEmpty())
+    }
+
+    @Test
     fun applyRemoteSkipsOwnDevice() = runTest {
         val repo = FakeTodoRepository()
         val coordinator = SyncCoordinator(repo, FakeSyncClient(), "device-a")

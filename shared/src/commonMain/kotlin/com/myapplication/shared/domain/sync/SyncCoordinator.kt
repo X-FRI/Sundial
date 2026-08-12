@@ -32,7 +32,8 @@ class SyncCoordinator(
     suspend fun drainOutbox(): Either<SyncError, Int> = either {
         val rows = repository.readOutbox(100).mapLeftToSync().bind()
         if (rows.isEmpty()) return@either 0
-        client.push(rows).bind()
+        val rowsToPush = rows.coalesceUpsertsForPush()
+        client.push(rowsToPush).bind()
         repository.clearOutbox(rows.last().seq).mapLeftToSync().bind()
         rows.size
     }
@@ -93,4 +94,19 @@ class SyncCoordinator(
 
     private fun <A> Either<TodoError, A>.mapLeftToSync(): Either<SyncError, A> =
         mapLeft { SyncError.Transport((it as? TodoError.Persistence)?.message ?: "本地读取失败") }
+
+    /**
+     * PostgREST cannot upsert the same constrained row twice in one command.
+     * Keep only the latest UPSERT snapshot for each table/id pair while preserving
+     * DELETE rows and the original order of the rows that remain.
+     */
+    private fun List<SyncRow>.coalesceUpsertsForPush(): List<SyncRow> {
+        val latestUpserts = mutableMapOf<Pair<String, Long>, Long>()
+        forEach { row ->
+            if (row.action == SyncAction.UPSERT) latestUpserts[row.table to row.rowId] = row.seq
+        }
+        return filter { row ->
+            row.action != SyncAction.UPSERT || latestUpserts[row.table to row.rowId] == row.seq
+        }
+    }
 }
