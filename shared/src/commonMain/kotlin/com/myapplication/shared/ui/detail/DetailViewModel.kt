@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.myapplication.shared.domain.error.TodoError
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
+import com.myapplication.shared.domain.recurrence.RecurrenceRule
 import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.usecase.AddSubTaskUseCase
 import com.myapplication.shared.ui.effects.launchTodoEffect
@@ -70,6 +71,11 @@ class DetailViewModel(
     /** 设置截止时间；传 null 表示清除日期。 */
     fun setDueDate(due: LocalDateTime?) {
         launchTodoEffect(lastError) { repository.setDueDate(todoId, due?.toInstant(timeZone)) }
+    }
+
+    /** 设置重复规则；传 null 表示不重复。 */
+    fun setRecurrence(rule: RecurrenceRule?) {
+        launchTodoEffect(lastError) { repository.setRecurrence(todoId, rule) }
     }
 
     /**

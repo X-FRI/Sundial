@@ -48,6 +48,8 @@ import com.myapplication.shared.ui.components.RemIconButton
 import com.myapplication.shared.ui.components.RemTextField
 import com.myapplication.shared.ui.components.rememberHoverBackground
 import com.myapplication.shared.ui.main.MainViewModel
+import com.myapplication.shared.ui.recurrence.RecurrencePicker
+import com.myapplication.shared.ui.recurrence.recurrenceSummary
 import com.myapplication.shared.ui.theme.ListColorOf
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
@@ -95,6 +97,7 @@ fun DetailContent(
     var noteText by remember(currentId) { mutableStateOf(current?.note ?: "") }
     var newSub by remember(currentId) { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showRecurrencePicker by remember(currentId) { mutableStateOf(false) }
     var showListDialog by remember { mutableStateOf(false) }
 
     Column(
@@ -208,6 +211,38 @@ fun DetailContent(
                 RemButton("清除", onClick = { detailVm.setDueDate(null) })
             } else {
                 androidx.compose.foundation.text.BasicText("无", style = RemType.text12.copy(color = colors.textLow))
+            }
+        }
+
+        // 「重复」行：整行可点击打开重复规则选择器；规则标签由 recurrenceSummary 统一生成。
+        val recurrenceInteraction = remember { MutableInteractionSource() }
+        val recurrenceBg = rememberHoverBackground(recurrenceInteraction)
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(recurrenceBg)
+                .clickable(
+                    interactionSource = recurrenceInteraction,
+                    indication = null,
+                ) { showRecurrencePicker = true }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RemIcon(IconName.Clock, colors.textLow, Modifier.size(14.dp))
+            Spacer(Modifier.width(8.dp))
+            androidx.compose.foundation.text.BasicText("重复", style = RemType.text12.copy(color = colors.textNormal))
+            Spacer(Modifier.weight(1f))
+            if (current.recurrenceRule != null) {
+                RemBadge(
+                    label = recurrenceSummary(current.recurrenceRule),
+                    color = colors.info,
+                    icon = { RemIcon(IconName.Clock, colors.info, Modifier.size(10.dp)) },
+                )
+            } else {
+                androidx.compose.foundation.text.BasicText(
+                    recurrenceSummary(current.recurrenceRule),
+                    style = RemType.text12.copy(color = colors.textLow),
+                )
             }
         }
 
@@ -358,6 +393,14 @@ fun DetailContent(
                 if (h == -1 && m == -1) detailVm.setTimeNull() else detailVm.setTime(h, m)
             },
             onDismiss = { showDatePicker = false },
+        )
+    }
+
+    if (showRecurrencePicker) {
+        RecurrencePicker(
+            selected = current?.recurrenceRule,
+            onSelect = detailVm::setRecurrence,
+            onDismiss = { showRecurrencePicker = false },
         )
     }
 

@@ -1,6 +1,7 @@
 package com.myapplication.shared.ui.detail
 
 import com.myapplication.shared.domain.model.TodoItem
+import com.myapplication.shared.domain.recurrence.RecurrenceRule
 import com.myapplication.shared.domain.usecase.AddSubTaskUseCase
 import com.myapplication.shared.test.FakeTodoRepository
 import kotlinx.coroutines.Dispatchers
@@ -56,5 +57,18 @@ class DetailViewModelTest {
 
         assertEquals(42L, repo.lastSetTitleId)
         assertEquals("新标题", repo.lastSetTitleValue)
+    }
+
+    @Test
+    fun setRecurrenceWritesCurrentTodoIdAndRule() = runTest(dispatcher) {
+        val repo = FakeTodoRepository()
+        val vm = DetailViewModel(repo, AddSubTaskUseCase(repo), todoId = 7)
+        val rule = RecurrenceRule.Weekly()
+
+        vm.setRecurrence(rule)
+        advanceUntilIdle()
+
+        assertEquals(7L, repo.recurrenceId)
+        assertEquals(rule, repo.recurrenceRule)
     }
 }
