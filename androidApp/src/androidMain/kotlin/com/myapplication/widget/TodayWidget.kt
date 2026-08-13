@@ -261,7 +261,7 @@ private fun launchIntent(context: Context, target: String): Intent =
     Intent(context, MainActivity::class.java)
         .setAction(Intent.ACTION_VIEW)
         .putExtra(MainActivity.EXTRA_SUNDIAL_TARGET, target)
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
 @Composable
 private fun SummaryChips(snapshot: TodayWidgetSnapshot) {
