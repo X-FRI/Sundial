@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,7 +49,10 @@ import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemControlSize
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
+import kotlin.time.Instant
 import kotlin.time.Clock
+import kotlinx.coroutines.delay
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -64,7 +68,14 @@ internal fun ListSettingsScreen(
     var selectedListId by remember { mutableStateOf<Long?>(null) }
     val selectedList = resolveSelectedList(lists, selectedListId)
     val timeZone = remember { TimeZone.currentSystemDefault() }
-    val today = remember { Clock.System.now().toLocalDateTime(timeZone).date }
+    var now by remember { mutableStateOf(Clock.System.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            now = Clock.System.now()
+            delay(60_000)
+        }
+    }
+    val today = listAnalyticsToday(now, timeZone)
     val analyticsModel = remember(selectedList?.id, analyticsTodos, today, timeZone) {
         selectedList?.let { list ->
             buildListAnalyticsModel(
@@ -256,3 +267,6 @@ private fun TodoList.isInbox(): Boolean = name == "收件箱" && position == 0
 
 internal fun resolveSelectedList(lists: List<TodoList>, selectedListId: Long?): TodoList? =
     lists.firstOrNull { it.id == selectedListId } ?: lists.firstOrNull()
+
+internal fun listAnalyticsToday(now: Instant, timeZone: TimeZone): LocalDate =
+    now.toLocalDateTime(timeZone).date

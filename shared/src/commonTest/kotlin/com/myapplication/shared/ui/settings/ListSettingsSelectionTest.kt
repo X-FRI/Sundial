@@ -4,6 +4,8 @@ import com.myapplication.shared.domain.model.TodoList
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 
 class ListSettingsSelectionTest {
     @Test
@@ -24,6 +26,20 @@ class ListSettingsSelectionTest {
         val selected = resolveSelectedList(listOf(inbox, work), selectedListId = 99)
 
         assertEquals(inbox, selected)
+    }
+
+    @Test
+    fun derivesTodayFromTheCurrentNowValue() {
+        val timeZone = TimeZone.UTC
+
+        assertEquals(
+            LocalDate(2026, 8, 13),
+            listAnalyticsToday(Instant.parse("2026-08-13T23:59:00Z"), timeZone),
+        )
+        assertEquals(
+            LocalDate(2026, 8, 14),
+            listAnalyticsToday(Instant.parse("2026-08-14T00:00:00Z"), timeZone),
+        )
     }
 
     private fun list(id: Long, name: String, position: Int): TodoList =
