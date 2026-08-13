@@ -83,7 +83,8 @@ fun AppRoot(graph: AppGraph) {
         when {
             // 分支 1：设置页全屏覆盖（不参与宽/窄分屏）。
             route == Route.Settings -> SettingsScreen(
-                viewModel { graph.settingsViewModelFactory() },
+                vm = viewModel { graph.settingsViewModelFactory() },
+                mainVm = mainVm,
                 onBack = mainVm::back,
             )
             // 分支 2：宽屏桌面外壳（Sidebar / 台账 / 详情检查器）。

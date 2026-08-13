@@ -44,6 +44,7 @@ import com.myapplication.shared.ui.components.RemButtonVariant
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemSyncIndicator
 import com.myapplication.shared.ui.components.RemTextField
+import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.sync.phase
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
@@ -63,9 +64,10 @@ import kotlinx.datetime.toLocalDateTime
  * - 下半部分 [StatusCard] 实时展示 SyncEngine 的连接状态。
  */
 @Composable
-fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
+fun SettingsScreen(vm: SettingsViewModel, mainVm: MainViewModel, onBack: () -> Unit) {
     SettingsHome(
         vm = vm,
+        mainVm = mainVm,
         onBack = onBack,
     )
 }

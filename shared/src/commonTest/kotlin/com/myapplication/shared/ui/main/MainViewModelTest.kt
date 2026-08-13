@@ -1,6 +1,7 @@
 package com.myapplication.shared.ui.main
 
 import com.myapplication.shared.domain.error.TodoError
+import com.myapplication.shared.domain.list.DeleteListPolicy
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
@@ -183,6 +184,70 @@ class MainViewModelTest {
         vm.deleteList(TodoList(7, "x", "blue", 1, Instant.fromEpochMilliseconds(0)))
         advanceUntilIdle()
         assertEquals(Scope.All, vm.scope.value)
+    }
+
+    @Test
+    fun deleteListDefaultsToMoveTasksToInbox() = runTest(dispatcher) {
+        val repo = FakeTodoRepository()
+        repo.ensureInbox()
+        repo.addList("项目", "blue")
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+        collect(vm)
+        val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
+
+        vm.deleteList(list)
+        advanceUntilIdle()
+
+        assertEquals(DeleteListPolicy.MoveTasksToInbox, repo.lastDeleteListPolicy)
+    }
+
+    @Test
+    fun updateListTrimsNameBeforeWriting() = runTest(dispatcher) {
+        val repo = FakeTodoRepository()
+        repo.ensureInbox()
+        repo.addList("项目", "blue")
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+        collect(vm)
+        val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
+
+        vm.updateList(list, "  研究  ", "red")
+        advanceUntilIdle()
+
+        assertEquals("研究", repo.lastUpdatedListName)
+        assertEquals("red", repo.lastUpdatedListColor)
+    }
+
+    @Test
+    fun deleteListWithDangerPolicyDelegatesPolicy() = runTest(dispatcher) {
+        val repo = FakeTodoRepository()
+        repo.ensureInbox()
+        repo.addList("项目", "blue")
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+        collect(vm)
+        val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
+
+        vm.deleteList(list, DeleteListPolicy.MoveTasksToTrash)
+        advanceUntilIdle()
+
+        assertEquals(DeleteListPolicy.MoveTasksToTrash, repo.lastDeleteListPolicy)
+    }
+
+    @Test
+    fun blankListNamesDoNotWrite() = runTest(dispatcher) {
+        val repo = FakeTodoRepository()
+        repo.ensureInbox()
+        repo.addList("项目", "blue")
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+        collect(vm)
+        val beforeLists = repo.listsState.value
+        val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
+
+        vm.addList("   ", "red")
+        vm.updateList(list, "   ", "red")
+        advanceUntilIdle()
+
+        assertEquals(beforeLists, repo.listsState.value)
+        assertNull(repo.lastUpdatedListName)
     }
 
     @Test

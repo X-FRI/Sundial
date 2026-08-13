@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.ui.components.RemButton
 import com.myapplication.shared.ui.components.RemIcon
+import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
@@ -47,6 +48,7 @@ import com.myapplication.shared.ui.theme.RemType
 @Composable
 internal fun SettingsHome(
     vm: SettingsViewModel,
+    mainVm: MainViewModel,
     onBack: () -> Unit,
 ) {
     val colors = LocalRemColors.current
@@ -63,6 +65,7 @@ internal fun SettingsHome(
                 selected = selected,
                 onSelect = { selected = it },
                 vm = vm,
+                mainVm = mainVm,
                 onBack = onBack,
             )
         } else {
@@ -70,6 +73,7 @@ internal fun SettingsHome(
                 selected = selected,
                 onSelect = { selected = it },
                 vm = vm,
+                mainVm = mainVm,
                 onBack = onBack,
             )
         }
@@ -81,6 +85,7 @@ private fun WideSettingsHome(
     selected: SettingsSection,
     onSelect: (SettingsSection) -> Unit,
     vm: SettingsViewModel,
+    mainVm: MainViewModel,
     onBack: () -> Unit,
 ) {
     val colors = LocalRemColors.current
@@ -99,7 +104,9 @@ private fun WideSettingsHome(
         SettingsSectionContent(
             selected = selected,
             vm = vm,
+            mainVm = mainVm,
             onBack = onBack,
+            compact = false,
             modifier = Modifier.weight(1f).fillMaxHeight(),
         )
     }
@@ -110,6 +117,7 @@ private fun NarrowSettingsHome(
     selected: SettingsSection,
     onSelect: (SettingsSection) -> Unit,
     vm: SettingsViewModel,
+    mainVm: MainViewModel,
     onBack: () -> Unit,
 ) {
     val colors = LocalRemColors.current
@@ -137,7 +145,9 @@ private fun NarrowSettingsHome(
         SettingsSectionContent(
             selected = selected,
             vm = vm,
+            mainVm = mainVm,
             onBack = onBack,
+            compact = true,
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
     }
@@ -181,16 +191,15 @@ private fun SettingsHomeHeader(onBack: () -> Unit) {
 private fun SettingsSectionContent(
     selected: SettingsSection,
     vm: SettingsViewModel,
+    mainVm: MainViewModel,
     onBack: () -> Unit,
+    compact: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier) {
         when (selected) {
             SettingsSection.Sync -> SyncSettingsContent(vm, onBack)
-            SettingsSection.Lists -> PlaceholderSection(
-                section = selected,
-                description = "列表管理将在这里集中处理列表名称、颜色和统计入口。",
-            )
+            SettingsSection.Lists -> ListSettingsScreen(mainVm, showHeader = !compact)
             SettingsSection.Widgets -> PlaceholderSection(
                 section = selected,
                 description = "稍后可在这里配置今日摘要、桌面组件和提醒概览。",

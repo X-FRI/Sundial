@@ -3,6 +3,8 @@ package com.myapplication.shared.ui.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.myapplication.shared.domain.error.TodoError
+import com.myapplication.shared.domain.list.DeleteListPolicy
+import com.myapplication.shared.domain.list.ListStats
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.repository.TodoRepository
@@ -136,6 +138,9 @@ class MainViewModel(
         .map { todos -> todos.groupingBy { it.listId }.eachCount() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
+    fun observeListStats(listId: Long): Flow<ListStats> =
+        repository.observeListStats(listId)
+
     init {
         // 启动时确保「收件箱」列表存在：它是所有新待办的默认归属，
         // 若初始化失败则记录到 lastError（此时 UI 仍可进入，但新建可能失败）。
@@ -219,13 +224,24 @@ class MainViewModel(
         launchTodoEffect(lastError) { repository.addList(trimmed, colorKey) }
     }
 
+    /** 更新自定义列表；空名称直接忽略。 */
+    fun updateList(list: TodoList, name: String, colorKey: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        launchTodoEffect(lastError) { repository.updateList(list.id, trimmed, colorKey) }
+    }
+
     /**
      * 删除列表。删除成功后，若当前正停留在该列表范围，会先切回「全部」，
      * 避免 UI 停留在已不存在的范围上（此处为乐观切换，不等待删除结果）。
      */
-    fun deleteList(list: TodoList) {
-        launchTodoEffect(lastError) { repository.deleteList(list.id) }
+    fun deleteList(list: TodoList, policy: DeleteListPolicy) {
+        launchTodoEffect(lastError) { repository.deleteList(list.id, policy) }
         if (scope.value == Scope.List(list.id)) scope.value = Scope.All
+    }
+
+    fun deleteList(list: TodoList) {
+        deleteList(list, DeleteListPolicy.MoveTasksToInbox)
     }
 }
 

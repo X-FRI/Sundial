@@ -69,6 +69,7 @@ fun RemDialog(
     content: @Composable ColumnScope.() -> Unit,
     confirmText: String,
     onConfirm: () -> Unit,
+    confirmEnabled: Boolean = true,
     confirmDanger: Boolean = false,
     dismissText: String = "取消",
     showButtons: Boolean = true,
@@ -126,7 +127,12 @@ fun RemDialog(
                             // 取消（Ghost）在左，确认（Default/Danger）在右
                             RemButton(dismissText, onDismiss)
                             Spacer(Modifier.width(8.dp))
-                            RemButton(confirmText, onConfirm, variant = if (confirmDanger) RemButtonVariant.Danger else RemButtonVariant.Default)
+                            RemButton(
+                                confirmText,
+                                onConfirm,
+                                enabled = confirmEnabled,
+                                variant = if (confirmDanger) RemButtonVariant.Danger else RemButtonVariant.Default,
+                            )
                         }
                     }
                 }

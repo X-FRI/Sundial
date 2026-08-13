@@ -44,6 +44,9 @@ class FakeTodoRepository : TodoRepository {
     var toggledValue: Boolean? = null
     var flaggedId: Long? = null
     var flaggedValue: Boolean? = null
+    var lastDeleteListPolicy: DeleteListPolicy? = null
+    var lastUpdatedListName: String? = null
+    var lastUpdatedListColor: String? = null
     var failNextInsert = false
     private var nextId = 1L
     // —— 同步相关状态 ——
@@ -112,6 +115,8 @@ class FakeTodoRepository : TodoRepository {
     }
 
     override suspend fun updateList(listId: Long, name: String, colorKey: String): Either<TodoError, Unit> {
+        lastUpdatedListName = name
+        lastUpdatedListColor = colorKey
         val trimmed = name.trim()
         val trimmedColorKey = colorKey.trim()
         if (trimmed.isEmpty()) return Either.Left(TodoError.Persistence("列表名称不能为空"))
@@ -127,6 +132,7 @@ class FakeTodoRepository : TodoRepository {
     }
 
     override suspend fun deleteList(listId: Long, policy: DeleteListPolicy): Either<TodoError, Unit> {
+        lastDeleteListPolicy = policy
         val list = listsState.value.firstOrNull { it.id == listId }
             ?: return Either.Left(TodoError.Persistence("列表不存在"))
         if (list.name == "收件箱" && list.position == 0) {
