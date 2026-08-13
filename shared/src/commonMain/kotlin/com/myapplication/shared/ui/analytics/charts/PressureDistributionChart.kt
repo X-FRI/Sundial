@@ -7,30 +7,27 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.myapplication.shared.domain.analytics.ChartPoint
+import com.myapplication.shared.domain.analytics.ChartBucket
 import com.patrykandpatrick.vico.multiplatform.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.multiplatform.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.multiplatform.cartesian.data.lineSeries
-import com.patrykandpatrick.vico.multiplatform.cartesian.layer.rememberLineCartesianLayer
+import com.patrykandpatrick.vico.multiplatform.cartesian.data.columnSeries
+import com.patrykandpatrick.vico.multiplatform.cartesian.layer.rememberColumnCartesianLayer
 import com.patrykandpatrick.vico.multiplatform.cartesian.rememberCartesianChart
 
 @Composable
-internal fun CompletionTrendChart(
-    points: List<ChartPoint>,
-    modifier: Modifier = Modifier,
-) {
-    val values = points.map { it.value.toFloat() }
+internal fun PressureDistributionChart(buckets: List<ChartBucket>, modifier: Modifier = Modifier) {
+    val values = buckets.map { it.value.toFloat() }
     val modelProducer = remember { CartesianChartModelProducer() }
     LaunchedEffect(modelProducer, values) {
         modelProducer.runTransaction {
-            lineSeries {
+            columnSeries {
                 series(values)
             }
         }
     }
     CartesianChartHost(
-        chart = rememberCartesianChart(rememberLineCartesianLayer()),
+        chart = rememberCartesianChart(rememberColumnCartesianLayer()),
         modelProducer = modelProducer,
-        modifier = modifier.fillMaxWidth().height(160.dp),
+        modifier = modifier.fillMaxWidth().height(120.dp),
     )
 }

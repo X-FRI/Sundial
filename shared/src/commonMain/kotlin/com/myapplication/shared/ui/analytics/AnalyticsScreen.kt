@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -26,10 +25,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.myapplication.shared.domain.analytics.ChartBucket
+import com.myapplication.shared.domain.analytics.ChartPoint
+import com.myapplication.shared.domain.analytics.ChartTone
+import com.myapplication.shared.ui.analytics.charts.CompletionTrendChart
+import com.myapplication.shared.ui.analytics.charts.EnergyOutputChart
+import com.myapplication.shared.ui.analytics.charts.PressureDistributionChart
 import com.myapplication.shared.ui.components.IconName
 import com.myapplication.shared.ui.components.RemBadge
 import com.myapplication.shared.ui.components.RemBadgeTone
@@ -187,11 +191,8 @@ private fun KpiCard(
 @Composable
 private fun CompletionTrendCard(model: AnalyticsModel, modifier: Modifier = Modifier) {
     AnalyticsCard("完成趋势", "最近 7 天每天完成的任务数量", modifier) {
-        WeeklyBarChart(
-            points = model.days,
-            value = { it.completedCount },
-            barColor = LocalRemColors.current.success,
-            valueSuffix = "件",
+        CompletionTrendChart(
+            points = model.days.map { ChartPoint(it.label, it.completedCount) },
         )
     }
 }
@@ -199,11 +200,8 @@ private fun CompletionTrendCard(model: AnalyticsModel, modifier: Modifier = Modi
 @Composable
 private fun EnergyTrendCard(model: AnalyticsModel, modifier: Modifier = Modifier) {
     AnalyticsCard("精力输出", "按完成任务复杂度估算的输出点数", modifier) {
-        WeeklyBarChart(
-            points = model.days,
-            value = { it.energy },
-            barColor = LocalRemColors.current.brand,
-            valueSuffix = "点",
+        EnergyOutputChart(
+            points = model.days.map { ChartPoint(it.label, it.energy) },
         )
     }
 }
@@ -211,7 +209,9 @@ private fun EnergyTrendCard(model: AnalyticsModel, modifier: Modifier = Modifier
 @Composable
 private fun PressureCard(model: AnalyticsModel, modifier: Modifier = Modifier) {
     AnalyticsCard("待办压力", "当前未完成任务的时间分布", modifier) {
-        PressureBar(model.pressure)
+        PressureDistributionChart(
+            buckets = model.pressure.map { ChartBucket(it.label, it.count, it.tone.toChartTone()) },
+        )
         Spacer(Modifier.height(14.dp))
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             model.pressure.forEach { bucket ->
@@ -261,77 +261,6 @@ private fun AnalyticsCard(
 }
 
 @Composable
-private fun WeeklyBarChart(
-    points: List<DayPoint>,
-    value: (DayPoint) -> Int,
-    barColor: Color,
-    valueSuffix: String,
-) {
-    val colors = LocalRemColors.current
-    val maxValue = points.maxOfOrNull(value)?.coerceAtLeast(1) ?: 1
-    Row(
-        Modifier.fillMaxWidth().height(136.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        points.forEach { point ->
-            val v = value(point)
-            val fraction = if (v == 0) 0.06f else (v.toFloat() / maxValue.toFloat()).coerceIn(0.12f, 1f)
-            Column(
-                Modifier.weight(1f).fillMaxHeight(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                androidx.compose.foundation.text.BasicText(
-                    if (v == 0) "0" else "$v$valueSuffix",
-                    style = RemType.text10.copy(color = if (v == 0) colors.textLow else colors.textNormal),
-                )
-                Spacer(Modifier.height(6.dp))
-                Box(
-                    Modifier.weight(1f).fillMaxWidth(),
-                    contentAlignment = Alignment.BottomCenter,
-                ) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth(0.62f)
-                            .fillMaxHeight(fraction)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (v == 0) colors.borderSubtle else barColor.copy(alpha = 0.82f)),
-                    )
-                }
-                Spacer(Modifier.height(6.dp))
-                androidx.compose.foundation.text.BasicText(point.label, style = RemType.text10.copy(color = colors.textLow))
-            }
-        }
-    }
-}
-
-@Composable
-private fun PressureBar(buckets: List<PressureBucket>) {
-    val colors = LocalRemColors.current
-    val total = buckets.sumOf { it.count }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(12.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(colors.bgPanel),
-    ) {
-        if (total == 0) {
-            Box(Modifier.weight(1f).fillMaxHeight().background(colors.borderSubtle))
-        } else {
-            buckets.filter { it.count > 0 }.forEach { bucket ->
-                Box(
-                    Modifier
-                        .weight(bucket.count.toFloat())
-                        .fillMaxHeight()
-                        .background(bucket.tone.color(colors).copy(alpha = 0.85f)),
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun LegendRow(label: String, count: Int, tone: AnalyticsTone) {
     val colors = LocalRemColors.current
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -359,4 +288,11 @@ private fun AnalyticsTone.color(colors: RemColors): Color = when (this) {
     AnalyticsTone.Brand -> colors.brand
     AnalyticsTone.Info -> colors.info
     AnalyticsTone.Neutral -> colors.textLow
+}
+
+internal fun AnalyticsTone.toChartTone(): ChartTone = when (this) {
+    AnalyticsTone.Danger -> ChartTone.Danger
+    AnalyticsTone.Brand -> ChartTone.Primary
+    AnalyticsTone.Info -> ChartTone.Info
+    AnalyticsTone.Neutral -> ChartTone.Neutral
 }
