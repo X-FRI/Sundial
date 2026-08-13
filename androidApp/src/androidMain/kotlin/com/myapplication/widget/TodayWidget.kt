@@ -1,6 +1,7 @@
 package com.myapplication.widget
 
 import android.content.Context
+import android.content.Intent
 import arrow.core.getOrElse
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -10,11 +11,11 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalSize
-import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Column
@@ -70,7 +71,7 @@ class TodayWidget : GlanceAppWidget() {
                 size.height < 190.dp -> WidgetSnapshotSize.Medium
                 else -> WidgetSnapshotSize.Large
             }
-            TodayWidgetContent(snapshot = snapshot, size = widgetSize)
+            TodayWidgetContent(context = context, snapshot = snapshot, size = widgetSize)
         }
     }
 
@@ -129,12 +130,13 @@ class TodayWidget : GlanceAppWidget() {
 }
 
 @Composable
-private fun TodayWidgetContent(snapshot: TodayWidgetSnapshot, size: WidgetSnapshotSize) {
+private fun TodayWidgetContent(context: Context, snapshot: TodayWidgetSnapshot, size: WidgetSnapshotSize) {
+    val todayIntent = launchIntent(context, MainActivity.TARGET_TODAY)
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(WidgetColors.Background)
-            .clickable(actionStartActivity<MainActivity>())
+            .clickable(actionStartActivity(launchIntent(context, MainActivity.TARGET_WORKBENCH)))
             .padding(
                 when (size) {
                     WidgetSnapshotSize.Small -> 7.dp
@@ -145,8 +147,8 @@ private fun TodayWidgetContent(snapshot: TodayWidgetSnapshot, size: WidgetSnapsh
     ) {
         when (size) {
             WidgetSnapshotSize.Small -> SmallTodayWidget(snapshot)
-            WidgetSnapshotSize.Medium -> MediumTodayWidget(snapshot)
-            WidgetSnapshotSize.Large -> LargeTodayWidget(snapshot)
+            WidgetSnapshotSize.Medium -> MediumTodayWidget(snapshot, todayIntent)
+            WidgetSnapshotSize.Large -> LargeTodayWidget(snapshot, todayIntent)
         }
     }
 }
@@ -165,13 +167,13 @@ private fun SmallTodayWidget(snapshot: TodayWidgetSnapshot) {
 }
 
 @Composable
-private fun MediumTodayWidget(snapshot: TodayWidgetSnapshot) {
+private fun MediumTodayWidget(snapshot: TodayWidgetSnapshot, todayIntent: Intent) {
     WidgetTitleRow(snapshot = snapshot, titleFontSize = 16, countFontSize = 12)
     Spacer(GlanceModifier.height(5.dp))
     NextTaskText(snapshot = snapshot, fontSize = 12)
     Spacer(GlanceModifier.height(5.dp))
     snapshot.topTodayTasks.take(visibleTodayTasks(WidgetSnapshotSize.Medium)).forEach { task ->
-        TaskLine(task = task, fontSize = 11)
+        TaskLine(task = task, fontSize = 11, intent = todayIntent)
         Spacer(GlanceModifier.height(2.dp))
     }
     Spacer(GlanceModifier.height(2.dp))
@@ -183,11 +185,11 @@ private fun MediumTodayWidget(snapshot: TodayWidgetSnapshot) {
 }
 
 @Composable
-private fun LargeTodayWidget(snapshot: TodayWidgetSnapshot) {
+private fun LargeTodayWidget(snapshot: TodayWidgetSnapshot, todayIntent: Intent) {
     SummaryChips(snapshot)
     Spacer(GlanceModifier.height(7.dp))
     snapshot.topTodayTasks.take(visibleTodayTasks(WidgetSnapshotSize.Large)).forEach { task ->
-        TaskLine(task = task, fontSize = 11)
+        TaskLine(task = task, fontSize = 11, intent = todayIntent)
         Spacer(GlanceModifier.height(3.dp))
     }
     if (snapshot.topOverdueTasks.isNotEmpty()) {
@@ -246,13 +248,20 @@ private fun NextTaskText(snapshot: TodayWidgetSnapshot, fontSize: Int) {
 }
 
 @Composable
-private fun TaskLine(task: WidgetTask, fontSize: Int) {
+private fun TaskLine(task: WidgetTask, fontSize: Int, intent: Intent) {
     Text(
         text = listOfNotNull(task.dueLabel, task.title).joinToString("  "),
+        modifier = GlanceModifier.clickable(actionStartActivity(intent)),
         style = TextStyle(color = WidgetColors.Muted, fontSize = fontSize.sp),
         maxLines = 1,
     )
 }
+
+private fun launchIntent(context: Context, target: String): Intent =
+    Intent(context, MainActivity::class.java)
+        .setAction(Intent.ACTION_VIEW)
+        .putExtra(MainActivity.EXTRA_SUNDIAL_TARGET, target)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
 @Composable
 private fun SummaryChips(snapshot: TodayWidgetSnapshot) {

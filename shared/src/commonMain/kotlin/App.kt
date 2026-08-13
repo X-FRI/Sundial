@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -20,6 +21,7 @@ import com.myapplication.shared.di.AppGraph
 import com.myapplication.shared.di.createAppGraph
 import com.myapplication.shared.ui.PlatformBackHandler
 import com.myapplication.shared.ui.components.RemDialog
+import com.myapplication.shared.ui.main.LaunchTarget
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Route
 import com.myapplication.shared.ui.settings.SettingsScreen
@@ -39,10 +41,10 @@ import com.myapplication.shared.ui.uiMessage
  *   本文件只负责「根据路由与屏宽决定画什么」，不持有业务状态。
  */
 @Composable
-fun App() {
+fun App(launchTarget: String? = null) {
     RemindersTheme {
         val graph = remember { createAppGraph() }
-        AppRoot(graph)
+        AppRoot(graph, launchTarget)
     }
 }
 
@@ -56,9 +58,15 @@ fun App() {
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun AppRoot(graph: AppGraph) {
+fun AppRoot(graph: AppGraph, launchTarget: String? = null) {
     val mainVm: MainViewModel = viewModel {
         MainViewModel(graph.repository, graph.addTodo, graph.timeZone, graph.completeRecurringTodo)
+    }
+    LaunchedEffect(launchTarget) {
+        when (launchTarget) {
+            "today" -> mainVm.applyLaunchTarget(LaunchTarget.Today)
+            "workbench" -> mainVm.applyLaunchTarget(LaunchTarget.Workbench)
+        }
     }
     val route by mainVm.route.collectAsState()
     val colors = LocalRemColors.current

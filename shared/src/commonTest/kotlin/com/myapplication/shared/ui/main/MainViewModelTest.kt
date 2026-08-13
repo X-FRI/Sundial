@@ -343,4 +343,31 @@ class MainViewModelTest {
         vm.selectScope(Scope.Today)
         assertEquals(Route.Main, vm.route.value)
     }
+
+    @Test
+    fun widgetLaunchTargetOpensTodayScope() {
+        val vm = vm(FakeTodoRepository())
+
+        vm.openDetail(3)
+        vm.setSearch("牛奶")
+        vm.applyLaunchTarget(LaunchTarget.Today)
+
+        assertEquals(Scope.Today, vm.scope.value)
+        assertEquals("", vm.searchQuery.value)
+        assertEquals(Route.Main, vm.route.value)
+    }
+
+    @Test
+    fun workbenchLaunchTargetOpensAllScope() {
+        val vm = vm(FakeTodoRepository())
+
+        vm.selectScope(Scope.Today)
+        vm.openDetail(3)
+        vm.setSearch("牛奶")
+        vm.applyLaunchTarget(LaunchTarget.Workbench)
+
+        assertEquals(Scope.All, vm.scope.value)
+        assertEquals("", vm.searchQuery.value)
+        assertEquals(Route.Main, vm.route.value)
+    }
 }

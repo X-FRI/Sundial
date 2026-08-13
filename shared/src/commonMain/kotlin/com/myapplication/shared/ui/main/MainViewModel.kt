@@ -59,6 +59,12 @@ sealed interface Scope {
     data class List(val listId: Long) : Scope
 }
 
+/** 外部启动入口的类型化目标。 */
+sealed interface LaunchTarget {
+    data object Workbench : LaunchTarget
+    data object Today : LaunchTarget
+}
+
 /**
  * 主界面 ViewModel：路由状态机 + 待办数据流的唯一权威来源。
  *
@@ -161,6 +167,15 @@ class MainViewModel(
         scope.value = s
         searchQuery.value = ""
         route.value = Route.Main
+    }
+
+    fun applyLaunchTarget(target: LaunchTarget) {
+        selectScope(
+            when (target) {
+                LaunchTarget.Workbench -> Scope.All
+                LaunchTarget.Today -> Scope.Today
+            },
+        )
     }
 
     fun setSearch(q: String) {
