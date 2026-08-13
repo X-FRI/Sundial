@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -31,12 +32,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.myapplication.shared.domain.analytics.AnalyticsRange
+import com.myapplication.shared.domain.analytics.buildListAnalyticsModel
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.ui.components.IconName
 import com.myapplication.shared.ui.components.RemButton
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemIconButton
 import com.myapplication.shared.ui.list.DeleteListDialog
+import com.myapplication.shared.ui.list.ListAnalyticsPanel
 import com.myapplication.shared.ui.list.ListEditorDialog
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.theme.ListColorOf
@@ -44,6 +48,9 @@ import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemControlSize
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
+import kotlin.time.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 @Composable
 internal fun ListSettingsScreen(
@@ -53,6 +60,22 @@ internal fun ListSettingsScreen(
     val colors = LocalRemColors.current
     val lists by mainVm.lists.collectAsState()
     val counts by mainVm.listCounts.collectAsState()
+    val analyticsTodos by mainVm.analyticsTodos.collectAsState()
+    var selectedListId by remember { mutableStateOf<Long?>(null) }
+    val selectedList = resolveSelectedList(lists, selectedListId)
+    val timeZone = remember { TimeZone.currentSystemDefault() }
+    val today = remember { Clock.System.now().toLocalDateTime(timeZone).date }
+    val analyticsModel = remember(selectedList?.id, analyticsTodos, today, timeZone) {
+        selectedList?.let { list ->
+            buildListAnalyticsModel(
+                listId = list.id,
+                todos = analyticsTodos,
+                today = today,
+                range = AnalyticsRange.Week,
+                timeZone = timeZone,
+            )
+        }
+    }
     var editing by remember { mutableStateOf<TodoList?>(null) }
     var creating by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<TodoList?>(null) }
@@ -92,10 +115,16 @@ internal fun ListSettingsScreen(
                     list = list,
                     count = counts[list.id] ?: 0,
                     isInbox = isInbox,
+                    selected = selectedList?.id == list.id,
+                    onSelect = { selectedListId = list.id },
                     onEdit = { editing = list },
                     onDelete = { deleting = list },
                 )
                 if (index != lists.lastIndex) RowDivider()
+            }
+            analyticsModel?.let { model ->
+                Spacer(Modifier.height(18.dp))
+                ListAnalyticsPanel(model)
             }
         }
     }
@@ -130,21 +159,30 @@ private fun ListSettingsRow(
     list: TodoList,
     count: Int,
     isInbox: Boolean,
+    selected: Boolean,
+    onSelect: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(RemRadii.r4)
     Row(
         Modifier
             .fillMaxWidth()
+            .clip(shape)
+            .background(if (selected) colors.brandSubtle else Color.Transparent)
+            .border(
+                width = 1.dp,
+                color = if (selected) colors.brand.copy(alpha = 0.28f) else Color.Transparent,
+                shape = shape,
+            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                enabled = !isInbox,
-                onClick = onEdit,
+                onClick = onSelect,
             )
-            .padding(vertical = 11.dp),
+            .padding(horizontal = 10.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ListColorDot(list.colorKey, isInbox)
@@ -215,3 +253,6 @@ private fun RowDivider() {
 }
 
 private fun TodoList.isInbox(): Boolean = name == "收件箱" && position == 0
+
+internal fun resolveSelectedList(lists: List<TodoList>, selectedListId: Long?): TodoList? =
+    lists.firstOrNull { it.id == selectedListId } ?: lists.firstOrNull()
