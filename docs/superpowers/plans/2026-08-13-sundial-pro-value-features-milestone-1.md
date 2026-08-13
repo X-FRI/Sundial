@@ -167,7 +167,7 @@ internal fun rememberAnalyticsChartColors(): AnalyticsChartColors {
 
 Create `shared/src/commonMain/kotlin/com/myapplication/shared/ui/analytics/charts/CompletionTrendChart.kt`.
 
-For the first spike, keep the public component stable and put library-specific calls inside this file. If Vico imports differ, adjust only this file.
+For the first spike, keep the chart dependency isolated and put library-specific calls inside this file. Do not depend on Task 2 analytics domain types yet; Task 15 will replace this probe with the final `ChartPoint`-based chart API.
 
 ```kotlin
 package com.myapplication.shared.ui.analytics.charts
@@ -180,13 +180,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.myapplication.shared.domain.analytics.ChartPoint
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemType
 
 @Composable
 internal fun CompletionTrendChart(
-    points: List<ChartPoint>,
+    values: List<Int>,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalRemColors.current
@@ -197,14 +196,14 @@ internal fun CompletionTrendChart(
         contentAlignment = Alignment.Center,
     ) {
         BasicText(
-            text = "完成趋势 ${points.sumOf { it.value }}",
+            text = "完成趋势 ${values.sum()}",
             style = RemType.text12.copy(color = colors.textLow),
         )
     }
 }
 ```
 
-This temporary compile host exists only inside the spike task to establish a stable call site. Task 15 replaces its body with Vico rendering before the milestone is complete.
+This temporary compile host exists only inside the spike task to prove the chart dependency can compile in common UI code. Task 15 replaces its signature and body with Vico rendering before the milestone is complete.
 
 - [ ] **Step 4: Run dependency compile**
 
