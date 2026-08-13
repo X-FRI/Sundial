@@ -83,6 +83,9 @@ fun buildTodayWidgetSnapshot(
     )
 }
 
+fun TodayWidgetSnapshot.isCurrentFor(now: Instant, timeZone: TimeZone): Boolean =
+    lastUpdatedAt.toLocalDateTime(timeZone).date == now.toLocalDateTime(timeZone).date
+
 private fun TodoItem.toWidgetTask(timeZone: TimeZone): WidgetTask =
     WidgetTask(
         id = id,

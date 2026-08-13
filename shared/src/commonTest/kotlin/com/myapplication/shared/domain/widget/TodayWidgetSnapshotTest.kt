@@ -114,6 +114,20 @@ class TodayWidgetSnapshotTest {
         assertEquals(emptyList(), decoded.topOverdueTasks)
     }
 
+    @Test
+    fun snapshotIsCurrentForSameLocalDate() {
+        val snapshot = TodayWidgetSnapshot.empty(Instant.parse("2026-08-13T23:30:00Z"))
+
+        assertTrue(snapshot.isCurrentFor(Instant.parse("2026-08-14T01:00:00Z"), TimeZone.of("Asia/Shanghai")))
+    }
+
+    @Test
+    fun snapshotIsNotCurrentAcrossLocalDates() {
+        val snapshot = TodayWidgetSnapshot.empty(Instant.parse("2026-08-13T15:00:00Z"))
+
+        assertEquals(false, snapshot.isCurrentFor(Instant.parse("2026-08-14T15:00:00Z"), TimeZone.UTC))
+    }
+
     private fun todo(
         id: Long,
         title: String,

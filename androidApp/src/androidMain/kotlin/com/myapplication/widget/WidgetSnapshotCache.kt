@@ -1,8 +1,10 @@
 package com.myapplication.widget
 
 import android.content.Context
+import android.util.AtomicFile
 import com.myapplication.shared.domain.widget.TodayWidgetSnapshot
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -18,14 +20,31 @@ internal class WidgetSnapshotCache(
 ) {
     private val file: File get() = File(context.filesDir, "sundial-widget/today-widget-snapshot.json")
 
-    fun read(): TodayWidgetSnapshot? =
-        runCatching {
+    fun read(): TodayWidgetSnapshot? {
+        return try {
             if (!file.exists()) return null
             json.decodeFromString<TodayWidgetSnapshot>(file.readText())
-        }.getOrNull()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     fun write(snapshot: TodayWidgetSnapshot) {
         file.parentFile?.mkdirs()
-        file.writeText(json.encodeToString(snapshot))
+        val bytes = json.encodeToString(snapshot).encodeToByteArray()
+        val atomicFile = AtomicFile(file)
+        val stream = atomicFile.startWrite()
+        try {
+            stream.write(bytes)
+            atomicFile.finishWrite(stream)
+        } catch (e: CancellationException) {
+            atomicFile.failWrite(stream)
+            throw e
+        } catch (e: Exception) {
+            atomicFile.failWrite(stream)
+            throw e
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.myapplication.widget
 
 import android.content.Context
+import arrow.core.getOrElse
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -26,12 +27,16 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.myapplication.MainActivity
 import com.myapplication.shared.data.setAndroidAppContext
+import com.myapplication.shared.di.AppGraph
 import com.myapplication.shared.di.createAppGraph
 import com.myapplication.shared.domain.widget.TodayWidgetSnapshot
 import com.myapplication.shared.domain.widget.buildTodayWidgetSnapshot
+import com.myapplication.shared.domain.widget.isCurrentFor
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.datetime.TimeZone
 import kotlin.time.Clock
 
 class TodayWidgetReceiver : GlanceAppWidgetReceiver() {
@@ -48,21 +53,38 @@ class TodayWidget : GlanceAppWidget() {
 
     private suspend fun loadSnapshot(context: Context): TodayWidgetSnapshot {
         val cache = WidgetSnapshotCache(context)
-        return runCatching {
-            val fresh = loadFreshSnapshot(context)
-            runCatching { cache.write(fresh) }
+        setAndroidAppContext(context)
+        val graph = try {
+            createAppGraph()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return fallbackSnapshot(cache, Clock.System.now(), TimeZone.currentSystemDefault())
+        }
+
+        return try {
+            val fresh = loadFreshSnapshot(graph)
+            try {
+                cache.write(fresh)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // A fresh snapshot is still better than stale cache when persisting fails.
+            }
             fresh
-        }.getOrElse {
-            cache.read() ?: TodayWidgetSnapshot.empty(Clock.System.now())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            fallbackSnapshot(cache, graph.clock.now(), graph.timeZone)
         }
     }
 
-    private suspend fun loadFreshSnapshot(context: Context): TodayWidgetSnapshot {
-        setAndroidAppContext(context)
-        val graph = createAppGraph()
-        graph.repository.ensureInbox()
+    private suspend fun loadFreshSnapshot(graph: AppGraph): TodayWidgetSnapshot {
+        val ensuredInboxId = graph.repository.ensureInbox().getOrElse { error ->
+            throw IllegalStateException("Unable to ensure widget inbox: $error")
+        }
         val lists = graph.repository.observeLists().first()
-        val inboxListId = lists.firstOrNull { it.name == "收件箱" }?.id
+        val inboxListId = lists.firstOrNull { it.id == ensuredInboxId }?.id
         val todos = graph.repository.observeAllActive().first()
         return buildTodayWidgetSnapshot(
             todos = todos,
@@ -72,6 +94,15 @@ class TodayWidget : GlanceAppWidget() {
             maxTasks = 3,
         )
     }
+
+    private fun fallbackSnapshot(
+        cache: WidgetSnapshotCache,
+        now: kotlin.time.Instant,
+        timeZone: TimeZone,
+    ): TodayWidgetSnapshot =
+        cache.read()
+            ?.takeIf { snapshot -> snapshot.isCurrentFor(now, timeZone) }
+            ?: TodayWidgetSnapshot.empty(now)
 }
 
 @Composable
