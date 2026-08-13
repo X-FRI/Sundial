@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.domain.analytics.ChartPoint
 import com.patrykandpatrick.vico.multiplatform.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.multiplatform.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.multiplatform.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.multiplatform.cartesian.data.lineSeries
 import com.patrykandpatrick.vico.multiplatform.cartesian.layer.rememberLineCartesianLayer
@@ -19,17 +20,22 @@ internal fun CompletionTrendChart(
     points: List<ChartPoint>,
     modifier: Modifier = Modifier,
 ) {
-    val values = points.map { it.value.toFloat() }
+    val series = preparePointSeries(points)
     val modelProducer = remember { CartesianChartModelProducer() }
-    LaunchedEffect(modelProducer, values) {
+    LaunchedEffect(modelProducer, series.values) {
         modelProducer.runTransaction {
             lineSeries {
-                series(values)
+                series(series.values)
             }
         }
     }
     CartesianChartHost(
-        chart = rememberCartesianChart(rememberLineCartesianLayer()),
+        chart = rememberCartesianChart(
+            rememberLineCartesianLayer(),
+            bottomAxis = HorizontalAxis.rememberBottom(
+                valueFormatter = rememberLabelValueFormatter(series.labels),
+            ),
+        ),
         modelProducer = modelProducer,
         modifier = modifier.fillMaxWidth().height(160.dp),
     )
