@@ -6,12 +6,11 @@ import arrow.fx.coroutines.resource
 import arrow.fx.coroutines.use
 import com.myapplication.shared.effects.catchTransport
 import com.myapplication.shared.effects.runSyncEffect
-import com.myapplication.shared.domain.sync.ListRowDto
 import com.myapplication.shared.domain.sync.SyncAction
 import com.myapplication.shared.domain.sync.SyncClient
 import com.myapplication.shared.domain.sync.SyncError
 import com.myapplication.shared.domain.sync.SyncRow
-import com.myapplication.shared.domain.sync.TodoRowDto
+import com.myapplication.shared.domain.sync.syncJson
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
@@ -27,10 +26,11 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -100,18 +100,14 @@ class SupabaseSyncClient(
         rows.groupBy { it.table }.forEach { (table, group) ->
             when (table) {
                 "todo" -> {
-                    val dtos = group.mapNotNull { row ->
-                        runCatching { Json.decodeFromString<TodoRowDto>(row.payload ?: "") }
-                            .getOrElse { skipped++; null }
-                    }
-                    if (dtos.isNotEmpty()) client.from("todo").upsert(dtos)
+                    val payloads = buildUpsertPayloadBatch(group)
+                    skipped += payloads.skipped
+                    if (payloads.body.isNotEmpty()) client.from("todo").upsert(payloads.body)
                 }
                 "reminder_list" -> {
-                    val dtos = group.mapNotNull { row ->
-                        runCatching { Json.decodeFromString<ListRowDto>(row.payload ?: "") }
-                            .getOrElse { skipped++; null }
-                    }
-                    if (dtos.isNotEmpty()) client.from("reminder_list").upsert(dtos)
+                    val payloads = buildUpsertPayloadBatch(group)
+                    skipped += payloads.skipped
+                    if (payloads.body.isNotEmpty()) client.from("reminder_list").upsert(payloads.body)
                 }
             }
         }
@@ -259,3 +255,23 @@ internal fun orderedSyncPushBatches(rows: List<SyncRow>): List<List<SyncRow>> {
 
 private fun SyncRow.canBatchWith(other: SyncRow): Boolean =
     action == other.action && (action == SyncAction.DELETE || table == other.table)
+
+internal data class UpsertPayloadBatch(
+    val body: JsonArray,
+    val skipped: Int,
+)
+
+internal fun buildUpsertPayloadBatch(rows: List<SyncRow>): UpsertPayloadBatch {
+    var skipped = 0
+    val body = buildJsonArray {
+        rows.forEach { row ->
+            val payload = runCatching { syncJson.parseToJsonElement(row.payload ?: "").jsonObject }
+                .getOrElse {
+                    skipped++
+                    null
+                }
+            if (payload != null) add(payload)
+        }
+    }
+    return UpsertPayloadBatch(body, skipped)
+}

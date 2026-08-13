@@ -4,7 +4,6 @@ import arrow.core.Either
 import com.myapplication.shared.test.FakeSyncClient
 import com.myapplication.shared.test.FakeTodoRepository
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -113,12 +112,63 @@ class SyncCoordinatorTest {
     fun applyRemoteUpsertTodoDecodesPayload() = runTest {
         val repo = FakeTodoRepository()
         val coordinator = SyncCoordinator(repo, FakeSyncClient(), "device-a")
-        val payload = Json.encodeToString(
-            TodoRowDto(1, 1, "远程", "", null, false, null, false, null, null, 0.0, false, 0, 200, "device-b"),
+        val payload = syncJson.encodeToString(
+            TodoRowDto(
+                id = 1,
+                listId = 1,
+                title = "远程",
+                note = "",
+                dueDate = null,
+                isCompleted = false,
+                completedAt = null,
+                isTrashed = false,
+                trashedAt = null,
+                parentId = null,
+                sortPosition = 0.0,
+                flag = false,
+                recurrenceFrequency = "daily",
+                recurrenceInterval = 1,
+                createdAt = 0,
+                updatedAt = 200,
+                updatedBy = "device-b",
+            ),
         )
         val result = coordinator.applyRemote(row(payload = payload, updatedAt = 200))
         assertTrue(result.isRight())
         // payload 正确解码后原样交给 repository
+        assertEquals("远程", repo.appliedUpserts.single().title)
+        assertEquals("daily", repo.appliedUpserts.single().recurrenceFrequency)
+        assertEquals(1L, repo.appliedUpserts.single().recurrenceInterval)
+    }
+
+    @Test
+    fun applyRemoteUpsertTodoIgnoresUnknownPayloadFields() = runTest {
+        val repo = FakeTodoRepository()
+        val coordinator = SyncCoordinator(repo, FakeSyncClient(), "device-a")
+        val payload = """
+            {
+              "id": 1,
+              "list_id": 1,
+              "title": "远程",
+              "note": "",
+              "due_date": null,
+              "is_completed": false,
+              "completed_at": null,
+              "is_trashed": false,
+              "trashed_at": null,
+              "parent_id": null,
+              "sort_position": 0.0,
+              "flag": false,
+              "created_at": 0,
+              "updated_at": 200,
+              "updated_by": "device-b",
+              "future_column": "new-server-field"
+            }
+        """.trimIndent()
+
+        val result = coordinator.applyRemote(row(payload = payload, updatedAt = 200))
+
+        assertTrue(result.isRight())
         assertEquals("远程", repo.appliedUpserts.single().title)
     }
 
@@ -204,7 +254,23 @@ class SyncCoordinatorTest {
         assertTrue(repo.appliedUpserts.isEmpty())
     }
 
-    private fun todoPayload(title: String) = Json.encodeToString(
-        TodoRowDto(0, 1, title, "", null, false, null, false, null, null, 0.0, false, 0, 100, "device-b"),
+    private fun todoPayload(title: String) = syncJson.encodeToString(
+        TodoRowDto(
+            id = 0,
+            listId = 1,
+            title = title,
+            note = "",
+            dueDate = null,
+            isCompleted = false,
+            completedAt = null,
+            isTrashed = false,
+            trashedAt = null,
+            parentId = null,
+            sortPosition = 0.0,
+            flag = false,
+            createdAt = 0,
+            updatedAt = 100,
+            updatedBy = "device-b",
+        ),
     )
 }

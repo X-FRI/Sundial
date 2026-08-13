@@ -3,6 +3,7 @@ package com.myapplication.shared.data
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.myapplication.shared.domain.error.TodoError
 import com.myapplication.shared.domain.list.DeleteListPolicy
+import com.myapplication.shared.domain.recurrence.RecurrenceRule
 import com.myapplication.shared.domain.sync.ListRowDto
 import com.myapplication.shared.domain.sync.SyncAction
 import com.myapplication.shared.domain.sync.TodoRowDto
@@ -16,6 +17,8 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -480,6 +483,125 @@ class TodoRepositoryImplTest {
     }
 
     @Test
+    fun setRecurrencePersistsRuleOnTodo() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        assertTrue(repo.insertTodo(inbox, "重复任务", "", null, null, false).isRight())
+        val item = repo.observeAllActive().first().single()
+
+        assertTrue(repo.setRecurrence(item.id, RecurrenceRule.Daily(interval = 2)).isRight())
+
+        assertEquals(RecurrenceRule.Daily(interval = 2), repo.observeTodo(item.id).first()?.recurrenceRule)
+    }
+
+    @Test
+    fun setRecurrenceNullClearsRuleOnTodo() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        assertTrue(repo.insertTodo(inbox, "清除重复", "", null, null, false).isRight())
+        val item = repo.observeAllActive().first().single()
+        assertTrue(repo.setRecurrence(item.id, RecurrenceRule.Daily()).isRight())
+        val beforeClearSeq = repo.readOutbox(100).getOrNull()!!.maxOf { it.seq }
+
+        assertTrue(repo.setRecurrence(item.id, null).isRight())
+
+        assertNull(repo.observeTodo(item.id).first()?.recurrenceRule)
+        val clearPayload = repo.readOutbox(100).getOrNull()!!.single { it.seq > beforeClearSeq }.payload!!
+        val clearJson = Json.parseToJsonElement(clearPayload).jsonObject
+        assertTrue(clearJson.containsKey("recurrence_frequency"))
+        assertTrue(clearJson.containsKey("recurrence_interval"))
+        assertEquals(JsonNull, clearJson["recurrence_frequency"])
+        assertEquals(JsonNull, clearJson["recurrence_interval"])
+    }
+
+    @Test
+    fun setRecurrenceWritesOutboxPayload() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        assertTrue(repo.insertTodo(inbox, "同步重复", "", null, null, false).isRight())
+        val item = repo.observeAllActive().first().single()
+        val beforeUpdateSeq = repo.readOutbox(100).getOrNull()!!.maxOf { it.seq }
+
+        assertTrue(repo.setRecurrence(item.id, RecurrenceRule.Weekly(interval = 3)).isRight())
+
+        val updateRow = repo.readOutbox(100).getOrNull()!!.single { it.seq > beforeUpdateSeq }
+        val dto = Json.decodeFromString<TodoRowDto>(updateRow.payload!!)
+        assertEquals("weekly", dto.recurrenceFrequency)
+        assertEquals(3L, dto.recurrenceInterval)
+    }
+
+    @Test
+    fun applyRemoteUpsertPersistsRecurrenceFields() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+
+        assertTrue(
+            repo.applyRemoteUpsert(
+                TodoRowDto(
+                    id = 42,
+                    listId = inbox,
+                    title = "远端重复",
+                    note = "",
+                    dueDate = null,
+                    isCompleted = false,
+                    completedAt = null,
+                    isTrashed = false,
+                    trashedAt = null,
+                    parentId = null,
+                    sortPosition = 0.0,
+                    flag = false,
+                    createdAt = 100,
+                    updatedAt = 200,
+                    updatedBy = "remote",
+                    recurrenceFrequency = "monthly",
+                    recurrenceInterval = 2,
+                ),
+            ).isRight(),
+        )
+
+        assertEquals(RecurrenceRule.Monthly(interval = 2), repo.observeTodo(42).first()?.recurrenceRule)
+    }
+
+    @Test
+    fun applyRemoteUpsertSanitizesInvalidRecurrenceFields() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        suspend fun upsertInvalid(id: Long, frequency: String?, interval: Long?) {
+            assertTrue(
+                repo.applyRemoteUpsert(
+                    TodoRowDto(
+                        id = id,
+                        listId = inbox,
+                        title = "非法重复 $id",
+                        note = "",
+                        dueDate = null,
+                        isCompleted = false,
+                        completedAt = null,
+                        isTrashed = false,
+                        trashedAt = null,
+                        parentId = null,
+                        sortPosition = 0.0,
+                        flag = false,
+                        createdAt = 100,
+                        updatedAt = 200 + id,
+                        updatedBy = "remote",
+                        recurrenceFrequency = frequency,
+                        recurrenceInterval = interval,
+                    ),
+                ).isRight(),
+            )
+        }
+
+        upsertInvalid(51, "yearly", 1)
+        upsertInvalid(52, "daily", 0)
+        upsertInvalid(53, "weekly", Int.MAX_VALUE.toLong() + 1)
+
+        assertNull(repo.observeTodo(51).first()?.recurrenceRule)
+        assertNull(repo.observeTodo(52).first()?.recurrenceRule)
+        assertNull(repo.observeTodo(53).first()?.recurrenceRule)
+    }
+
+    @Test
     fun insertTodoWritesOutboxWithPayload() = runTest {
         val repo = newRepo()
         val inbox = repo.inbox()
@@ -526,7 +648,23 @@ class TodoRepositoryImplTest {
         val repo = newRepo()
         val inbox = repo.inbox()
         // LWW：updatedAt 更大的一方胜出；先写新（900）再写旧（800）→ 保持"新"
-        val fresh = TodoRowDto(1, inbox, "新", "", null, false, null, false, null, null, 0.0, false, 0, 900, "remote")
+        val fresh = TodoRowDto(
+            id = 1,
+            listId = inbox,
+            title = "新",
+            note = "",
+            dueDate = null,
+            isCompleted = false,
+            completedAt = null,
+            isTrashed = false,
+            trashedAt = null,
+            parentId = null,
+            sortPosition = 0.0,
+            flag = false,
+            createdAt = 0,
+            updatedAt = 900,
+            updatedBy = "remote",
+        )
         assertTrue(repo.applyRemoteUpsert(fresh).isRight())
         val stale = fresh.copy(title = "旧", updatedAt = 800)
         assertTrue(repo.applyRemoteUpsert(stale).isRight())

@@ -34,10 +34,15 @@ create table if not exists public.todo (
   parent_id bigint,
   sort_position double precision not null default 0,
   flag boolean not null default false,
+  recurrence_frequency text,
+  recurrence_interval bigint,
   created_at bigint not null,
   updated_at bigint not null,
   updated_by text not null default ''
 );
+
+alter table public.todo add column if not exists recurrence_frequency text;
+alter table public.todo add column if not exists recurrence_interval bigint;
 
 create index if not exists idx_todo_list_trash on public.todo(list_id, is_trashed);
 create index if not exists idx_todo_trash_due on public.todo(is_trashed, due_date);

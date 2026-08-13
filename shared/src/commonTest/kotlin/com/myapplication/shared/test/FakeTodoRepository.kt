@@ -7,6 +7,7 @@ import com.myapplication.shared.domain.list.ListStats
 import com.myapplication.shared.domain.list.buildListStats
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
+import com.myapplication.shared.domain.recurrence.RecurrenceRule
 import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.sync.ListRowDto
 import com.myapplication.shared.domain.sync.SyncAction
@@ -44,6 +45,8 @@ class FakeTodoRepository : TodoRepository {
     var toggledValue: Boolean? = null
     var flaggedId: Long? = null
     var flaggedValue: Boolean? = null
+    var recurrenceId: Long? = null
+    var recurrenceRule: RecurrenceRule? = null
     var lastSetTitleId: Long? = null
     var lastSetTitleValue: String? = null
     var lastDeleteListPolicy: DeleteListPolicy? = null
@@ -212,6 +215,14 @@ class FakeTodoRepository : TodoRepository {
     }
     override suspend fun setNote(id: Long, note: String): Either<TodoError, Unit> = Either.Right(Unit)
     override suspend fun setDueDate(id: Long, dueDate: Instant?): Either<TodoError, Unit> = Either.Right(Unit)
+    override suspend fun setRecurrence(id: Long, rule: RecurrenceRule?): Either<TodoError, Unit> {
+        recurrenceId = id
+        recurrenceRule = rule
+        todosState.value = todosState.value.map { todo ->
+            if (todo.id == id) todo.copy(recurrenceRule = rule) else todo
+        }
+        return Either.Right(Unit)
+    }
     override suspend fun moveToList(id: Long, listId: Long): Either<TodoError, Unit> = Either.Right(Unit)
     override suspend fun trash(id: Long): Either<TodoError, Unit> = Either.Right(Unit)
     override suspend fun restore(id: Long): Either<TodoError, Unit> = Either.Right(Unit)

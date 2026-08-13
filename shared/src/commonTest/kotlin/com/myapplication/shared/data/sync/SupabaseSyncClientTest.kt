@@ -2,62 +2,62 @@ package com.myapplication.shared.data.sync
 
 import com.myapplication.shared.domain.sync.SyncAction
 import com.myapplication.shared.domain.sync.SyncRow
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class SupabaseSyncClientTest {
     @Test
-    fun pushBatchesPreserveOutboxOrderAcrossActions() {
-        val rows = listOf(
-            row(seq = 1, table = "todo", action = SyncAction.UPSERT),
-            row(seq = 2, table = "reminder_list", action = SyncAction.DELETE),
-            row(seq = 3, table = "todo", action = SyncAction.UPSERT),
+    fun upsertPayloadBatchKeepsExplicitNulls() {
+        val batch = buildUpsertPayloadBatch(
+            listOf(
+                row(
+                    payload = """
+                        {
+                          "id": 1,
+                          "title": "清除重复",
+                          "recurrence_frequency": null,
+                          "recurrence_interval": null
+                        }
+                    """.trimIndent(),
+                ),
+            ),
         )
 
-        val batches = orderedSyncPushBatches(rows)
+        val payload = batch.body.single().jsonObject
 
-        assertEquals(listOf(listOf(1L), listOf(2L), listOf(3L)), batches.map { batch -> batch.map { it.seq } })
+        assertEquals(0, batch.skipped)
+        assertTrue(payload.containsKey("recurrence_frequency"))
+        assertTrue(payload.containsKey("recurrence_interval"))
+        assertEquals(JsonNull, payload["recurrence_frequency"])
+        assertEquals(JsonNull, payload["recurrence_interval"])
     }
 
     @Test
-    fun pushBatchesMergeAdjacentUpsertsForSameTableOnly() {
-        val rows = listOf(
-            row(seq = 1, table = "todo", action = SyncAction.UPSERT),
-            row(seq = 2, table = "todo", action = SyncAction.UPSERT),
-            row(seq = 3, table = "reminder_list", action = SyncAction.UPSERT),
-            row(seq = 4, table = "reminder_list", action = SyncAction.UPSERT),
+    fun upsertPayloadBatchSkipsMalformedPayloads() {
+        val batch = buildUpsertPayloadBatch(
+            listOf(
+                row(payload = "not-json"),
+                row(payload = """{"id":2,"title":"有效"}"""),
+            ),
         )
 
-        val batches = orderedSyncPushBatches(rows)
-
-        assertEquals(listOf(listOf(1L, 2L), listOf(3L, 4L)), batches.map { batch -> batch.map { it.seq } })
+        assertEquals(1, batch.skipped)
+        assertEquals(1, batch.body.size)
+        assertEquals("有效", batch.body.single().jsonObject["title"]?.jsonPrimitive?.content)
     }
 
-    @Test
-    fun pushBatchesMergeAdjacentDeletesWithoutReordering() {
-        val rows = listOf(
-            row(seq = 1, table = "todo", action = SyncAction.DELETE),
-            row(seq = 2, table = "reminder_list", action = SyncAction.DELETE),
-            row(seq = 3, table = "todo", action = SyncAction.UPSERT),
-        )
-
-        val batches = orderedSyncPushBatches(rows)
-
-        assertEquals(listOf(listOf(1L, 2L), listOf(3L)), batches.map { batch -> batch.map { it.seq } })
-    }
-
-    private fun row(
-        seq: Long,
-        table: String,
-        action: SyncAction,
-    ): SyncRow =
+    private fun row(payload: String): SyncRow =
         SyncRow(
-            seq = seq,
-            table = table,
-            rowId = seq,
-            action = action,
-            payload = null,
-            updatedAt = seq,
+            seq = 1,
+            table = "todo",
+            rowId = 1,
+            action = SyncAction.UPSERT,
+            payload = payload,
+            updatedAt = 100,
             updatedBy = "device-a",
         )
 }

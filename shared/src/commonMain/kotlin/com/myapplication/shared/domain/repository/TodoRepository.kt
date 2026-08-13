@@ -6,6 +6,7 @@ import com.myapplication.shared.domain.list.DeleteListPolicy
 import com.myapplication.shared.domain.list.ListStats
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
+import com.myapplication.shared.domain.recurrence.RecurrenceRule
 import com.myapplication.shared.domain.sync.ListRowDto
 import com.myapplication.shared.domain.sync.SyncRow
 import com.myapplication.shared.domain.sync.TodoRowDto
@@ -49,6 +50,7 @@ interface TodoRepository {
     suspend fun setTitle(id: Long, title: String): Either<TodoError, Unit>
     suspend fun setNote(id: Long, note: String): Either<TodoError, Unit>
     suspend fun setDueDate(id: Long, dueDate: Instant?): Either<TodoError, Unit>
+    suspend fun setRecurrence(id: Long, rule: RecurrenceRule?): Either<TodoError, Unit>
     suspend fun moveToList(id: Long, listId: Long): Either<TodoError, Unit>
     suspend fun trash(id: Long): Either<TodoError, Unit>
     suspend fun restore(id: Long): Either<TodoError, Unit>

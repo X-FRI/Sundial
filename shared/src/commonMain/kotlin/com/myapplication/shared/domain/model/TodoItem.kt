@@ -1,5 +1,6 @@
 package com.myapplication.shared.domain.model
 
+import com.myapplication.shared.domain.recurrence.RecurrenceRule
 import kotlinx.datetime.Instant
 
 /**
@@ -25,4 +26,5 @@ data class TodoItem(
     val parentId: Long?,
     val sortPosition: Double,
     val createdAt: Instant,
+    val recurrenceRule: RecurrenceRule? = null,
 )

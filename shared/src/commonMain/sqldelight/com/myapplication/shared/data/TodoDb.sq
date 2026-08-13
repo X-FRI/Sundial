@@ -23,6 +23,8 @@ CREATE TABLE todo (
   parent_id INTEGER,
   sort_position REAL NOT NULL DEFAULT 0,
   flag INTEGER AS Boolean NOT NULL DEFAULT 0,
+  recurrence_frequency TEXT,
+  recurrence_interval INTEGER,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   updated_by TEXT NOT NULL DEFAULT ''
@@ -62,8 +64,8 @@ trashTodosInList:
 UPDATE todo SET is_trashed = 1, trashed_at = ?, updated_at = ?, updated_by = ? WHERE list_id = ? AND is_trashed = 0;
 
 insertTodo:
-INSERT INTO todo(list_id, title, note, due_date, is_completed, is_trashed, parent_id, sort_position, flag, created_at, updated_at, updated_by)
-VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?);
+INSERT INTO todo(list_id, title, note, due_date, is_completed, is_trashed, parent_id, sort_position, flag, recurrence_frequency, recurrence_interval, created_at, updated_at, updated_by)
+VALUES (?, ?, ?, ?, 0, 0, ?, ?, ?, NULL, NULL, ?, ?, ?);
 
 selectAllActive:
 SELECT * FROM todo WHERE is_trashed = 0 ORDER BY is_completed, due_date IS NULL, due_date, sort_position, id;
@@ -151,6 +153,9 @@ DELETE FROM todo WHERE id = ?;
 updateFlag:
 UPDATE todo SET flag = ?, updated_at = ?, updated_by = ? WHERE id = ?;
 
+updateRecurrence:
+UPDATE todo SET recurrence_frequency = ?, recurrence_interval = ?, updated_at = ?, updated_by = ? WHERE id = ?;
+
 -- 同步专用查询（SQL 层 LWW）--
 
 updateTodoIfNewer:
@@ -166,14 +171,16 @@ UPDATE todo SET
   parent_id = ?,
   sort_position = ?,
   flag = ?,
+  recurrence_frequency = ?,
+  recurrence_interval = ?,
   created_at = ?,
   updated_at = ?,
   updated_by = ?
 WHERE id = ? AND updated_at <= ?;
 
 insertTodoIfMissing:
-INSERT INTO todo(id, list_id, title, note, due_date, is_completed, completed_at, is_trashed, trashed_at, parent_id, sort_position, flag, created_at, updated_at, updated_by)
-SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+INSERT INTO todo(id, list_id, title, note, due_date, is_completed, completed_at, is_trashed, trashed_at, parent_id, sort_position, flag, recurrence_frequency, recurrence_interval, created_at, updated_at, updated_by)
+SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 WHERE NOT EXISTS (SELECT 1 FROM todo WHERE id = ?);
 
 updateListIfNewer:

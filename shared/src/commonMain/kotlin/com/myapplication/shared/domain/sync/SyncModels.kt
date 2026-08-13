@@ -47,6 +47,8 @@ data class TodoRowDto(
     @SerialName("parent_id") val parentId: Long?,
     @SerialName("sort_position") val sortPosition: Double,
     @SerialName("flag") val flag: Boolean,
+    @SerialName("recurrence_frequency") val recurrenceFrequency: String? = null,
+    @SerialName("recurrence_interval") val recurrenceInterval: Long? = null,
     @SerialName("created_at") val createdAt: Long,
     @SerialName("updated_at") val updatedAt: Long,
     @SerialName("updated_by") val updatedBy: String,

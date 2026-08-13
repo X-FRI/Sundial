@@ -9,11 +9,13 @@ import com.myapplication.shared.domain.list.ListStats
 import com.myapplication.shared.domain.list.buildListStats
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
+import com.myapplication.shared.domain.recurrence.RecurrenceRule
 import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.sync.ListRowDto
 import com.myapplication.shared.domain.sync.SyncAction
 import com.myapplication.shared.domain.sync.SyncRow
 import com.myapplication.shared.domain.sync.TodoRowDto
+import com.myapplication.shared.domain.sync.syncJson
 import com.myapplication.shared.effects.catchPersistence
 import com.myapplication.shared.effects.runTodoEffect
 import kotlin.time.Clock
@@ -30,9 +32,28 @@ import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
-private val outboxJson = Json
+private fun RecurrenceRule?.toFrequencyString(): String? = when (this) {
+    is RecurrenceRule.Daily -> "daily"
+    is RecurrenceRule.Weekly -> "weekly"
+    is RecurrenceRule.Monthly -> "monthly"
+    null -> null
+}
+
+private fun RecurrenceRule?.toIntervalLong(): Long? = this?.interval?.toLong()
+
+private fun decodeRecurrenceRule(frequency: String?, interval: Long?): RecurrenceRule? {
+    val safeInterval = interval
+        ?.takeIf { it > 0 && it <= Int.MAX_VALUE }
+        ?.toInt()
+        ?: return null
+    return when (frequency) {
+        "daily" -> RecurrenceRule.Daily(safeInterval)
+        "weekly" -> RecurrenceRule.Weekly(safeInterval)
+        "monthly" -> RecurrenceRule.Monthly(safeInterval)
+        else -> null
+    }
+}
 
 /**
  * TodoRepository 的 SQLDelight 实现。
@@ -70,6 +91,7 @@ class TodoRepositoryImpl(
         parentId = parent_id,
         sortPosition = sort_position,
         createdAt = Instant.fromEpochMilliseconds(created_at),
+        recurrenceRule = decodeRecurrenceRule(recurrence_frequency, recurrence_interval),
     )
 
     private fun SelectWithDueDate.toDomain() = TodoItem(
@@ -86,6 +108,7 @@ class TodoRepositoryImpl(
         parentId = parent_id,
         sortPosition = sort_position,
         createdAt = Instant.fromEpochMilliseconds(created_at),
+        recurrenceRule = decodeRecurrenceRule(recurrence_frequency, recurrence_interval),
     )
 
     private fun Reminder_list.toDomain() = TodoList(
@@ -96,23 +119,28 @@ class TodoRepositoryImpl(
         createdAt = Instant.fromEpochMilliseconds(created_at),
     )
 
-    private fun Todo.toDto() = TodoRowDto(
-        id = id,
-        listId = list_id,
-        title = title,
-        note = note,
-        dueDate = due_date,
-        isCompleted = is_completed,
-        completedAt = completed_at,
-        isTrashed = is_trashed,
-        trashedAt = trashed_at,
-        parentId = parent_id,
-        sortPosition = sort_position,
-        flag = flag,
-        createdAt = created_at,
-        updatedAt = updated_at,
-        updatedBy = updated_by,
-    )
+    private fun Todo.toDto(): TodoRowDto {
+        val recurrenceRule = decodeRecurrenceRule(recurrence_frequency, recurrence_interval)
+        return TodoRowDto(
+            id = id,
+            listId = list_id,
+            title = title,
+            note = note,
+            dueDate = due_date,
+            isCompleted = is_completed,
+            completedAt = completed_at,
+            isTrashed = is_trashed,
+            trashedAt = trashed_at,
+            parentId = parent_id,
+            sortPosition = sort_position,
+            flag = flag,
+            recurrenceFrequency = recurrenceRule.toFrequencyString(),
+            recurrenceInterval = recurrenceRule.toIntervalLong(),
+            createdAt = created_at,
+            updatedAt = updated_at,
+            updatedBy = updated_by,
+        )
+    }
 
     private fun Reminder_list.toDto() = ListRowDto(
         id = id,
@@ -171,12 +199,12 @@ class TodoRepositoryImpl(
 
     /** 追加 todo 行快照（UPSERT 带 payload；DELETE 只记 id，无需快照）。 */
     private fun appendTodoOutbox(row: TodoRowDto, action: SyncAction = SyncAction.UPSERT) {
-        appendOutbox("todo", row.id, action, if (action == SyncAction.DELETE) null else outboxJson.encodeToString(row))
+        appendOutbox("todo", row.id, action, if (action == SyncAction.DELETE) null else syncJson.encodeToString(row))
     }
 
     /** 追加列表行快照，语义同 appendTodoOutbox。 */
     private fun appendListOutbox(row: ListRowDto, action: SyncAction = SyncAction.UPSERT) {
-        appendOutbox("reminder_list", row.id, action, if (action == SyncAction.DELETE) null else outboxJson.encodeToString(row))
+        appendOutbox("reminder_list", row.id, action, if (action == SyncAction.DELETE) null else syncJson.encodeToString(row))
     }
 
     // ---- 查询（与既有实现一致） ----
@@ -409,6 +437,14 @@ class TodoRepositoryImpl(
         }
     }
 
+    override suspend fun setRecurrence(id: Long, rule: RecurrenceRule?): Either<TodoError, Unit> = dbCommand("更新重复规则失败") {
+        db.transaction {
+            db.todoDbQueries.updateRecurrence(rule.toFrequencyString(), rule.toIntervalLong(), now, deviceId, id)
+            val row = db.todoDbQueries.selectById(id).executeAsOne()
+            appendTodoOutbox(row.toDto())
+        }
+    }
+
     override suspend fun moveToList(id: Long, listId: Long): Either<TodoError, Unit> = dbCommand("移动列表失败") {
         db.transaction {
             db.todoDbQueries.moveToList(listId, now, deviceId, id)
@@ -485,18 +521,21 @@ class TodoRepositoryImpl(
      * 而这两条语句在所有目标平台上都可用。
      */
     override suspend fun applyRemoteUpsert(row: TodoRowDto): Either<TodoError, Unit> = dbCommand("应用远端待办失败") {
+        val recurrenceRule = decodeRecurrenceRule(row.recurrenceFrequency, row.recurrenceInterval)
+        val recurrenceFrequency = recurrenceRule.toFrequencyString()
+        val recurrenceInterval = recurrenceRule.toIntervalLong()
         db.transaction {
             // 1. 本地已有且较旧 -> 覆盖（WHERE updated_at <= 远端 updated_at）
             db.todoDbQueries.updateTodoIfNewer(
                 row.listId, row.title, row.note, row.dueDate, row.isCompleted, row.completedAt,
                 row.isTrashed, row.trashedAt, row.parentId, row.sortPosition, row.flag,
-                row.createdAt, row.updatedAt, row.updatedBy, row.id, row.updatedAt,
+                recurrenceFrequency, recurrenceInterval, row.createdAt, row.updatedAt, row.updatedBy, row.id, row.updatedAt,
             )
             // 2. 本地没有 -> 插入（WHERE NOT EXISTS 原子补插）
             db.todoDbQueries.insertTodoIfMissing(
                 row.id, row.listId, row.title, row.note, row.dueDate, row.isCompleted, row.completedAt,
                 row.isTrashed, row.trashedAt, row.parentId, row.sortPosition, row.flag,
-                row.createdAt, row.updatedAt, row.updatedBy, row.id,
+                recurrenceFrequency, recurrenceInterval, row.createdAt, row.updatedAt, row.updatedBy, row.id,
             )
         }
     }

@@ -5,7 +5,6 @@ import com.myapplication.shared.effects.bindLocal
 import com.myapplication.shared.effects.catchTransport
 import com.myapplication.shared.effects.runSyncEffect
 import com.myapplication.shared.domain.repository.TodoRepository
-import kotlinx.serialization.json.Json
 
 /**
  * 同步协调器：把 outbox（本地→远端）与远端变更（远端→本地）两条通路串起来。
@@ -76,13 +75,13 @@ class SyncCoordinator(
                 SyncAction.UPSERT -> when (row.table) {
                     "todo" -> {
                         val dto = catchTransport("解析远端 todo 行失败") {
-                            Json.decodeFromString<TodoRowDto>(row.payload ?: "")
+                            syncJson.decodeFromString<TodoRowDto>(row.payload ?: "")
                         }
                         bindLocal(repository.applyRemoteUpsert(dto))
                     }
                     "reminder_list" -> {
                         val dto = catchTransport("解析远端列表行失败") {
-                            Json.decodeFromString<ListRowDto>(row.payload ?: "")
+                            syncJson.decodeFromString<ListRowDto>(row.payload ?: "")
                         }
                         bindLocal(repository.applyRemoteUpsertList(dto))
                     }
