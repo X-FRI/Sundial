@@ -23,10 +23,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
+import com.myapplication.shared.domain.organize.OrganizationAction
+import com.myapplication.shared.domain.organize.buildOrganizationSuggestions
 import com.myapplication.shared.ui.components.RemButton
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Scope
 import com.myapplication.shared.ui.main.scopeTitle
+import com.myapplication.shared.ui.organize.OrganizePanel
 import com.myapplication.shared.ui.theme.RemControlSize
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemType
@@ -86,6 +89,13 @@ fun MainLedger(
     val trashSections = remember(scope, trashGroups, today, timeZone) {
         buildLedgerTrashSections(scope, trashGroups, today, timeZone)
     }
+    val organizationSuggestions = remember(scope, query, todos, today, timeZone, inboxListId) {
+        if (scope == Scope.All && query.isBlank()) {
+            buildOrganizationSuggestions(todos, inboxListId, today, timeZone)
+        } else {
+            emptyList()
+        }
+    }
 
     Column(
         modifier
@@ -135,6 +145,24 @@ fun MainLedger(
                     item { Spacer(Modifier.height(if (edgeToEdgeRows) 4.dp else 8.dp)) }
                 }
             } else {
+                if (organizationSuggestions.isNotEmpty()) {
+                    item(key = "organize-panel") {
+                        OrganizePanel(
+                            suggestions = organizationSuggestions,
+                            selectedId = selectedId,
+                            onOpen = mainVm::openDetail,
+                            onAction = { suggestion, action ->
+                                if (action == OrganizationAction.Trash) {
+                                    mainVm.trash(suggestion.todo)
+                                } else {
+                                    mainVm.openDetail(suggestion.todo.id)
+                                }
+                            },
+                            showRowContainer = !edgeToEdgeRows,
+                        )
+                    }
+                    item { Spacer(Modifier.height(if (edgeToEdgeRows) 4.dp else 8.dp)) }
+                }
                 taskSections.forEach { section ->
                     item(key = "task-${section.title}") {
                         TaskSection(
