@@ -41,8 +41,8 @@ create table if not exists public.todo (
   updated_by text not null default ''
 );
 
-alter table public.todo add column if not exists recurrence_frequency text;
-alter table public.todo add column if not exists recurrence_interval bigint;
+ALTER TABLE public.todo ADD COLUMN IF NOT EXISTS recurrence_frequency text;
+ALTER TABLE public.todo ADD COLUMN IF NOT EXISTS recurrence_interval bigint;
 
 create index if not exists idx_todo_list_trash on public.todo(list_id, is_trashed);
 create index if not exists idx_todo_trash_due on public.todo(is_trashed, due_date);

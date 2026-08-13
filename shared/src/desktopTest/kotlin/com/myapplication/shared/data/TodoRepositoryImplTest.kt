@@ -526,8 +526,8 @@ class TodoRepositoryImplTest {
 
         val updateRow = repo.readOutbox(100).getOrNull()!!.single { it.seq > beforeUpdateSeq }
         val dto = Json.decodeFromString<TodoRowDto>(updateRow.payload!!)
-        assertEquals("weekly", dto.recurrenceFrequency)
-        assertEquals(3L, dto.recurrenceInterval)
+        assertEquals("weekly", dto.recurrence_frequency)
+        assertEquals(3L, dto.recurrence_interval)
     }
 
     @Test
@@ -553,8 +553,8 @@ class TodoRepositoryImplTest {
                     createdAt = 100,
                     updatedAt = 200,
                     updatedBy = "remote",
-                    recurrenceFrequency = "monthly",
-                    recurrenceInterval = 2,
+                    recurrence_frequency = "monthly",
+                    recurrence_interval = 2,
                 ),
             ).isRight(),
         )
@@ -585,8 +585,8 @@ class TodoRepositoryImplTest {
                         createdAt = 100,
                         updatedAt = 200 + id,
                         updatedBy = "remote",
-                        recurrenceFrequency = frequency,
-                        recurrenceInterval = interval,
+                        recurrence_frequency = frequency,
+                        recurrence_interval = interval,
                     ),
                 ).isRight(),
             )
@@ -626,8 +626,8 @@ class TodoRepositoryImplTest {
         assertTrue(repo.insertTodo(inbox, "每三周", "", null, null, false, RecurrenceRule.Weekly(3)).isRight())
 
         val dto = Json.decodeFromString<TodoRowDto>(repo.readOutbox(10).getOrNull()!!.last().payload!!)
-        assertEquals("weekly", dto.recurrenceFrequency)
-        assertEquals(3, dto.recurrenceInterval)
+        assertEquals("weekly", dto.recurrence_frequency)
+        assertEquals(3, dto.recurrence_interval)
     }
 
     @Test
