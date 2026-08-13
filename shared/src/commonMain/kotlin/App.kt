@@ -57,7 +57,9 @@ fun App() {
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun AppRoot(graph: AppGraph) {
-    val mainVm: MainViewModel = viewModel { MainViewModel(graph.repository, graph.addTodo, graph.timeZone) }
+    val mainVm: MainViewModel = viewModel {
+        MainViewModel(graph.repository, graph.addTodo, graph.timeZone, graph.completeRecurringTodo)
+    }
     val route by mainVm.route.collectAsState()
     val colors = LocalRemColors.current
 

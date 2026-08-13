@@ -7,6 +7,7 @@ import com.myapplication.shared.domain.list.DeleteListPolicy
 import com.myapplication.shared.domain.list.ListStats
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
+import com.myapplication.shared.domain.recurrence.CompleteRecurringTodoUseCase
 import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.usecase.AddTodoInput
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
@@ -76,6 +77,7 @@ class MainViewModel(
     private val repository: TodoRepository,
     private val addTodo: AddTodoUseCase,
     private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
+    private val completeRecurringTodo: CompleteRecurringTodoUseCase? = null,
 ) : ViewModel() {
 
     /** 当前列表范围（智能列表或自定义列表）。 */
@@ -206,7 +208,11 @@ class MainViewModel(
     }
 
     fun toggleCompleted(item: TodoItem) {
-        launchTodoEffect(lastError) { repository.setCompleted(item.id, !item.isCompleted) }
+        if (!item.isCompleted && item.recurrenceRule != null && completeRecurringTodo != null) {
+            launchTodoEffect(lastError) { completeRecurringTodo(item) }
+        } else {
+            launchTodoEffect(lastError) { repository.setCompleted(item.id, !item.isCompleted) }
+        }
     }
 
     fun toggleFlag(item: TodoItem) {

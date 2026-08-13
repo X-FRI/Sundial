@@ -4,6 +4,7 @@ import app.cash.sqldelight.db.SqlDriver
 import com.myapplication.shared.data.TodoDb
 import com.myapplication.shared.data.TodoRepositoryImpl
 import com.myapplication.shared.data.sync.SyncEngine
+import com.myapplication.shared.domain.recurrence.CompleteRecurringTodoUseCase
 import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.sync.SyncConfig
 import com.myapplication.shared.domain.sync.SyncMode
@@ -45,6 +46,9 @@ class AppGraph(
     val repository: TodoRepository by lazy { TodoRepositoryImpl(db, clock, timeZone, loadDeviceId(), dbDispatcher) }
     val addTodo: AddTodoUseCase by lazy { AddTodoUseCase(repository) }
     val addSubTask: AddSubTaskUseCase by lazy { AddSubTaskUseCase(repository) }
+    val completeRecurringTodo: CompleteRecurringTodoUseCase by lazy {
+        CompleteRecurringTodoUseCase(repository, timeZone)
+    }
 
     // 引擎专属作用域：与 UI 作用域隔离，引擎内部错误互不影响
     private val engineScope = CoroutineScope(SupervisorJob())

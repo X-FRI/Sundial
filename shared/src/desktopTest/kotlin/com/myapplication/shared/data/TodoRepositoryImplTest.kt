@@ -619,6 +619,18 @@ class TodoRepositoryImplTest {
     }
 
     @Test
+    fun insertTodoWritesRecurrenceToOutboxPayload() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+
+        assertTrue(repo.insertTodo(inbox, "每三周", "", null, null, false, RecurrenceRule.Weekly(3)).isRight())
+
+        val dto = Json.decodeFromString<TodoRowDto>(repo.readOutbox(10).getOrNull()!!.last().payload!!)
+        assertEquals("weekly", dto.recurrenceFrequency)
+        assertEquals(3, dto.recurrenceInterval)
+    }
+
+    @Test
     fun readOutboxUsesSeqWaterlineRatherThanStorageId() = runTest {
         val repo = newRepo()
         repo.inbox()

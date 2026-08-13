@@ -8,6 +8,7 @@ import com.myapplication.shared.domain.list.buildListStats
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.recurrence.RecurrenceRule
+import com.myapplication.shared.domain.recurrence.nextOccurrence
 import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.sync.ListRowDto
 import com.myapplication.shared.domain.sync.SyncAction
@@ -17,8 +18,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 
 /**
@@ -38,6 +41,7 @@ class FakeTodoRepository : TodoRepository {
     // —— 状态流（对应真实仓库的 SQL 查询结果）——
     val listsState = MutableStateFlow<List<TodoList>>(emptyList())
     val todosState = MutableStateFlow<List<TodoItem>>(emptyList())
+    val todos: List<TodoItem> get() = todosState.value
     // —— 命令副作用记录（供断言"是否正确委派"）——
     var ensureInboxCalls = 0
     var lastInserted: TodoItem? = null
@@ -170,6 +174,7 @@ class FakeTodoRepository : TodoRepository {
         dueDate: Instant?,
         parentId: Long?,
         flag: Boolean,
+        recurrenceRule: RecurrenceRule?,
     ): Either<TodoError, Unit> {
         // 注入一次持久化失败，用于测 Persistence 错误传播
         if (failNextInsert) {
@@ -178,7 +183,7 @@ class FakeTodoRepository : TodoRepository {
         }
         val item = TodoItem(
             nextId++, listId, title, note, dueDate, false, flag, null, false, null,
-            parentId, 0.0, Instant.fromEpochMilliseconds(0),
+            parentId, 0.0, Instant.fromEpochMilliseconds(0), recurrenceRule,
         )
         todosState.value = todosState.value + item
         lastInserted = item
@@ -198,7 +203,48 @@ class FakeTodoRepository : TodoRepository {
     override suspend fun setCompleted(id: Long, completed: Boolean): Either<TodoError, Unit> {
         toggledId = id
         toggledValue = completed
+        todosState.value = todosState.value.map { todo ->
+            if (todo.id == id) todo.copy(isCompleted = completed) else todo
+        }
         return Either.Right(Unit)
+    }
+
+    override suspend fun completeRecurringTodo(id: Long): Either<TodoError, Unit> {
+        val current = todosState.value.firstOrNull { it.id == id } ?: return Either.Right(Unit)
+        if (current.isCompleted) return Either.Right(Unit)
+        val rule = current.recurrenceRule
+        val due = current.dueDate
+        if (rule != null && due != null && failNextInsert) {
+            failNextInsert = false
+            return Either.Left(TodoError.Persistence("boom"))
+        }
+
+        toggledId = id
+        toggledValue = true
+        val next = if (rule != null && due != null) {
+            val local = due.toLocalDateTime(TimeZone.UTC)
+            val nextDate = nextOccurrence(local.date, rule)
+            current.copy(
+                id = nextId++,
+                dueDate = LocalDateTime(nextDate, local.time).toInstant(TimeZone.UTC),
+                isCompleted = false,
+                completedAt = null,
+                createdAt = Instant.fromEpochMilliseconds(0),
+            )
+        } else {
+            null
+        }
+        todosState.value = todosState.value.map { todo ->
+            if (todo.id == id) todo.copy(isCompleted = true) else todo
+        } + listOfNotNull(next)
+        lastInserted = next
+        return Either.Right(Unit)
+    }
+
+    fun replaceTodo(item: TodoItem) {
+        todosState.value = todosState.value.map { todo ->
+            if (todo.id == item.id) item else todo
+        }
     }
 
     override suspend fun setFlag(id: Long, flag: Boolean): Either<TodoError, Unit> {

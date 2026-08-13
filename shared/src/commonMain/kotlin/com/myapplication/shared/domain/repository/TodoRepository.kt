@@ -44,8 +44,17 @@ interface TodoRepository {
     suspend fun addList(name: String, colorKey: String): Either<TodoError, Unit>
     suspend fun updateList(listId: Long, name: String, colorKey: String): Either<TodoError, Unit>
     suspend fun deleteList(listId: Long, policy: DeleteListPolicy = DeleteListPolicy.MoveTasksToInbox): Either<TodoError, Unit>
-    suspend fun insertTodo(listId: Long, title: String, note: String, dueDate: Instant?, parentId: Long?, flag: Boolean): Either<TodoError, Unit>
+    suspend fun insertTodo(
+        listId: Long,
+        title: String,
+        note: String,
+        dueDate: Instant?,
+        parentId: Long?,
+        flag: Boolean,
+        recurrenceRule: RecurrenceRule? = null,
+    ): Either<TodoError, Unit>
     suspend fun setCompleted(id: Long, completed: Boolean): Either<TodoError, Unit>
+    suspend fun completeRecurringTodo(id: Long): Either<TodoError, Unit>
     suspend fun setFlag(id: Long, flag: Boolean): Either<TodoError, Unit>
     suspend fun setTitle(id: Long, title: String): Either<TodoError, Unit>
     suspend fun setNote(id: Long, note: String): Either<TodoError, Unit>

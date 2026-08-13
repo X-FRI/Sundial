@@ -10,6 +10,7 @@ import com.myapplication.shared.domain.list.buildListStats
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.recurrence.RecurrenceRule
+import com.myapplication.shared.domain.recurrence.nextOccurrence
 import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.sync.ListRowDto
 import com.myapplication.shared.domain.sync.SyncAction
@@ -27,9 +28,11 @@ import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.plus
+import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.encodeToString
 
@@ -380,10 +383,24 @@ class TodoRepositoryImpl(
         dueDate: Instant?,
         parentId: Long?,
         flag: Boolean,
+        recurrenceRule: RecurrenceRule?,
     ): Either<TodoError, Unit> = dbCommand("添加待办失败") {
         db.transaction {
             // 1. 插入行（sort_position 默认 0，完成/删除状态为初始值）
-            db.todoDbQueries.insertTodo(listId, title, note, dueDate?.toEpochMilliseconds(), parentId, 0.0, flag, now, now, deviceId)
+            db.todoDbQueries.insertTodo(
+                listId,
+                title,
+                note,
+                dueDate?.toEpochMilliseconds(),
+                parentId,
+                0.0,
+                flag,
+                recurrenceRule.toFrequencyString(),
+                recurrenceRule.toIntervalLong(),
+                now,
+                now,
+                deviceId,
+            )
             // 2. 事务内读回最新行（拿到自增 id），写 outbox 快照
             //    读回而非复用参数：快照必须含数据库生成的 id，否则远端行无法按 id 关联
             val row = db.todoDbQueries.selectByIdLast().executeAsOne()
@@ -401,6 +418,37 @@ class TodoRepositoryImpl(
             // 2. 读回最新行 -> 3. 写 outbox 快照
             val row = db.todoDbQueries.selectById(id).executeAsOne()
             appendTodoOutbox(row.toDto())
+        }
+    }
+
+    override suspend fun completeRecurringTodo(id: Long): Either<TodoError, Unit> = dbCommand("完成重复待办失败") {
+        db.transaction {
+            val current = db.todoDbQueries.selectById(id).executeAsOneOrNull() ?: return@transaction
+            if (current.is_completed) return@transaction
+
+            val timestamp = now
+            db.todoDbQueries.updateCompleted(true, timestamp, timestamp, deviceId, id)
+            db.todoDbQueries.selectById(id).executeAsOneOrNull()?.let { appendTodoOutbox(it.toDto()) }
+
+            val rule = decodeRecurrenceRule(current.recurrence_frequency, current.recurrence_interval) ?: return@transaction
+            val due = current.due_date ?: return@transaction
+            val local = Instant.fromEpochMilliseconds(due).toLocalDateTime(timeZone)
+            val nextDue = LocalDateTime(nextOccurrence(local.date, rule), local.time).toInstant(timeZone)
+            db.todoDbQueries.insertTodo(
+                current.list_id,
+                current.title,
+                current.note,
+                nextDue.toEpochMilliseconds(),
+                current.parent_id,
+                current.sort_position,
+                current.flag,
+                current.recurrence_frequency,
+                current.recurrence_interval,
+                timestamp,
+                timestamp,
+                deviceId,
+            )
+            appendTodoOutbox(db.todoDbQueries.selectByIdLast().executeAsOne().toDto())
         }
     }
 

@@ -4,6 +4,8 @@ import com.myapplication.shared.domain.error.TodoError
 import com.myapplication.shared.domain.list.DeleteListPolicy
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
+import com.myapplication.shared.domain.recurrence.CompleteRecurringTodoUseCase
+import com.myapplication.shared.domain.recurrence.RecurrenceRule
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
 import com.myapplication.shared.test.FakeTodoRepository
 import kotlinx.coroutines.Dispatchers
@@ -139,6 +141,67 @@ class MainViewModelTest {
         advanceUntilIdle()
         assertEquals(5L, repo.toggledId)
         assertEquals(true, repo.toggledValue)
+    }
+
+    @Test
+    fun completingRecurringTodoCreatesNextOccurrence() = runTest(dispatcher) {
+        val repo = FakeTodoRepository()
+        repo.ensureInbox()
+        val vm = MainViewModel(
+            repo,
+            AddTodoUseCase(repo),
+            TimeZone.UTC,
+            CompleteRecurringTodoUseCase(repo, TimeZone.UTC),
+        )
+        collect(vm)
+        repo.insertTodo(1, "站会", "", Instant.parse("2026-08-13T09:00:00Z"), null, false)
+        val item = repo.todos.first().copy(recurrenceRule = RecurrenceRule.Daily())
+        repo.replaceTodo(item)
+
+        vm.toggleCompleted(item)
+        vm.toggleCompleted(item)
+        advanceUntilIdle()
+
+        assertEquals(true, repo.todos.first { it.id == item.id }.isCompleted)
+        assertEquals(2, repo.todos.size)
+        assertEquals(Instant.parse("2026-08-14T09:00:00Z"), repo.todos.last().dueDate)
+        assertEquals(RecurrenceRule.Daily(), repo.todos.last().recurrenceRule)
+    }
+
+    @Test
+    fun uncompletingRecurringTodoKeepsDefaultToggleBehavior() = runTest(dispatcher) {
+        val repo = FakeTodoRepository()
+        repo.ensureInbox()
+        val vm = MainViewModel(
+            repo,
+            AddTodoUseCase(repo),
+            TimeZone.UTC,
+            CompleteRecurringTodoUseCase(repo, TimeZone.UTC),
+        )
+        collect(vm)
+        val item = TodoItem(
+            7,
+            1,
+            "站会",
+            "",
+            Instant.parse("2026-08-13T09:00:00Z"),
+            true,
+            false,
+            null,
+            false,
+            null,
+            null,
+            0.0,
+            Instant.fromEpochMilliseconds(0),
+            RecurrenceRule.Daily(),
+        )
+
+        vm.toggleCompleted(item)
+        advanceUntilIdle()
+
+        assertEquals(7L, repo.toggledId)
+        assertEquals(false, repo.toggledValue)
+        assertEquals(0, repo.todos.size)
     }
 
     @Test
