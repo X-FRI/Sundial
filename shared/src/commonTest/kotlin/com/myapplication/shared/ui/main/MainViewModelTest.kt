@@ -165,6 +165,28 @@ class MainViewModelTest {
     }
 
     @Test
+    fun backFromSubtaskDetailReturnsToParentDetail() {
+        val vm = vm(FakeTodoRepository())
+
+        vm.openDetail(4)
+        vm.openDetail(9, parentTodoId = 4)
+        vm.back()
+
+        assertEquals(Route.Detail(4), vm.route.value)
+    }
+
+    @Test
+    fun closeDetailAlwaysReturnsToMain() {
+        val vm = vm(FakeTodoRepository())
+
+        vm.openDetail(4)
+        vm.openDetail(9, parentTodoId = 4)
+        vm.closeDetail()
+
+        assertEquals(Route.Main, vm.route.value)
+    }
+
+    @Test
     fun selectScopeClearsSearchQuery() = runTest(dispatcher) {
         // 切 scope 时清空搜索词，避免跨列表残留过滤条件
         val vm = vm(FakeTodoRepository())

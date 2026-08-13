@@ -145,7 +145,7 @@ fun MobileShell(
         }
         if (selectedId != null) {
             ModalBottomSheet(
-                onDismissRequest = mainVm::back,
+                onDismissRequest = mainVm::closeDetail,
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 dragHandle = null,
                 contentWindowInsets = { WindowInsets(0.dp) },

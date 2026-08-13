@@ -112,6 +112,11 @@ class DetailViewModel(
         launchTodoEffect(lastError) { repository.setCompleted(item.id, !item.isCompleted) }
     }
 
+    /** 更新子任务标题：子任务本身也是 TodoItem，按子任务 id 写标题。 */
+    fun setSubTaskTitle(item: TodoItem, title: String) {
+        launchTodoEffect(lastError) { repository.setTitle(item.id, title) }
+    }
+
     /** 删除子任务（软删除，进垃圾箱）。 */
     fun trashSubTask(item: TodoItem) {
         launchTodoEffect(lastError) { repository.trash(item.id) }

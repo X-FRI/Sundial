@@ -28,6 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -132,7 +134,7 @@ fun DetailContent(
             }
             Spacer(Modifier.weight(1f))
             if (showCloseButton) {
-                RemIconButton(IconName.Close, "关闭详情", onClick = mainVm::back, size = 16.dp)
+                RemIconButton(IconName.Close, "关闭详情", onClick = mainVm::closeDetail, size = 16.dp)
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -266,16 +268,25 @@ fun DetailContent(
         }
         Spacer(Modifier.height(6.dp))
         subtasks.forEach { sub ->
+            var subTitleText by remember(sub.id, sub.title) { mutableStateOf(sub.title) }
             Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                 RemCheckbox(sub.isCompleted, { detailVm.toggleSubTask(sub) }, size = 12.dp)
                 Spacer(Modifier.width(8.dp))
-                androidx.compose.foundation.text.BasicText(
-                    sub.title,
-                    style = RemType.text14.copy(
-                        color = if (sub.isCompleted) colors.textLow else colors.textHigh,
-                        textDecoration = if (sub.isCompleted) TextDecoration.LineThrough else null,
-                    ),
+                SubTaskTitleField(
+                    value = subTitleText,
+                    completed = sub.isCompleted,
+                    onValueChange = {
+                        subTitleText = it
+                        detailVm.setSubTaskTitle(sub, it)
+                    },
                     modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(4.dp))
+                RemIconButton(
+                    IconName.ChevronRight,
+                    "打开子任务详情",
+                    onClick = { mainVm.openDetail(sub.id, parentTodoId = current.id) },
+                    size = 14.dp,
                 )
                 RemIconButton(IconName.Trash, "删除子任务", onClick = { detailVm.trashSubTask(sub) }, size = 14.dp)
             }
@@ -312,7 +323,7 @@ fun DetailContent(
                     "恢复",
                     onClick = {
                         mainVm.restore(current)
-                        mainVm.back()
+                        mainVm.closeDetail()
                     },
                     modifier = Modifier.weight(1f),
                 )
@@ -322,7 +333,7 @@ fun DetailContent(
                     "移到垃圾箱",
                     onClick = {
                         mainVm.trash(current)
-                        mainVm.back()
+                        mainVm.closeDetail()
                     },
                     variant = RemButtonVariant.Danger,
                     modifier = Modifier.weight(1f),
@@ -432,6 +443,40 @@ private fun DetailTitleField(
                         color = colors.textLow,
                         fontWeight = FontWeight.SemiBold,
                     ),
+                )
+            }
+            inner()
+        },
+    )
+}
+
+@Composable
+private fun SubTaskTitleField(
+    value: String,
+    completed: Boolean,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalRemColors.current
+    val textStyle = RemType.text14.copy(
+        color = if (completed) colors.textLow else colors.textHigh,
+        textDecoration = if (completed) TextDecoration.LineThrough else null,
+    )
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier
+            .height(32.dp)
+            .padding(vertical = 2.dp)
+            .semantics { contentDescription = "子任务标题" },
+        textStyle = textStyle,
+        cursorBrush = SolidColor(colors.brand),
+        singleLine = true,
+        decorationBox = { inner ->
+            if (value.isEmpty()) {
+                androidx.compose.foundation.text.BasicText(
+                    "子任务标题",
+                    style = textStyle.copy(color = colors.textLow, textDecoration = null),
                 )
             }
             inner()

@@ -44,6 +44,8 @@ class FakeTodoRepository : TodoRepository {
     var toggledValue: Boolean? = null
     var flaggedId: Long? = null
     var flaggedValue: Boolean? = null
+    var lastSetTitleId: Long? = null
+    var lastSetTitleValue: String? = null
     var lastDeleteListPolicy: DeleteListPolicy? = null
     var lastUpdatedListName: String? = null
     var lastUpdatedListColor: String? = null
@@ -202,8 +204,12 @@ class FakeTodoRepository : TodoRepository {
         return Either.Right(Unit)
     }
 
-    // 以下方法测试未覆盖细节，直接返回成功
-    override suspend fun setTitle(id: Long, title: String): Either<TodoError, Unit> = Either.Right(Unit)
+    // 以下方法只记录测试关心的轻量命令细节，复杂持久化语义由真实仓库测试覆盖
+    override suspend fun setTitle(id: Long, title: String): Either<TodoError, Unit> {
+        lastSetTitleId = id
+        lastSetTitleValue = title
+        return Either.Right(Unit)
+    }
     override suspend fun setNote(id: Long, note: String): Either<TodoError, Unit> = Either.Right(Unit)
     override suspend fun setDueDate(id: Long, dueDate: Instant?): Either<TodoError, Unit> = Either.Right(Unit)
     override suspend fun moveToList(id: Long, listId: Long): Either<TodoError, Unit> = Either.Right(Unit)

@@ -29,15 +29,15 @@ import kotlinx.datetime.toInstant
  *
  * 语义：
  * - [Main] 主列表（窄屏还包含顶栏/底栏，宽屏对应三栏中的左两栏）；
- * - [Detail] 选中某个待办详情（todoId 供 DetailContent 定位数据）；
+ * - [Detail] 选中某个待办详情（todoId 供 DetailContent 定位数据，parentTodoId 用于子任务详情返回父任务）；
  * - [Settings] 全屏设置页，优先于宽/窄屏分支渲染。
  *
- * 返回语义：任意非 Main 状态调用 [MainViewModel.back] 都会回到 [Main]，
- * 因此它是「单层栈」，不支持多级回退。
+ * 返回语义：子任务详情调用 [MainViewModel.back] 会回到父任务详情，
+ * 其他非 Main 状态会回到 [Main]。
  */
 sealed interface Route {
     data object Main : Route
-    data class Detail(val todoId: Long) : Route
+    data class Detail(val todoId: Long, val parentTodoId: Long? = null) : Route
     data object Settings : Route
 }
 
@@ -158,7 +158,7 @@ class MainViewModel(
     fun selectScope(s: Scope) {
         scope.value = s
         searchQuery.value = ""
-        back()
+        route.value = Route.Main
     }
 
     fun setSearch(q: String) {
@@ -168,16 +168,24 @@ class MainViewModel(
         searchQuery.value = q
     }
 
-    fun openDetail(id: Long) {
-        route.value = Route.Detail(id)
+    fun openDetail(id: Long, parentTodoId: Long? = null) {
+        route.value = Route.Detail(id, parentTodoId)
     }
 
     fun openSettings() {
         route.value = Route.Settings
     }
 
-    /** 返回主路由；详情/设置页的「关闭」与系统返回键都走这里。 */
+    /** 返回路由；子任务详情回父任务，普通详情/设置页回主界面。 */
     fun back() {
+        route.value = when (val current = route.value) {
+            is Route.Detail -> current.parentTodoId?.let { Route.Detail(it) } ?: Route.Main
+            else -> Route.Main
+        }
+    }
+
+    /** 关闭当前详情或设置页；与系统返回不同，它不会回到父任务详情。 */
+    fun closeDetail() {
         route.value = Route.Main
     }
 
