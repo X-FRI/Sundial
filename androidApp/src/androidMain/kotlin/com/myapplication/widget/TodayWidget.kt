@@ -4,12 +4,15 @@ import android.content.Context
 import arrow.core.getOrElse
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.LocalSize
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.provideContent
@@ -21,6 +24,7 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
+import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
@@ -30,6 +34,8 @@ import com.myapplication.shared.data.setAndroidAppContext
 import com.myapplication.shared.di.AppGraph
 import com.myapplication.shared.di.createAppGraph
 import com.myapplication.shared.domain.widget.TodayWidgetSnapshot
+import com.myapplication.shared.domain.widget.WidgetSnapshotSize
+import com.myapplication.shared.domain.widget.WidgetTask
 import com.myapplication.shared.domain.widget.buildTodayWidgetSnapshot
 import com.myapplication.shared.domain.widget.isCurrentFor
 import kotlinx.coroutines.CancellationException
@@ -37,17 +43,34 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
+import kotlin.time.Instant
 
 class TodayWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = TodayWidget()
 }
 
 class TodayWidget : GlanceAppWidget() {
+    override val sizeMode: SizeMode = SizeMode.Responsive(
+        setOf(
+            DpSize(120.dp, 80.dp),
+            DpSize(160.dp, 96.dp),
+            DpSize(260.dp, 140.dp),
+            DpSize(320.dp, 220.dp),
+        ),
+    )
+
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val snapshot = withContext(Dispatchers.IO) { loadSnapshot(context) }
         provideContent {
-            TodayWidgetContent(snapshot)
+            val size = LocalSize.current
+            val widgetSize = when {
+                size.width < 220.dp || size.height < 120.dp -> WidgetSnapshotSize.Small
+                size.height < 190.dp -> WidgetSnapshotSize.Medium
+                else -> WidgetSnapshotSize.Large
+            }
+            TodayWidgetContent(snapshot = snapshot, size = widgetSize)
         }
     }
 
@@ -91,7 +114,7 @@ class TodayWidget : GlanceAppWidget() {
             now = graph.clock.now(),
             timeZone = graph.timeZone,
             inboxListId = inboxListId,
-            maxTasks = 3,
+            maxTasks = WidgetSnapshotSize.Large.maxTodayTasks,
         )
     }
 
@@ -106,51 +129,167 @@ class TodayWidget : GlanceAppWidget() {
 }
 
 @Composable
-private fun TodayWidgetContent(snapshot: TodayWidgetSnapshot) {
+private fun TodayWidgetContent(snapshot: TodayWidgetSnapshot, size: WidgetSnapshotSize) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
-            .background(ColorProvider(Color(0xFFFFFFFF)))
+            .background(WidgetColors.Background)
             .clickable(actionStartActivity<MainActivity>())
-            .padding(14.dp),
+            .padding(if (size == WidgetSnapshotSize.Small) 10.dp else 14.dp),
     ) {
-        Row(GlanceModifier.fillMaxWidth()) {
-            Text(
-                text = "今天",
-                style = TextStyle(
-                    color = ColorProvider(Color(0xFF0D0D0D)),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                ),
-            )
-            Spacer(GlanceModifier.defaultWeight())
-            Text(
-                text = "${snapshot.pendingTodayCount} 项",
-                style = TextStyle(color = ColorProvider(Color(0xFFEA7A2A)), fontSize = 14.sp, fontWeight = FontWeight.Medium),
-            )
+        when (size) {
+            WidgetSnapshotSize.Small -> SmallTodayWidget(snapshot)
+            WidgetSnapshotSize.Medium -> MediumTodayWidget(snapshot)
+            WidgetSnapshotSize.Large -> LargeTodayWidget(snapshot)
         }
-        Spacer(GlanceModifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun SmallTodayWidget(snapshot: TodayWidgetSnapshot) {
+    WidgetTitleRow(snapshot)
+    Spacer(GlanceModifier.height(6.dp))
+    NextTaskText(snapshot = snapshot, fontSize = 12)
+    Spacer(GlanceModifier.height(6.dp))
+    Text(
+        text = "逾期 ${snapshot.overdueCount} · 待整理 ${snapshot.inboxCount} · 完成 ${snapshot.completedTodayCount}",
+        style = TextStyle(color = WidgetColors.Muted, fontSize = 10.sp),
+        maxLines = 1,
+    )
+}
+
+@Composable
+private fun MediumTodayWidget(snapshot: TodayWidgetSnapshot) {
+    WidgetTitleRow(snapshot)
+    Spacer(GlanceModifier.height(8.dp))
+    NextTaskText(snapshot = snapshot, fontSize = 13)
+    Spacer(GlanceModifier.height(8.dp))
+    snapshot.topTodayTasks.take(WidgetSnapshotSize.Medium.maxTodayTasks).forEach { task ->
+        TaskLine(task)
+        Spacer(GlanceModifier.height(4.dp))
+    }
+    Spacer(GlanceModifier.height(4.dp))
+    Text(
+        text = "逾期 ${snapshot.overdueCount} · 待整理 ${snapshot.inboxCount} · 完成 ${snapshot.completedTodayCount}",
+        style = TextStyle(color = WidgetColors.Muted, fontSize = 11.sp),
+        maxLines = 1,
+    )
+}
+
+@Composable
+private fun LargeTodayWidget(snapshot: TodayWidgetSnapshot) {
+    SummaryChips(snapshot)
+    Spacer(GlanceModifier.height(10.dp))
+    snapshot.topTodayTasks.take(WidgetSnapshotSize.Large.maxTodayTasks).forEach { task ->
+        TaskLine(task)
+        Spacer(GlanceModifier.height(5.dp))
+    }
+    if (snapshot.topOverdueTasks.isNotEmpty()) {
+        Spacer(GlanceModifier.height(4.dp))
         Text(
-            text = snapshot.nextTaskTitle?.let { title ->
-                "下一件 ${snapshot.nextTaskDueLabel ?: ""} $title".trim()
-            } ?: "今天没有定时待办",
-            style = TextStyle(color = ColorProvider(Color(0xFF333333)), fontSize = 13.sp, fontWeight = FontWeight.Medium),
+            text = "逾期预览",
+            style = TextStyle(color = WidgetColors.Warning, fontSize = 11.sp, fontWeight = FontWeight.Medium),
             maxLines = 1,
         )
-        Spacer(GlanceModifier.height(8.dp))
-        snapshot.topTodayTasks.take(3).forEach { task ->
+        Spacer(GlanceModifier.height(4.dp))
+        snapshot.topOverdueTasks.take(WidgetSnapshotSize.Large.maxOverdueTasks).forEach { task ->
             Text(
-                text = listOfNotNull(task.dueLabel, task.title).joinToString("  "),
-                style = TextStyle(color = ColorProvider(Color(0xFF636363)), fontSize = 12.sp),
+                text = "· ${task.title}",
+                style = TextStyle(color = WidgetColors.Muted, fontSize = 11.sp),
                 maxLines = 1,
             )
-            Spacer(GlanceModifier.height(4.dp))
+            Spacer(GlanceModifier.height(3.dp))
         }
-        Spacer(GlanceModifier.defaultWeight())
+    }
+    Spacer(GlanceModifier.height(6.dp))
+    Text(
+        text = "更新 ${formatUpdatedAt(snapshot.lastUpdatedAt, TimeZone.currentSystemDefault())}",
+        style = TextStyle(color = WidgetColors.Subtle, fontSize = 10.sp),
+        maxLines = 1,
+    )
+}
+
+@Composable
+private fun WidgetTitleRow(snapshot: TodayWidgetSnapshot) {
+    Row(GlanceModifier.fillMaxWidth()) {
         Text(
-            text = "逾期 ${snapshot.overdueCount} · 待整理 ${snapshot.inboxCount} · 完成 ${snapshot.completedTodayCount}",
-            style = TextStyle(color = ColorProvider(Color(0xFF636363)), fontSize = 11.sp),
-            maxLines = 1,
+            text = "今天",
+            style = TextStyle(
+                color = WidgetColors.Primary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+        )
+        Spacer(GlanceModifier.width(8.dp))
+        Text(
+            text = "${snapshot.pendingTodayCount} 项",
+            style = TextStyle(color = WidgetColors.Accent, fontSize = 14.sp, fontWeight = FontWeight.Medium),
         )
     }
+}
+
+@Composable
+private fun NextTaskText(snapshot: TodayWidgetSnapshot, fontSize: Int) {
+    Text(
+        text = snapshot.nextTaskTitle?.let { title ->
+            "下一件 ${snapshot.nextTaskDueLabel ?: ""} $title".trim()
+        } ?: "今天没有定时待办",
+        style = TextStyle(color = WidgetColors.Body, fontSize = fontSize.sp, fontWeight = FontWeight.Medium),
+        maxLines = 1,
+    )
+}
+
+@Composable
+private fun TaskLine(task: WidgetTask) {
+    Text(
+        text = listOfNotNull(task.dueLabel, task.title).joinToString("  "),
+        style = TextStyle(color = WidgetColors.Muted, fontSize = 12.sp),
+        maxLines = 1,
+    )
+}
+
+@Composable
+private fun SummaryChips(snapshot: TodayWidgetSnapshot) {
+    Row(GlanceModifier.fillMaxWidth()) {
+        SummaryChip(label = "今天", value = snapshot.pendingTodayCount, emphasized = true)
+        Spacer(GlanceModifier.width(6.dp))
+        SummaryChip(label = "逾期", value = snapshot.overdueCount)
+        Spacer(GlanceModifier.width(6.dp))
+        SummaryChip(label = "待整理", value = snapshot.inboxCount)
+        Spacer(GlanceModifier.width(6.dp))
+        SummaryChip(label = "完成", value = snapshot.completedTodayCount)
+    }
+}
+
+@Composable
+private fun SummaryChip(label: String, value: Int, emphasized: Boolean = false) {
+    Text(
+        text = "$label $value",
+        modifier = GlanceModifier
+            .background(if (emphasized) WidgetColors.AccentSurface else WidgetColors.ChipBackground)
+            .padding(horizontal = 7.dp, vertical = 4.dp),
+        style = TextStyle(
+            color = if (emphasized) WidgetColors.Accent else WidgetColors.Body,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+        ),
+        maxLines = 1,
+    )
+}
+
+private fun formatUpdatedAt(instant: Instant, timeZone: TimeZone): String {
+    val time = instant.toLocalDateTime(timeZone).time
+    return "${time.hour.toString().padStart(2, '0')}:${time.minute.toString().padStart(2, '0')}"
+}
+
+private object WidgetColors {
+    val Background = ColorProvider(Color(0xFFFFFFFF))
+    val Primary = ColorProvider(Color(0xFF0D0D0D))
+    val Body = ColorProvider(Color(0xFF333333))
+    val Muted = ColorProvider(Color(0xFF636363))
+    val Subtle = ColorProvider(Color(0xFF8C8C8C))
+    val Accent = ColorProvider(Color(0xFFEA7A2A))
+    val Warning = ColorProvider(Color(0xFFB45309))
+    val AccentSurface = ColorProvider(Color(0xFFFFF1E6))
+    val ChipBackground = ColorProvider(Color(0xFFF3F4F6))
 }
