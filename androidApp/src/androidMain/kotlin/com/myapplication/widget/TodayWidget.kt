@@ -32,6 +32,7 @@ import com.myapplication.shared.domain.widget.buildTodayWidgetSnapshot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlin.time.Clock
 
 class TodayWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = TodayWidget()
@@ -46,6 +47,17 @@ class TodayWidget : GlanceAppWidget() {
     }
 
     private suspend fun loadSnapshot(context: Context): TodayWidgetSnapshot {
+        val cache = WidgetSnapshotCache(context)
+        return runCatching {
+            val fresh = loadFreshSnapshot(context)
+            runCatching { cache.write(fresh) }
+            fresh
+        }.getOrElse {
+            cache.read() ?: TodayWidgetSnapshot.empty(Clock.System.now())
+        }
+    }
+
+    private suspend fun loadFreshSnapshot(context: Context): TodayWidgetSnapshot {
         setAndroidAppContext(context)
         val graph = createAppGraph()
         graph.repository.ensureInbox()

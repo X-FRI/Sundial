@@ -12,6 +12,7 @@ val keystoreProps = Properties().apply {
     if (f.exists()) load(f.inputStream())
 }
 val glanceVersion = findProperty("glance.version") as String
+val serializationVersion = findProperty("serialization.version") as String
 
 kotlin {
     androidTarget()
@@ -20,6 +21,7 @@ kotlin {
             dependencies {
                 implementation(project(":shared"))
                 implementation("androidx.glance:glance-appwidget:$glanceVersion")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$serializationVersion")
             }
         }
     }

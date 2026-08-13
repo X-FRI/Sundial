@@ -2,6 +2,7 @@ package com.myapplication.shared.domain.widget
 
 import com.myapplication.shared.domain.model.TodoItem
 import kotlinx.datetime.Instant
+import kotlinx.datetime.Month
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
@@ -26,7 +27,23 @@ data class TodayWidgetSnapshot(
     val inboxCount: Int,
     val lastUpdatedAt: Instant,
     val topOverdueTasks: List<WidgetTask> = emptyList(),
-)
+) {
+    companion object {
+        fun empty(now: Instant): TodayWidgetSnapshot =
+            TodayWidgetSnapshot(
+                dateLabel = "今天",
+                pendingTodayCount = 0,
+                completedTodayCount = 0,
+                nextTaskTitle = null,
+                nextTaskDueLabel = null,
+                topTodayTasks = emptyList(),
+                overdueCount = 0,
+                inboxCount = 0,
+                lastUpdatedAt = now,
+                topOverdueTasks = emptyList(),
+            )
+    }
+}
 
 enum class WidgetSnapshotSize(val maxTodayTasks: Int, val maxOverdueTasks: Int) {
     Small(maxTodayTasks = 1, maxOverdueTasks = 0),
@@ -53,7 +70,7 @@ fun buildTodayWidgetSnapshot(
     val next = todayPending.firstOrNull { it.dueDate?.let { due -> due >= now } == true } ?: todayPending.firstOrNull()
 
     return TodayWidgetSnapshot(
-        dateLabel = "${today.year}-${today.monthNumber.toString().padStart(2, '0')}-${today.dayOfMonth.toString().padStart(2, '0')}",
+        dateLabel = "${today.year}-${today.month.number.toString().padStart(2, '0')}-${today.day.toString().padStart(2, '0')}",
         pendingTodayCount = todayPending.size,
         completedTodayCount = completedParents.count { it.completedAt?.toLocalDateTime(timeZone)?.date == today },
         nextTaskTitle = next?.title,
@@ -78,3 +95,6 @@ private fun formatWidgetTime(instant: Instant, timeZone: TimeZone): String {
     val time = instant.toLocalDateTime(timeZone).time
     return "${time.hour.toString().padStart(2, '0')}:${time.minute.toString().padStart(2, '0')}"
 }
+
+private val Month.number: Int
+    get() = ordinal + 1
