@@ -82,6 +82,24 @@ class SyncCoordinatorTest {
     }
 
     @Test
+    fun drainDoesNotCoalesceUpsertsAcrossDeleteBarrier() = runTest {
+        val repo = FakeTodoRepository()
+        repo.outboxState.value = listOf(
+            row(seq = 1, table = "todo", rowId = 10, action = SyncAction.UPSERT, updatedAt = 100),
+            row(seq = 2, table = "reminder_list", rowId = 2, action = SyncAction.DELETE, updatedAt = 200),
+            row(seq = 3, table = "todo", rowId = 10, action = SyncAction.UPSERT, updatedAt = 300),
+        )
+        val client = FakeSyncClient()
+        val coordinator = SyncCoordinator(repo, client, "device-a")
+
+        val result = coordinator.drainOutbox()
+
+        assertTrue(result.isRight())
+        assertEquals(listOf(1L, 2L, 3L), client.pushed.single().map { it.seq })
+        assertTrue(repo.outboxState.value.isEmpty())
+    }
+
+    @Test
     fun applyRemoteSkipsOwnDevice() = runTest {
         val repo = FakeTodoRepository()
         val coordinator = SyncCoordinator(repo, FakeSyncClient(), "device-a")

@@ -101,6 +101,25 @@ SELECT * FROM todo ORDER BY id DESC LIMIT 1;
 selectByIdForList:
 SELECT * FROM reminder_list WHERE id = ?;
 
+updateList:
+UPDATE reminder_list
+SET name = ?, color_key = ?, updated_at = ?, updated_by = ?
+WHERE id = ?;
+
+moveTodosInList:
+UPDATE todo
+SET
+  list_id = ?,
+  updated_at = max(updated_at, ?),
+  updated_by = CASE WHEN updated_at <= ? THEN ? ELSE updated_by END
+WHERE list_id = ?;
+
+selectByListIncludingTrashed:
+SELECT * FROM todo WHERE list_id = ? ORDER BY is_trashed, is_completed, due_date IS NULL, due_date, sort_position, id;
+
+selectAllTodos:
+SELECT * FROM todo ORDER BY is_trashed, is_completed, due_date IS NULL, due_date, sort_position, id;
+
 searchTodos:
 SELECT * FROM todo WHERE is_trashed = 0 AND (title LIKE ? ESCAPE '\' OR note LIKE ? ESCAPE '\')
 ORDER BY is_completed, due_date IS NULL, due_date;

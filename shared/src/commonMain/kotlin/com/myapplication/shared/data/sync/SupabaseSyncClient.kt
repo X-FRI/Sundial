@@ -45,10 +45,9 @@ import kotlinx.serialization.json.longOrNull
  *   事件本身不带表名，只有 channel 的 table 配置能区分来源表；
  * - Realtime 默认也会收到本设备写操作（服务端广播），用 updated_by == deviceId
  *   做回声过滤，把本设备的写操作排除在应用流程外；
- * - push 按「action -> table」两层分组：UPSERT 用 PostgREST 批量 upsert
- *   （service 端按主键冲突更新），DELETE 逐行删；按表分组是 PostgREST
- *   一次请求只能操作单表，且服务端曾有 todo.list_id -> reminder_list.id
- *   外键，先删列表前必须先处理完其中的 todo。
+ * - push 保持 outbox seq 顺序，只把相邻且可安全合并的行批量发送。UPSERT 用
+ *   PostgREST 批量 upsert（service 端按主键冲突更新），DELETE 逐行删；不能先
+ *   全局按 action 分组，否则列表删除可能跑到 todo 归属更新前面。
  */
 class SupabaseSyncClient(
     url: String,
@@ -75,11 +74,10 @@ class SupabaseSyncClient(
         runSyncEffect {
             var skipped = 0
             catchTransport("同步失败") {
-                // 1. 先按 action 分组（UPSERT 与 DELETE 的传输方式不同）
-                rows.groupBy { it.action }.forEach { (action, group) ->
-                    when (action) {
-                        SyncAction.UPSERT -> skipped += pushUpserts(group)
-                        SyncAction.DELETE -> pushDeletes(group)
+                orderedSyncPushBatches(rows).forEach { batch ->
+                    when (batch.first().action) {
+                        SyncAction.UPSERT -> skipped += pushUpserts(batch)
+                        SyncAction.DELETE -> pushDeletes(batch)
                     }
                 }
             }
@@ -245,3 +243,19 @@ class SupabaseSyncClient(
         else -> jsonPrimitive.content
     }
 }
+
+internal fun orderedSyncPushBatches(rows: List<SyncRow>): List<List<SyncRow>> {
+    val batches = mutableListOf<MutableList<SyncRow>>()
+    rows.forEach { row ->
+        val last = batches.lastOrNull()
+        if (last != null && last.first().canBatchWith(row)) {
+            last += row
+        } else {
+            batches += mutableListOf(row)
+        }
+    }
+    return batches.map { it.toList() }
+}
+
+private fun SyncRow.canBatchWith(other: SyncRow): Boolean =
+    action == other.action && (action == SyncAction.DELETE || table == other.table)

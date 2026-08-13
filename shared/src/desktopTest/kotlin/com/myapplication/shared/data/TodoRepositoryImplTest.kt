@@ -2,6 +2,8 @@ package com.myapplication.shared.data
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.myapplication.shared.domain.error.TodoError
+import com.myapplication.shared.domain.list.DeleteListPolicy
+import com.myapplication.shared.domain.sync.ListRowDto
 import com.myapplication.shared.domain.sync.SyncAction
 import com.myapplication.shared.domain.sync.TodoRowDto
 import com.myapplication.shared.domain.usecase.AddSubTaskUseCase
@@ -238,11 +240,11 @@ class TodoRepositoryImplTest {
     }
 
     @Test
-    fun deleteListDoesNotRemoveInbox() = runTest {
+    fun inboxCannotBeDeleted() = runTest {
         val repo = newRepo()
         val inbox = repo.inbox()
 
-        val result = repo.deleteList(inbox)
+        val result = repo.deleteList(inbox, DeleteListPolicy.MoveTasksToInbox)
 
         assertTrue(result.isLeft())
         assertEquals(listOf("收件箱"), repo.observeLists().first().map { it.name })
@@ -259,18 +261,195 @@ class TodoRepositoryImplTest {
     }
 
     @Test
-    fun deleteListTrashesTodosAndRemovesList() = runTest {
+    fun deleteListMovesTasksToInboxByDefaultPolicy() = runTest {
         val repo = newRepo()
+        val inbox = repo.inbox()
         assertTrue(repo.addList("项目", "red").isRight())
         val listId = repo.observeLists().first().first { it.name == "项目" }.id
-        assertTrue(repo.insertTodo(listId, "要清理的", "", null, null, false).isRight())
-        // 删列表：列表消失、条目软删除进 Trashed、ByList 查询为空
+        assertTrue(repo.insertTodo(listId, "A", "", null, null, false).isRight())
+        assertTrue(repo.insertTodo(listId, "B", "", null, null, false).isRight())
+        val trashed = repo.observeAllActive().first().single { it.title == "B" }
+        assertTrue(repo.trash(trashed.id).isRight())
+        val beforeDeleteSeq = repo.readOutbox(100).getOrNull()!!.maxOf { it.seq }
+        // 默认策略：删列表时保留任务，将任务重新归属到收件箱，避免指向已删除列表。
         assertTrue(repo.deleteList(listId).isRight())
+
         assertTrue(repo.observeLists().first().none { it.id == listId })
         assertTrue(repo.observeByList(listId).first().isEmpty())
+        val active = repo.observeAllActive().first()
+        assertEquals(inbox, active.single { it.title == "A" }.listId)
+        val trashedAfterDelete = repo.observeTrashed().first()
+        assertEquals(inbox, trashedAfterDelete.single { it.title == "B" }.listId)
+        assertTrue(trashedAfterDelete.none { it.title == "A" })
+
+        val deleteOutbox = repo.readOutbox(100).getOrNull()!!.filter { it.seq > beforeDeleteSeq }
+        assertEquals(listOf("todo", "todo", "reminder_list"), deleteOutbox.map { it.table })
+        assertEquals(listOf(SyncAction.UPSERT, SyncAction.UPSERT, SyncAction.DELETE), deleteOutbox.map { it.action })
+        val movedPayloads = deleteOutbox.take(2)
+            .map { Json.decodeFromString<TodoRowDto>(it.payload!!) }
+            .associateBy { it.title }
+        assertEquals(inbox, movedPayloads.getValue("A").listId)
+        assertFalse(movedPayloads.getValue("A").isTrashed)
+        assertEquals(inbox, movedPayloads.getValue("B").listId)
+        assertTrue(movedPayloads.getValue("B").isTrashed)
+        assertEquals(listId, deleteOutbox.last().rowId)
+    }
+
+    @Test
+    fun deleteListCanMoveTasksToTrashWithDangerPolicy() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        assertTrue(repo.addList("项目", "red").isRight())
+        val listId = repo.observeLists().first().first { it.name == "项目" }.id
+        assertTrue(repo.insertTodo(listId, "A", "", null, null, false).isRight())
+        assertTrue(repo.insertTodo(listId, "B", "", null, null, false).isRight())
+        val alreadyTrashed = repo.observeAllActive().first().single { it.title == "B" }
+        assertTrue(repo.trash(alreadyTrashed.id).isRight())
+        val beforeDeleteSeq = repo.readOutbox(100).getOrNull()!!.maxOf { it.seq }
+
+        assertTrue(repo.deleteList(listId, DeleteListPolicy.MoveTasksToTrash).isRight())
+
+        assertTrue(repo.observeLists().first().none { it.id == listId })
+        assertTrue(repo.observeAllActive().first().none { it.title == "A" })
         val trashed = repo.observeTrashed().first()
-        assertEquals(1, trashed.size)
-        assertEquals("要清理的", trashed.first().title)
+        assertEquals(inbox, trashed.single { it.title == "A" }.listId)
+        assertEquals(inbox, trashed.single { it.title == "B" }.listId)
+
+        val deleteOutbox = repo.readOutbox(100).getOrNull()!!.filter { it.seq > beforeDeleteSeq }
+        assertEquals(listOf("todo", "todo", "reminder_list"), deleteOutbox.map { it.table })
+        assertEquals(listOf(SyncAction.UPSERT, SyncAction.UPSERT, SyncAction.DELETE), deleteOutbox.map { it.action })
+        val movedPayloads = deleteOutbox.take(2)
+            .map { Json.decodeFromString<TodoRowDto>(it.payload!!) }
+            .associateBy { it.title }
+        assertEquals(inbox, movedPayloads.getValue("A").listId)
+        assertTrue(movedPayloads.getValue("A").isTrashed)
+        assertEquals(inbox, movedPayloads.getValue("B").listId)
+        assertTrue(movedPayloads.getValue("B").isTrashed)
+    }
+
+    @Test
+    fun remoteListDeleteMovesReferencingTodosToInboxWithoutWritingOutbox() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        assertTrue(repo.addList("远端项目", "red").isRight())
+        val listId = repo.observeLists().first().first { it.name == "远端项目" }.id
+        assertTrue(repo.insertTodo(listId, "活跃", "", null, null, false).isRight())
+        assertTrue(repo.insertTodo(listId, "已删除", "", null, null, false).isRight())
+        val trashed = repo.observeAllActive().first().single { it.title == "已删除" }
+        assertTrue(repo.trash(trashed.id).isRight())
+        val outboxBeforeRemoteDelete = repo.readOutbox(100).getOrNull()!!
+
+        assertTrue(repo.applyRemoteDelete("reminder_list", listId, Long.MAX_VALUE).isRight())
+
+        assertTrue(repo.observeLists().first().none { it.id == listId })
+        assertEquals(inbox, repo.observeAllActive().first().single { it.title == "活跃" }.listId)
+        assertEquals(inbox, repo.observeTrashed().first().single { it.title == "已删除" }.listId)
+        assertEquals(outboxBeforeRemoteDelete, repo.readOutbox(100).getOrNull()!!)
+    }
+
+    @Test
+    fun remoteListDeleteDoesNotMakeNewerTodosAcceptStaleListReferences() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        val remoteListId = 42L
+        val remoteTodoId = 77L
+        assertTrue(
+            repo.applyRemoteUpsertList(
+                ListRowDto(
+                    id = remoteListId,
+                    name = "远端项目",
+                    colorKey = "red",
+                    position = 1,
+                    createdAt = 1_000,
+                    updatedAt = 1_000,
+                    updatedBy = "remote-a",
+                ),
+            ).isRight(),
+        )
+        assertTrue(
+            repo.applyRemoteUpsert(
+                TodoRowDto(
+                    id = remoteTodoId,
+                    listId = remoteListId,
+                    title = "较新的任务",
+                    note = "",
+                    dueDate = null,
+                    isCompleted = false,
+                    completedAt = null,
+                    isTrashed = false,
+                    trashedAt = null,
+                    parentId = null,
+                    sortPosition = 0.0,
+                    flag = false,
+                    createdAt = 1_000,
+                    updatedAt = 2_000,
+                    updatedBy = "remote-b",
+                ),
+            ).isRight(),
+        )
+
+        assertTrue(repo.applyRemoteDelete("reminder_list", remoteListId, 1_000).isRight())
+        assertTrue(
+            repo.applyRemoteUpsert(
+                TodoRowDto(
+                    id = remoteTodoId,
+                    listId = remoteListId,
+                    title = "陈旧任务",
+                    note = "",
+                    dueDate = null,
+                    isCompleted = false,
+                    completedAt = null,
+                    isTrashed = false,
+                    trashedAt = null,
+                    parentId = null,
+                    sortPosition = 0.0,
+                    flag = false,
+                    createdAt = 1_000,
+                    updatedAt = 1_500,
+                    updatedBy = "remote-c",
+                ),
+            ).isRight(),
+        )
+
+        val todo = repo.observeTodo(remoteTodoId).first()
+        assertNotNull(todo)
+        assertEquals(inbox, todo.listId)
+        assertEquals("较新的任务", todo.title)
+    }
+
+    @Test
+    fun updateListPersistsTrimmedNameAndWritesOutbox() = runTest {
+        val repo = newRepo()
+        repo.inbox()
+        assertTrue(repo.addList("项目", "red").isRight())
+        val list = repo.observeLists().first().first { it.name == "项目" }
+        val beforeUpdateSeq = repo.readOutbox(100).getOrNull()!!.maxOf { it.seq }
+
+        assertTrue(repo.updateList(list.id, "  新项目  ", " green ").isRight())
+
+        val updated = repo.observeLists().first().first { it.id == list.id }
+        assertEquals("新项目", updated.name)
+        assertEquals("green", updated.colorKey)
+        val updateOutbox = repo.readOutbox(100).getOrNull()!!.filter { it.seq > beforeUpdateSeq }
+        assertEquals(1, updateOutbox.size)
+        assertEquals("reminder_list", updateOutbox.single().table)
+        assertEquals(SyncAction.UPSERT, updateOutbox.single().action)
+        val payload = Json.decodeFromString<ListRowDto>(updateOutbox.single().payload!!)
+        assertEquals("新项目", payload.name)
+        assertEquals("green", payload.colorKey)
+    }
+
+    @Test
+    fun updateListRejectsInvalidRequests() = runTest {
+        val repo = newRepo()
+        val inbox = repo.inbox()
+        assertTrue(repo.addList("项目", "red").isRight())
+        val project = repo.observeLists().first().first { it.name == "项目" }
+
+        assertTrue(repo.updateList(project.id, "   ", "blue").isLeft())
+        assertTrue(repo.updateList(inbox, "改名", "blue").isLeft())
+        assertTrue(repo.updateList(999, "不存在", "blue").isLeft())
+        assertEquals(listOf("收件箱", "项目"), repo.observeLists().first().map { it.name })
     }
 
     @Test
@@ -315,6 +494,18 @@ class TodoRepositoryImplTest {
         val dto = Json.decodeFromString<TodoRowDto>(todoRow.payload!!)
         assertEquals("双写", dto.title)
         assertEquals(inbox, dto.listId)
+    }
+
+    @Test
+    fun readOutboxUsesSeqWaterlineRatherThanStorageId() = runTest {
+        val repo = newRepo()
+        repo.inbox()
+        assertTrue(repo.clearOutbox(1).isRight())
+
+        assertTrue(repo.addList("项目", "red").isRight())
+
+        val row = repo.readOutbox(10).getOrNull()!!.single()
+        assertEquals(1, row.seq)
     }
 
     @Test

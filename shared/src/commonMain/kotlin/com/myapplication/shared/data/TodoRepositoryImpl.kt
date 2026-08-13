@@ -4,6 +4,9 @@ import app.cash.sqldelight.coroutines.asFlow
 import arrow.core.Either
 import arrow.core.raise.Raise
 import com.myapplication.shared.domain.error.TodoError
+import com.myapplication.shared.domain.list.DeleteListPolicy
+import com.myapplication.shared.domain.list.ListStats
+import com.myapplication.shared.domain.list.buildListStats
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.repository.TodoRepository
@@ -123,11 +126,11 @@ class TodoRepositoryImpl(
 
     /**
      * outbox 行 -> SyncRow。
-     * 约定：seq 直接取 outbox.id（自增主键，天然单调）；payload 空串归一化为 null，
+     * 约定：seq 直接取 outbox.seq（水位线字段）；payload 空串归一化为 null，
      * 与远端行的 payload 形态保持一致（DELETE 无 payload）。
      */
     private fun Outbox.toSyncRow() = SyncRow(
-        seq = id,
+        seq = seq,
         table = table_name,
         rowId = row_id,
         action = when (action) { "DELETE" -> SyncAction.DELETE; else -> SyncAction.UPSERT },
@@ -213,6 +216,23 @@ class TodoRepositoryImpl(
         db.todoDbQueries.selectTrashed().asFlow().map { it.executeAsList() }.map { todos -> todos.map { it.toDomain() } }
             .flowOn(dbDispatcher)
 
+    private fun observeAllIncludingTrashed(): Flow<List<TodoItem>> =
+        db.todoDbQueries.selectAllTodos().asFlow()
+            .map { it.executeAsList().map { row -> row.toDomain() } }
+            .flowOn(dbDispatcher)
+
+    override fun observeListStats(listId: Long): Flow<ListStats> =
+        observeAllIncludingTrashed()
+            .map { todos ->
+                buildListStats(
+                    listId = listId,
+                    todos = todos,
+                    today = clock.now().toLocalDateTime(timeZone).date,
+                    timeZone = timeZone,
+                )
+            }
+            .flowOn(dbDispatcher)
+
     override fun observeSubTasks(parentId: Long): Flow<List<TodoItem>> =
         db.todoDbQueries.selectSubTasks(parentId).asFlow().map { it.executeAsList() }.map { todos -> todos.map { it.toDomain() } }
             .flowOn(dbDispatcher)
@@ -269,31 +289,59 @@ class TodoRepositoryImpl(
         }
     }
 
+    override suspend fun updateList(listId: Long, name: String, colorKey: String): Either<TodoError, Unit> =
+        dbCommand("更新列表失败") {
+            val trimmed = name.trim()
+            val trimmedColorKey = colorKey.trim()
+            if (trimmed.isEmpty()) raise(TodoError.Persistence("列表名称不能为空"))
+            db.transaction {
+                val existing = db.todoDbQueries.selectByIdForList(listId).executeAsOneOrNull()
+                    ?: raise(TodoError.Persistence("列表不存在"))
+                if (existing.name == "收件箱" && existing.position == 0L) {
+                    raise(TodoError.Persistence("收件箱不能改名"))
+                }
+                db.todoDbQueries.updateList(trimmed, trimmedColorKey, now, deviceId, listId)
+                val row = db.todoDbQueries.selectByIdForList(listId).executeAsOne()
+                appendListOutbox(row.toDto())
+            }
+        }
+
     /**
-     * 删除列表（级联）。
+     * 删除列表。
      *
-     * 注意删除采用两级 outbox：列表内的 todo 全部软删除（trash，逐条写 UPSERT 快照），
-     * 列表本身写 DELETE 操作——远端按顺序应用后先收到 todo 更新、再收到列表删除，
-     * 不会留下孤儿行（服务端 FK 已移除，此处顺序仍保证语义一致）。
+     * 默认策略保留列表内活跃 todo，将它们移入收件箱；危险策略仍允许显式软删除。
+     * 两种策略都会先为受影响 todo 写 UPSERT 快照，再为列表写 DELETE 操作。
      */
-    override suspend fun deleteList(listId: Long): Either<TodoError, Unit> = dbCommand("删除列表失败") {
+    override suspend fun deleteList(listId: Long, policy: DeleteListPolicy): Either<TodoError, Unit> = dbCommand("删除列表失败") {
         db.transaction {
             val list = db.todoDbQueries.selectByIdForList(listId).executeAsOneOrNull()
-            if (list?.name == "收件箱" && list.position == 0L) {
+                ?: raise(TodoError.Persistence("列表不存在"))
+            if (list.name == "收件箱" && list.position == 0L) {
                 raise(TodoError.Persistence("收件箱是系统待整理池，不能删除"))
             }
-            // 1. 读出列表内全部 todo（后续逐条写快照）
-            val affected = db.todoDbQueries.selectByList(listId).executeAsList()
-            // 2. 级联软删除：列表内所有未删除的 todo 标记为 trash
-            db.todoDbQueries.trashTodosInList(now, now, deviceId, listId)
-            // 3. 逐条读回删除后的最新行，写 outbox UPSERT 快照
-            affected.forEach { todo ->
-                val updated = db.todoDbQueries.selectById(todo.id).executeAsOne()
-                appendTodoOutbox(updated.toDto())
+            val affected = db.todoDbQueries.selectByListIncludingTrashed(listId).executeAsList()
+            val inboxId = db.todoDbQueries.selectLists().executeAsList()
+                .firstOrNull { it.name == "收件箱" && it.position == 0L }
+                ?.id
+                ?: raise(TodoError.InboxNotFound)
+            when (policy) {
+                DeleteListPolicy.MoveTasksToInbox -> {
+                    val timestamp = now
+                    db.todoDbQueries.moveTodosInList(inboxId, timestamp, timestamp, deviceId, listId)
+                }
+                DeleteListPolicy.MoveTasksToTrash -> {
+                    val timestamp = now
+                    db.todoDbQueries.trashTodosInList(timestamp, timestamp, deviceId, listId)
+                    db.todoDbQueries.moveTodosInList(inboxId, timestamp, timestamp, deviceId, listId)
+                }
             }
-            // 4. 读回列表行并物理删除，写 outbox DELETE 操作
+            affected.forEach { old ->
+                db.todoDbQueries.selectById(old.id).executeAsOneOrNull()?.let { updated ->
+                    appendTodoOutbox(updated.toDto())
+                }
+            }
             db.todoDbQueries.deleteList(listId)
-            if (list != null) appendListOutbox(list.toDto(), SyncAction.DELETE)
+            appendListOutbox(list.toDto(), SyncAction.DELETE)
         }
     }
 
@@ -472,12 +520,25 @@ class TodoRepositoryImpl(
      */
     override suspend fun applyRemoteDelete(table: String, rowId: Long, updatedAt: Long): Either<TodoError, Unit> =
         dbCommand("应用远端删除失败") {
-            when (table) {
-                "todo" -> db.todoDbQueries.deleteTodoIfOlder(rowId, updatedAt)
-                "reminder_list" -> db.todoDbQueries.deleteListIfOlder(rowId, updatedAt)
-                else -> Unit
+            db.transaction {
+                when (table) {
+                    "todo" -> db.todoDbQueries.deleteTodoIfOlder(rowId, updatedAt)
+                    "reminder_list" -> applyRemoteListDelete(rowId, updatedAt)
+                    else -> Unit
+                }
             }
         }
+
+    private fun Raise<TodoError>.applyRemoteListDelete(rowId: Long, updatedAt: Long) {
+        val list = db.todoDbQueries.selectByIdForList(rowId).executeAsOneOrNull() ?: return
+        if (list.updated_at > updatedAt || (list.name == "收件箱" && list.position == 0L)) return
+        val inboxId = db.todoDbQueries.selectLists().executeAsList()
+            .firstOrNull { it.name == "收件箱" && it.position == 0L }
+            ?.id
+            ?: raise(TodoError.InboxNotFound)
+        db.todoDbQueries.moveTodosInList(inboxId, updatedAt, updatedAt, list.updated_by, rowId)
+        db.todoDbQueries.deleteListIfOlder(rowId, updatedAt)
+    }
 
     override suspend fun getSetting(key: String): Either<TodoError, String?> =
         dbCommand("读取设置失败") { db.todoDbQueries.getSetting(key).executeAsOneOrNull() }

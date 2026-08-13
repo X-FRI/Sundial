@@ -2,6 +2,8 @@ package com.myapplication.shared.domain.repository
 
 import arrow.core.Either
 import com.myapplication.shared.domain.error.TodoError
+import com.myapplication.shared.domain.list.DeleteListPolicy
+import com.myapplication.shared.domain.list.ListStats
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.sync.ListRowDto
@@ -32,13 +34,15 @@ interface TodoRepository {
     fun observeSubTasks(parentId: Long): Flow<List<TodoItem>>
     fun observeTodo(id: Long): Flow<TodoItem?>
     fun search(query: String): Flow<List<TodoItem>>
+    fun observeListStats(listId: Long): Flow<ListStats>
     suspend fun findById(id: Long): Either<TodoError, TodoItem?>
     suspend fun findByIdActive(id: Long): Either<TodoError, TodoItem?>
 
     // Commands — 类型化错误，纯 Effect
     suspend fun ensureInbox(): Either<TodoError, Long>
     suspend fun addList(name: String, colorKey: String): Either<TodoError, Unit>
-    suspend fun deleteList(listId: Long): Either<TodoError, Unit>
+    suspend fun updateList(listId: Long, name: String, colorKey: String): Either<TodoError, Unit>
+    suspend fun deleteList(listId: Long, policy: DeleteListPolicy = DeleteListPolicy.MoveTasksToInbox): Either<TodoError, Unit>
     suspend fun insertTodo(listId: Long, title: String, note: String, dueDate: Instant?, parentId: Long?, flag: Boolean): Either<TodoError, Unit>
     suspend fun setCompleted(id: Long, completed: Boolean): Either<TodoError, Unit>
     suspend fun setFlag(id: Long, flag: Boolean): Either<TodoError, Unit>

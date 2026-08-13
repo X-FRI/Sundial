@@ -2,6 +2,9 @@ package com.myapplication.shared.test
 
 import arrow.core.Either
 import com.myapplication.shared.domain.error.TodoError
+import com.myapplication.shared.domain.list.DeleteListPolicy
+import com.myapplication.shared.domain.list.ListStats
+import com.myapplication.shared.domain.list.buildListStats
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.repository.TodoRepository
@@ -13,6 +16,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * TodoRepository 的内存假实现，供 commonTest 各测试共享。
@@ -45,18 +51,42 @@ class FakeTodoRepository : TodoRepository {
     val settingsState = MutableStateFlow<Map<String, String>>(emptyMap())
     var appliedUpserts = mutableListOf<TodoRowDto>()
     var appliedDeletes = mutableListOf<Pair<String, Long>>()
+    private val fakeToday = LocalDate(2026, 8, 13)
 
     override fun observeLists(): Flow<List<TodoList>> = listsState
-    override fun observeAllActive(): Flow<List<TodoItem>> = todosState
-    override fun observeByList(listId: Long): Flow<List<TodoItem>> = todosState
-    override fun observeToday(): Flow<List<TodoItem>> = todosState
-    override fun observeScheduled(): Flow<List<TodoItem>> = todosState
-    override fun observeCompleted(): Flow<List<TodoItem>> = todosState
-    override fun observeTrashed(): Flow<List<TodoItem>> = todosState
-    override fun observeSubTasks(parentId: Long): Flow<List<TodoItem>> = todosState
+    override fun observeAllActive(): Flow<List<TodoItem>> =
+        todosState.map { todos -> todos.filterNot { it.isTrashed } }
+    override fun observeByList(listId: Long): Flow<List<TodoItem>> =
+        todosState.map { todos -> todos.filter { it.listId == listId && !it.isTrashed } }
+    override fun observeToday(): Flow<List<TodoItem>> =
+        todosState.map { todos ->
+            todos.filter { todo ->
+                !todo.isTrashed && todo.dueDate?.toLocalDateTime(TimeZone.UTC)?.date == fakeToday
+            }
+        }
+    override fun observeScheduled(): Flow<List<TodoItem>> =
+        todosState.map { todos -> todos.filter { it.dueDate != null && !it.isTrashed } }
+    override fun observeCompleted(): Flow<List<TodoItem>> =
+        todosState.map { todos -> todos.filter { it.isCompleted && !it.isTrashed } }
+    override fun observeTrashed(): Flow<List<TodoItem>> =
+        todosState.map { todos -> todos.filter { it.isTrashed } }
+    override fun observeSubTasks(parentId: Long): Flow<List<TodoItem>> =
+        todosState.map { todos -> todos.filter { it.parentId == parentId && !it.isTrashed } }
     override fun observeTodo(id: Long): Flow<TodoItem?> =
-        MutableStateFlow(todosState.value.firstOrNull { it.id == id })
-    override fun search(query: String): Flow<List<TodoItem>> = todosState
+        todosState.map { todos -> todos.firstOrNull { it.id == id } }
+    override fun search(query: String): Flow<List<TodoItem>> =
+        todosState.map { todos ->
+            todos.filter { !it.isTrashed && (it.title.contains(query) || it.note.contains(query)) }
+        }
+    override fun observeListStats(listId: Long): Flow<ListStats> =
+        todosState.map {
+            buildListStats(
+                listId = listId,
+                todos = it,
+                today = fakeToday,
+                timeZone = TimeZone.UTC,
+            )
+        }
 
     override suspend fun findById(id: Long): Either<TodoError, TodoItem?> =
         Either.Right(todosState.value.firstOrNull { it.id == id })
@@ -69,6 +99,7 @@ class FakeTodoRepository : TodoRepository {
         ensureInboxCalls++
         if (listsState.value.isEmpty()) {
             listsState.value = listOf(TodoList(1, "收件箱", "blue", 0, Instant.fromEpochMilliseconds(0)))
+            if (nextId <= 1L) nextId = 2L
         }
         return Either.Right(listsState.value.first().id)
     }
@@ -80,7 +111,46 @@ class FakeTodoRepository : TodoRepository {
         return Either.Right(Unit)
     }
 
-    override suspend fun deleteList(listId: Long): Either<TodoError, Unit> = Either.Right(Unit)
+    override suspend fun updateList(listId: Long, name: String, colorKey: String): Either<TodoError, Unit> {
+        val trimmed = name.trim()
+        val trimmedColorKey = colorKey.trim()
+        if (trimmed.isEmpty()) return Either.Left(TodoError.Persistence("列表名称不能为空"))
+        val list = listsState.value.firstOrNull { it.id == listId }
+            ?: return Either.Left(TodoError.Persistence("列表不存在"))
+        if (list.name == "收件箱" && list.position == 0) {
+            return Either.Left(TodoError.Persistence("收件箱不能改名"))
+        }
+        listsState.value = listsState.value.map {
+            if (it.id == listId) it.copy(name = trimmed, colorKey = trimmedColorKey) else it
+        }
+        return Either.Right(Unit)
+    }
+
+    override suspend fun deleteList(listId: Long, policy: DeleteListPolicy): Either<TodoError, Unit> {
+        val list = listsState.value.firstOrNull { it.id == listId }
+            ?: return Either.Left(TodoError.Persistence("列表不存在"))
+        if (list.name == "收件箱" && list.position == 0) {
+            return Either.Left(TodoError.Persistence("收件箱是系统待整理池，不能删除"))
+        }
+        val inboxId = listsState.value.firstOrNull { it.name == "收件箱" && it.position == 0 }?.id
+            ?: return Either.Left(TodoError.InboxNotFound)
+        todosState.value = todosState.value.map { todo ->
+            if (todo.listId != listId) {
+                todo
+            } else {
+                when (policy) {
+                    DeleteListPolicy.MoveTasksToInbox -> todo.copy(listId = inboxId)
+                    DeleteListPolicy.MoveTasksToTrash -> todo.copy(
+                        listId = inboxId,
+                        isTrashed = true,
+                        trashedAt = todo.trashedAt ?: Instant.fromEpochMilliseconds(0),
+                    )
+                }
+            }
+        }
+        listsState.value = listsState.value.filterNot { it.id == listId }
+        return Either.Right(Unit)
+    }
 
     override suspend fun insertTodo(
         listId: Long,

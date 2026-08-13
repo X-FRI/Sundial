@@ -95,16 +95,38 @@ class SyncCoordinator(
 
     /**
      * PostgREST cannot upsert the same constrained row twice in one command.
-     * Keep only the latest UPSERT snapshot for each table/id pair while preserving
-     * DELETE rows and the original order of the rows that remain.
+     * Keep only the latest UPSERT snapshot within each contiguous same-table
+     * UPSERT run. Do not coalesce across table/action boundaries: DELETE rows are
+     * ordering barriers, and the transport layer sends different tables in separate
+     * requests.
      */
     private fun List<SyncRow>.coalesceUpsertsForPush(): List<SyncRow> {
-        val latestUpserts = mutableMapOf<Pair<String, Long>, Long>()
+        val result = mutableListOf<SyncRow>()
+        var run = mutableListOf<SyncRow>()
+
+        fun flushRun() {
+            if (run.isEmpty()) return
+            val latest = mutableMapOf<Long, Long>()
+            run.forEach { row -> latest[row.rowId] = row.seq }
+            result += run.filter { row -> latest[row.rowId] == row.seq }
+            run = mutableListOf()
+        }
+
         forEach { row ->
-            if (row.action == SyncAction.UPSERT) latestUpserts[row.table to row.rowId] = row.seq
+            val canJoinRun = row.action == SyncAction.UPSERT &&
+                run.firstOrNull()?.let { it.action == SyncAction.UPSERT && it.table == row.table } != false
+            if (canJoinRun) {
+                run += row
+            } else {
+                flushRun()
+                if (row.action == SyncAction.UPSERT) {
+                    run += row
+                } else {
+                    result += row
+                }
+            }
         }
-        return filter { row ->
-            row.action != SyncAction.UPSERT || latestUpserts[row.table to row.rowId] == row.seq
-        }
+        flushRun()
+        return result
     }
 }
