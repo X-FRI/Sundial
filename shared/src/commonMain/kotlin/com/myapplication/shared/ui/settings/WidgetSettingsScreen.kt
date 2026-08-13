@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.ui.components.IconName
+import com.myapplication.shared.ui.components.RemBadge
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
@@ -45,6 +46,20 @@ internal enum class WidgetFactTone {
     Success,
     Warning,
 }
+
+internal enum class WidgetCapability {
+    AndroidResponsive,
+    SnapshotCache,
+    LaunchRouting,
+    MacOsRoadmap,
+}
+
+internal val widgetSettingsCapabilities = setOf(
+    WidgetCapability.AndroidResponsive,
+    WidgetCapability.SnapshotCache,
+    WidgetCapability.LaunchRouting,
+    WidgetCapability.MacOsRoadmap,
+)
 
 internal val widgetSettingsFacts = listOf(
     WidgetSettingsFact(
@@ -165,25 +180,12 @@ private fun WidgetFactRow(fact: WidgetSettingsFact) {
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
-                StatusPill(fact.status, tint)
+                RemBadge(fact.status, color = tint)
             }
             Spacer(Modifier.height(5.dp))
             BasicText(fact.description, style = RemType.text12.copy(color = colors.textNormal))
         }
     }
-}
-
-@Composable
-private fun StatusPill(text: String, tint: Color) {
-    BasicText(
-        text,
-        style = RemType.label10.copy(color = tint),
-        modifier = Modifier
-            .clip(RoundedCornerShape(RemRadii.r2))
-            .background(tint.copy(alpha = 0.10f))
-            .border(1.dp, tint.copy(alpha = 0.22f), RoundedCornerShape(RemRadii.r2))
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-    )
 }
 
 @Composable
