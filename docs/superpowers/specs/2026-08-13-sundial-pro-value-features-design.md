@@ -13,6 +13,7 @@ Sundial 当前已经具备本地优先待办、SQLDelight 持久化、Supabase �
 - 整理系统：把收件箱、无日期、逾期和不清晰任务变成可执行计划。
 - 重复任务：支持日常节律，而不是只记录一次性事项。
 - 成熟图表分析页：用图表库呈现完成趋势、精力输出、压力分布。
+- 设置与列表管理：提供真正的设置中心、列表 CRUD、列表级分析和明确删除语义。
 - 小组件增强：让用户不打开完整 app 也能看到今天任务。
 - 同步健康：让跨设备同步变得可解释、可信。
 - 智能增强骨架：先做规则引擎，未来可接 LLM。
@@ -48,6 +49,10 @@ Sundial 当前已经具备本地优先待办、SQLDelight 持久化、Supabase �
 - 重复任务数据模型、基础 UI 和完成后生成下一次。
 - 分析页改用成熟图表库。
 - 分析模型扩展到周/月范围。
+- 设置页升级为设置中心，而不是单一同步表单。
+- 列表管理支持创建、重命名、改色、查看统计、删除。
+- 自定义列表支持单独数据分析和图表。
+- 子任务支持编辑标题、备注、日期、列表和详情。
 
 验收标准：
 
@@ -56,6 +61,10 @@ Sundial 当前已经具备本地优先待办、SQLDelight 持久化、Supabase �
 - 用户能在详情页设置基础重复规则。
 - 完成重复任务后自动生成下一次任务。
 - 分析页主要图表不再手写 Canvas。
+- 用户能在设置中心管理列表。
+- 用户能看到每个列表的独立统计和图表。
+- 删除列表前必须看到明确后果，并默认保留任务。
+- 子任务可以像普通任务一样进入详情编辑。
 - Android 与 desktop debug/compile 验证通过。
 
 ### Milestone 2：跨端节律
@@ -179,6 +188,7 @@ UI：
 - 精力输出：周/月柱状图。
 - 压力分布：逾期、今天、未来、无日期的分布图。
 - 列表投入：按列表聚合的完成/活跃任务对比。
+- 单列表分析：在列表详情或分析页筛选某个列表，展示该列表的完成趋势、逾期压力、精力输出和待整理数量。
 
 数据模型：
 
@@ -204,6 +214,90 @@ ListFocusSeries
 
 - Vico: https://github.com/patrykandpatrick/vico
 - Koala Plot: https://github.com/KoalaPlot/koalaplot-core
+
+### 设置中心
+
+当前设置页只覆盖同步配置，产品上更像“同步设置”而不是真正的设置中心。第一阶段需要把它升级为一个可扩展的信息架构。
+
+设置中心分区：
+
+- `同步`：保留当前本地 / Supabase / 自建服务器配置、状态和手动同步入口。
+- `列表`：管理收件箱和自定义列表。
+- `小组件`：展示 Android 小组件状态和 macOS 小组件路线说明。
+- `数据`：导出、备份、清空垃圾箱、未来恢复入口。
+- `外观`：主题和密度预留位。
+- `关于`：版本、许可证、项目说明。
+
+UI：
+
+- 桌面端使用左侧 settings section rail + 右侧内容区。
+- 移动端使用分组列表，点入二级页面。
+- 设置页不再把所有内容塞进一个单列长表单。
+- 同步状态卡要保留，但归入 `同步` section。
+
+### 列表管理
+
+列表是 Sundial 的长期组织单位，必须有明确管理入口，而不是只在 sidebar 中隐式出现。
+
+入口：
+
+- 设置中心 `列表` section。
+- 列表模式顶部的更多菜单。
+- 自定义列表详情页。
+
+能力：
+
+- 创建列表。
+- 重命名列表。
+- 修改颜色。
+- 查看列表任务数：未完成、今天、逾期、已完成、垃圾箱。
+- 查看列表分析：完成趋势、精力输出、压力分布。
+- 删除自定义列表。
+
+收件箱规则：
+
+- 收件箱是系统列表，不能删除。
+- 收件箱不能改名。
+- 收件箱颜色可以固定，第一阶段不提供配置。
+- 收件箱可以提供“清空已完成”或“整理全部”操作，但不能作为普通列表删除。
+
+删除列表语义：
+
+- 默认删除行为必须保护任务，不应静默删除列表内任务。
+- 删除自定义列表时弹出确认对话框，展示列表内未完成、已完成、逾期任务数量。
+- 默认主按钮：`删除列表，任务移到收件箱`。
+- 危险操作：`删除列表，并将任务移到垃圾箱`。
+- 取消按钮始终可见。
+- 如果列表为空，可以直接删除，但仍需确认。
+- 远端同步中删除列表时，列表删除和任务移动必须进入同一事务和 outbox 语义，避免产生孤儿任务。
+
+这会替换当前“删除列表即把列表内 todo 移入垃圾箱”的默认语义。原语义保留为危险选项。
+
+### 子任务编辑
+
+子任务不应只是详情页中的 checklist 行。它们本质上也是 `TodoItem`，因此需要拥有与普通任务一致的编辑能力。
+
+第一阶段要求：
+
+- 子任务标题可直接内联编辑。
+- 子任务可点击进入详情。
+- 子任务详情中可以编辑标题、备注、日期、旗标和列表。
+- 子任务可独立完成、恢复、移入垃圾箱。
+- 子任务仍保留父任务关系，不因为移动列表而丢失 parentId。
+- 父任务详情中的子任务列表只展示直接子任务。
+
+交互：
+
+- 点击子任务文本进入子任务详情。
+- 桌面端在右侧详情面板切换到子任务。
+- 移动端进入子任务详情页，并保留返回父任务的路径。
+- 子任务行提供轻量内联编辑，完整编辑仍走详情页。
+
+产品约束：
+
+- 第一阶段不做无限层级子任务 UI。数据层可以保留 parentId，但 UI 只承诺父任务 → 直接子任务。
+- 当父任务移入垃圾箱时，直接子任务跟随移入垃圾箱。
+- 当父任务恢复时，直接子任务跟随恢复。
 
 ### 小组件
 
@@ -279,6 +373,12 @@ shared/src/commonMain/kotlin/com/myapplication/shared/domain/recurrence/
 shared/src/commonMain/kotlin/com/myapplication/shared/domain/analytics/
   AnalyticsRange.kt
   ChartSeries.kt
+  ListAnalyticsModel.kt
+
+shared/src/commonMain/kotlin/com/myapplication/shared/domain/list/
+  DeleteListPolicy.kt
+  ListStats.kt
+  ListManagementUseCase.kt
 
 shared/src/commonMain/kotlin/com/myapplication/shared/ui/analytics/charts/
   AnalyticsChartTheme.kt
@@ -294,6 +394,18 @@ shared/src/commonMain/kotlin/com/myapplication/shared/ui/organize/
 shared/src/commonMain/kotlin/com/myapplication/shared/ui/recurrence/
   RecurrencePicker.kt
   RecurrenceSummary.kt
+
+shared/src/commonMain/kotlin/com/myapplication/shared/ui/settings/
+  SettingsHome.kt
+  SettingsSection.kt
+  ListSettingsScreen.kt
+  DataSettingsScreen.kt
+
+shared/src/commonMain/kotlin/com/myapplication/shared/ui/list/
+  ListManagementScreen.kt
+  ListEditorDialog.kt
+  DeleteListDialog.kt
+  ListAnalyticsPanel.kt
 ```
 
 Repository 扩展：
@@ -304,9 +416,21 @@ TodoRepository
   setRecurrence(todoId, rule)
   clearRecurrence(todoId)
   completeWithRecurrence(todoId)
+  updateList(listId, name, colorKey)
+  deleteList(listId, policy)
+  observeListStats(listId)
 ```
 
 写命令继续返回 `Either<TodoError, A>`，并通过现有 `launchTodoEffect` 在 UI 层解释。
+
+删除列表 policy：
+
+```text
+DeleteListPolicy.MoveTasksToInbox
+DeleteListPolicy.MoveTasksToTrash
+```
+
+默认 UI 走 `MoveTasksToInbox`。`MoveTasksToTrash` 只从危险按钮触发。
 
 ## 数据库设计
 
@@ -333,6 +457,22 @@ ALTER TABLE todo ADD COLUMN recurrence_rule_id INTEGER;
 ALTER TABLE todo ADD COLUMN recurring_template_id INTEGER;
 ```
 
+列表表结构第一阶段不需要新增表，但需要补齐更新列表名称和颜色的 SQL：
+
+```sql
+updateList:
+UPDATE reminder_list
+SET name = ?, color_key = ?, updated_at = ?, updated_by = ?
+WHERE id = ?;
+```
+
+删除列表策略：
+
+- `MoveTasksToInbox`: 同一事务内把该列表所有未删除任务移动到收件箱，再删除列表。
+- `MoveTasksToTrash`: 同一事务内把该列表所有未删除任务移入垃圾箱，再删除列表。
+- 两种策略都要为受影响 todo 和 list 写 outbox。
+- 收件箱列表删除直接返回 typed error。
+
 同步：
 
 - `recurrence_rule` 需要加入 outbox。
@@ -348,7 +488,9 @@ ALTER TABLE todo ADD COLUMN recurring_template_id INTEGER;
 - `buildOrganizationSuggestions(...)`
 - `nextOccurrence(...)`
 - `buildAnalyticsSeries(...)`
+- `buildListAnalyticsModel(...)`
 - `buildTodayWidgetSnapshot(...)`
+- `buildListStats(...)`
 
 Effect 边界：
 
@@ -373,8 +515,11 @@ Milestone 1 必须覆盖：
 - 完成重复任务生成下一次测试。
 - SQL migration 测试。
 - Repository recurrence 写命令测试。
+- Repository list update/delete policy 测试。
+- List stats 和 list analytics 模型测试。
 - Analytics chart series 模型测试。
 - ViewModel command 测试。
+- 子任务编辑 ViewModel 测试。
 - `desktopTest`、desktop compile、Android debug build。
 
 ## 风险与决策
@@ -397,6 +542,10 @@ Vico 版本和 Compose Multiplatform 版本可能存在兼容性问题。实现�
 
 新增 recurrence 字段会影响本地和远端 schema。实现时必须保证 migration 可重复、远端 SQL 文档更新、旧数据默认不重复。
 
+### 列表删除风险
+
+列表删除是高风险操作。默认必须保留任务并移动到收件箱，危险删除必须明确文案和二次确认。实现时不能继续把“删除列表”默认解释为“列表内任务也进入垃圾箱”。
+
 ## 第一阶段交付清单
 
 1. 整理系统领域模型与规则。
@@ -405,7 +554,11 @@ Vico 版本和 Compose Multiplatform 版本可能存在兼容性问题。实现�
 4. 完成重复任务后生成下一次。
 5. 分析页改用成熟图表库，默认 Vico。
 6. 分析页周/月 range 和 chart series 模型。
-7. 对应测试与构建验证。
+7. 设置中心信息架构和列表管理 section。
+8. 自定义列表创建、重命名、改色、删除策略。
+9. 单列表统计和图表。
+10. 子任务内联编辑和详情编辑。
+11. 对应测试与构建验证。
 
 ## 未来付费映射
 
