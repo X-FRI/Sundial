@@ -200,10 +200,7 @@ private fun SettingsSectionContent(
         when (selected) {
             SettingsSection.Sync -> SyncSettingsContent(vm, onBack)
             SettingsSection.Lists -> ListSettingsScreen(mainVm, showHeader = !compact)
-            SettingsSection.Widgets -> PlaceholderSection(
-                section = selected,
-                description = "稍后可在这里配置今日摘要、桌面组件和提醒概览。",
-            )
+            SettingsSection.Widgets -> WidgetSettingsScreen()
             SettingsSection.Data -> PlaceholderSection(
                 section = selected,
                 description = "导出、备份、恢复和垃圾箱等数据工具会汇总到这里。",
