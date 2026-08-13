@@ -41,10 +41,10 @@ import com.myapplication.shared.ui.uiMessage
  *   本文件只负责「根据路由与屏宽决定画什么」，不持有业务状态。
  */
 @Composable
-fun App(launchTarget: String? = null) {
+fun App(launchTarget: String? = null, launchNonce: Int = 0) {
     RemindersTheme {
         val graph = remember { createAppGraph() }
-        AppRoot(graph, launchTarget)
+        AppRoot(graph, launchTarget, launchNonce)
     }
 }
 
@@ -58,11 +58,11 @@ fun App(launchTarget: String? = null) {
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun AppRoot(graph: AppGraph, launchTarget: String? = null) {
+fun AppRoot(graph: AppGraph, launchTarget: String? = null, launchNonce: Int = 0) {
     val mainVm: MainViewModel = viewModel {
         MainViewModel(graph.repository, graph.addTodo, graph.timeZone, graph.completeRecurringTodo)
     }
-    LaunchedEffect(launchTarget) {
+    LaunchedEffect(launchEffectKey(launchTarget, launchNonce)) {
         when (launchTarget) {
             "today" -> mainVm.applyLaunchTarget(LaunchTarget.Today)
             "workbench" -> mainVm.applyLaunchTarget(LaunchTarget.Workbench)
@@ -123,3 +123,8 @@ fun AppRoot(graph: AppGraph, launchTarget: String? = null) {
         )
     }
 }
+
+internal data class LaunchEffectKey(val target: String?, val nonce: Int)
+
+internal fun launchEffectKey(target: String?, nonce: Int): LaunchEffectKey =
+    LaunchEffectKey(target, nonce)

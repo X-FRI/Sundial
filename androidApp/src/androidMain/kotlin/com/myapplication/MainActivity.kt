@@ -15,10 +15,11 @@ import com.myapplication.shared.data.setAndroidAppContext
 
 class MainActivity : AppCompatActivity() {
     private var launchTarget by mutableStateOf<String?>(null)
+    private var launchNonce by mutableStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        launchTarget = launchTargetFromIntent(intent)
+        applyLaunchIntent(intent)
         // targetSdk 36 起系统强制 edge-to-edge：显式配置状态栏/导航栏样式，
         // 让系统按当前主题（浅/深色）自动选择图标明暗，否则透明状态栏下图标
         // 与 app 背景同色，看起来像系统状态栏"消失"。
@@ -28,14 +29,19 @@ class MainActivity : AppCompatActivity() {
         )
         setAndroidAppContext(applicationContext)
         setContent {
-            MainView(launchTarget = launchTarget)
+            MainView(launchTarget = launchTarget, launchNonce = launchNonce)
         }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        applyLaunchIntent(intent)
+    }
+
+    private fun applyLaunchIntent(intent: Intent?) {
         launchTarget = launchTargetFromIntent(intent)
+        launchNonce += 1
     }
 
     private fun launchTargetFromIntent(intent: Intent?): String? =
