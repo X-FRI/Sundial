@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -55,16 +54,24 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
 /**
- * 设置页（同步设置）：表单编辑 + 保存 + 实时同步状态展示。
+ * 设置中心入口：外层信息架构由 [SettingsHome] 管理，同步配置作为一个 section 内容嵌入。
  *
- * 布局要点：
- * - 全屏 Column 可滚动，内容宽度限制在 520dp 内居中，适配桌面与窄屏；
+ * 同步 section 布局要点：
+ * - 内容可滚动，宽度限制在 520dp 内居中，适配桌面与窄屏；
  * - 上半部分为同步方式选择（本地 / Supabase / 自建服务器，后两者显示连接信息输入）；
  * - 保存按钮在 Supabase 配置不完整时禁用，并给出提示文案；
  * - 下半部分 [StatusCard] 实时展示 SyncEngine 的连接状态。
  */
 @Composable
 fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
+    SettingsHome(
+        vm = vm,
+        onBack = onBack,
+    )
+}
+
+@Composable
+internal fun SyncSettingsContent(vm: SettingsViewModel, onBack: () -> Unit) {
     val colors = LocalRemColors.current
     val form by vm.form.collectAsState()
     val status by vm.syncStatus.collectAsState()
@@ -74,7 +81,6 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -84,15 +90,9 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit) {
                 .widthIn(max = 520.dp)
                 .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 40.dp),
         ) {
-            // 页头：标题 + 返回按钮。
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    BasicText("同步设置", style = RemType.title18.copy(color = colors.textHigh))
-                    Spacer(Modifier.height(2.dp))
-                    BasicText("选择数据同步方式，保存后立即生效", style = RemType.text12.copy(color = colors.textLow))
-                }
-                RemButton("返回", onClick = onBack)
-            }
+            BasicText("同步", style = RemType.title20.copy(color = colors.textHigh))
+            Spacer(Modifier.height(2.dp))
+            BasicText("选择数据同步方式，保存后立即生效", style = RemType.text12.copy(color = colors.textLow))
             Spacer(Modifier.height(20.dp))
             SectionLabel("同步方式")
             Spacer(Modifier.height(8.dp))
