@@ -22,8 +22,9 @@ internal class WidgetSnapshotCache(
 
     fun read(): TodayWidgetSnapshot? {
         return try {
-            if (!file.exists()) return null
-            json.decodeFromString<TodayWidgetSnapshot>(file.readText())
+            val atomicFile = AtomicFile(file)
+            val bytes = atomicFile.openRead().use { stream -> stream.readBytes() }
+            json.decodeFromString<TodayWidgetSnapshot>(bytes.decodeToString())
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
