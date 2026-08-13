@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="docs/logo.svg" width="96" alt="Sundial logo" />
+  <img src="docs/assets/sundial-icon.png" width="96" alt="Sundial logo" />
 </p>
 
 <h1 align="center">Sundial</h1>
 
 <p align="center">
-  <strong>跨平台待办应用</strong> · 本地优先 · 实时多端同步
+    使用 Kotlin Compose Multiplatform 实现的全平台同步 Reminder App
 </p>
 
 <p align="center">
@@ -20,11 +20,19 @@
 
 ---
 
-## 简介
+<p align="center">
+  <img src="docs/assets/promo-hero.png" alt="Sundial desktop and mobile product mockups" />
+</p>
 
-Sundial 是使用 **Kotlin Compose Multiplatform** 实现的全平台同步 Reminder App。
+## 产品逻辑
 
-它采用**本地优先**架构——所有数据先落本地 SQLite，同步作为可插拔的后端能力存在：默认纯本地使用，需要时一键切换到 Supabase 云端，实现多设备实时同步；未来还可接入自建服务器（已预留端口）。
+Sundial 把待办拆成四个自然步骤：先捕获到收件箱，再安排到今天或未来，随后在工作台按压力分组推进，最后用分析页复盘完成趋势与精力输出。
+
+- **工作台**：默认展示所有未完成事项，并按逾期、今天、未来、无日期、待整理分组展开，第一屏就是当前压力总览。
+- **列表**：用于维护真正的清单边界，每个列表都有自己的待办分布和后续分析入口。
+- **收件箱**：只负责快速捕获临时事项，提醒用户之后归类或安排，不再混作顶层工作流。
+- **分析**：使用图表呈现完成趋势、连续记录、完成率与精力输出，让复盘成为推进动力。
+- **同步**：本地优先，可切换 Supabase 多端同步，桌面和移动端共享同一套数据模型。
 
 ## 技术栈
 

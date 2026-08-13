@@ -3,6 +3,8 @@ package com.myapplication.shared.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import com.myapplication.shared.ui.settings.DisplayDensity
+import com.myapplication.shared.ui.settings.ThemeMode
 
 /**
  * 应用主题根节点：根据系统深浅色选择对应色表，并通过
@@ -14,8 +16,19 @@ import androidx.compose.runtime.CompositionLocalProvider
  * - 当前仅跟随系统主题，无手动覆盖。
  */
 @Composable
-fun RemindersTheme(content: @Composable () -> Unit) {
-    val colors = if (isSystemInDarkTheme()) DarkRemColors else LightRemColors
+fun RemindersTheme(
+    themeMode: ThemeMode = ThemeMode.System,
+    displayDensity: DisplayDensity = DisplayDensity.Comfortable,
+    fontFamily: String = "system",
+    content: @Composable () -> Unit,
+) {
+    applyRemFontFamilyPreference(fontFamily)
+    applyRemDisplayDensityPreference(displayDensity.key)
+    val colors = when (themeMode) {
+        ThemeMode.System -> if (isSystemInDarkTheme()) DarkRemColors else LightRemColors
+        ThemeMode.Light -> LightRemColors
+        ThemeMode.Dark -> DarkRemColors
+    }
     CompositionLocalProvider(
         LocalRemColors provides colors,
     ) {

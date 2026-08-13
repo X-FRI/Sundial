@@ -3,6 +3,7 @@ package com.myapplication.shared.ui.shell
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,11 @@ import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemIconButton
 import com.myapplication.shared.ui.components.RemSyncIndicator
 import com.myapplication.shared.ui.components.RemTextField
+import com.myapplication.shared.ui.components.SundialBottomNavItem
+import com.myapplication.shared.ui.components.rememberHoverBackground
+import com.myapplication.shared.ui.design.destinationForScope
+import com.myapplication.shared.ui.design.scopeForDestination
+import com.myapplication.shared.ui.design.sundialPrimaryDestinations
 import com.myapplication.shared.ui.detail.DetailContent
 import com.myapplication.shared.ui.ledger.ContextTimelineCompact
 import com.myapplication.shared.ui.ledger.MainLedger
@@ -113,8 +119,6 @@ fun MobileShell(
             } else {
                 if (scope is Scope.List) {
                     MobileListStrip(mainVm)
-                } else {
-                    MobileWorkbenchFilters(mainVm)
                 }
                 ContextTimelineCompact(
                     state = contextTimeline,
@@ -197,7 +201,7 @@ private fun MobileTopBar(
         } else when (val currentScope = scope) {
             is Scope.List -> {
                 val list = lists.firstOrNull { it.id == currentScope.listId }
-                if (currentScope.listId == inboxListId) "收件箱 · 待整理" else list?.name ?: "列表"
+                list?.name ?: "列表"
             }
             else -> scopeTitle(scope, query)
         }
@@ -236,10 +240,16 @@ private fun MobileTopBar(
                     androidx.compose.foundation.text.BasicText(title, style = RemType.title20.copy(color = colors.textHigh))
                 }
                 if (syncStatus.mode != SyncMode.Local) {
+                    val syncInteraction = remember { MutableInteractionSource() }
                     Box(
                         Modifier
                             .size(36.dp)
-                            .clickable(onClick = onSyncNow),
+                            .background(rememberHoverBackground(syncInteraction), RoundedCornerShape(RemRadii.r2))
+                            .clickable(
+                                interactionSource = syncInteraction,
+                                indication = null,
+                                onClick = onSyncNow,
+                            ),
                         contentAlignment = Alignment.Center,
                     ) {
                         RemSyncIndicator(syncStatus.phase(), size = 13.dp)
@@ -258,6 +268,7 @@ private fun MobileBottomNav(mainVm: MainViewModel) {
     val colors = LocalRemColors.current
     val scope by mainVm.scope.collectAsState()
     val lists by mainVm.lists.collectAsState()
+    val currentDestination = destinationForScope(scope)
     Row(
         Modifier
             .fillMaxWidth()
@@ -266,35 +277,17 @@ private fun MobileBottomNav(mainVm: MainViewModel) {
             .padding(horizontal = 10.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        MobileNavItem(IconName.Layers, "工作台", scope !is Scope.List && scope != Scope.Analytics, Modifier.weight(1f)) { mainVm.selectScope(Scope.All) }
-        MobileNavItem(IconName.Tray, "列表", scope is Scope.List, Modifier.weight(1f)) {
-            lists.firstOrNull()?.let { mainVm.selectScope(Scope.List(it.id)) } ?: mainVm.selectScope(Scope.All)
+        sundialPrimaryDestinations().forEach { item ->
+            SundialBottomNavItem(
+                icon = item.icon,
+                label = item.label,
+                selected = currentDestination == item.destination,
+                onClick = {
+                    mainVm.selectScope(scopeForDestination(item.destination, lists))
+                },
+                modifier = Modifier.weight(1f),
+            )
         }
-        MobileNavItem(IconName.Chart, "分析", scope == Scope.Analytics, Modifier.weight(1f)) { mainVm.selectScope(Scope.Analytics) }
-    }
-}
-
-@Composable
-private fun MobileWorkbenchFilters(mainVm: MainViewModel) {
-    val scope by mainVm.scope.collectAsState()
-    val todayCount by mainVm.todayCount.collectAsState()
-    val scheduledCount by mainVm.scheduledCount.collectAsState()
-    val allCount by mainVm.allCount.collectAsState()
-    val completedCount by mainVm.completedCount.collectAsState()
-    val trashCount by mainVm.trashCount.collectAsState()
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .background(LocalRemColors.current.bgPrimary)
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        MobileFilterChip(IconName.Layers, "全部", allCount, scope == Scope.All) { mainVm.selectScope(Scope.All) }
-        MobileFilterChip(IconName.Today, "今天", todayCount, scope == Scope.Today) { mainVm.selectScope(Scope.Today) }
-        MobileFilterChip(IconName.Scheduled, "计划", scheduledCount, scope == Scope.Scheduled) { mainVm.selectScope(Scope.Scheduled) }
-        MobileFilterChip(IconName.CheckCircle, "完成", completedCount, scope == Scope.Completed) { mainVm.selectScope(Scope.Completed) }
-        MobileFilterChip(IconName.Trash, "垃圾箱", trashCount, scope == Scope.Trash) { mainVm.selectScope(Scope.Trash) }
     }
 }
 
@@ -312,10 +305,9 @@ private fun MobileListStrip(mainVm: MainViewModel) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         lists.forEach { list ->
-            val label = if (list.name == "收件箱") "收件箱 · 待整理" else list.name
             MobileFilterChip(
                 icon = IconName.Inbox,
-                label = label,
+                label = list.name,
                 count = listCounts[list.id] ?: 0,
                 selected = scope == Scope.List(list.id),
             ) { mainVm.selectScope(Scope.List(list.id)) }
@@ -345,28 +337,5 @@ private fun MobileFilterChip(
         androidx.compose.foundation.text.BasicText(label, style = RemType.text12.copy(color = if (selected) colors.brand else colors.textNormal))
         Spacer(Modifier.width(6.dp))
         androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text10.copy(color = colors.textLow))
-    }
-}
-
-@Composable
-private fun MobileNavItem(
-    icon: IconName,
-    label: String,
-    selected: Boolean,
-    modifier: Modifier,
-    onClick: () -> Unit,
-) {
-    val colors = LocalRemColors.current
-    Column(
-        modifier
-            .height(50.dp)
-            .background(if (selected) colors.brandSubtle else colors.bgPrimary, RoundedCornerShape(RemRadii.r4))
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        RemIcon(icon, if (selected) colors.brand else colors.textLow, Modifier.size(17.dp))
-        Spacer(Modifier.height(2.dp))
-        androidx.compose.foundation.text.BasicText(label, style = RemType.text10.copy(color = if (selected) colors.brand else colors.textLow))
     }
 }

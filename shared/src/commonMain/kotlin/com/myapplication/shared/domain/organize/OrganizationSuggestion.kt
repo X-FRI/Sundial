@@ -12,6 +12,6 @@ enum class OrganizationAction {
     ScheduleToday,
     ScheduleTomorrow,
     MoveToList,
-    CreateSubtask,
+    EditTitle,
     Trash,
 }

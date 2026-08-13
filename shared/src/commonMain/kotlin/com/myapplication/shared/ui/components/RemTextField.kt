@@ -27,6 +27,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
@@ -41,6 +42,7 @@ import com.myapplication.shared.ui.theme.RemType
  * - placeholder 通过 decorationBox 在值为空时叠加显示，不占用布局空间；
  * - [onEnter] 非空时把键盘 IME 设为 Done 并拦截确认键（桌面端回车、移动端键盘完成键）；
  * - [trailing] 为右侧可点击文字（如"清除"），颜色恒为品牌色；
+ * - [trailingContent] 为右侧自定义操作区（如显示/隐藏密码的小图标）；
  * - 光标颜色为品牌色，文字颜色固定 textHigh。
  */
 @Composable
@@ -55,9 +57,11 @@ fun RemTextField(
     leadingIcon: IconName? = null,
     onEnter: (() -> Unit)? = null,
     trailing: Pair<String, () -> Unit>? = null,
+    trailingContent: (@Composable () -> Unit)? = null,
     focusRequester: FocusRequester? = null,
     bordered: Boolean = true,
     readOnly: Boolean = false,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
 ) {
     val colors = LocalRemColors.current
     var focused by remember { mutableStateOf(false) }
@@ -95,6 +99,7 @@ fun RemTextField(
             cursorBrush = SolidColor(colors.brand),
             singleLine = singleLine,
             minLines = minLines,
+            visualTransformation = visualTransformation,
             // 有 onEnter 才声明 Done 动作，否则保持默认键盘
             keyboardOptions = if (onEnter != null) KeyboardOptions(imeAction = ImeAction.Done) else KeyboardOptions.Default,
             keyboardActions = if (onEnter != null) KeyboardActions(onDone = { onEnter() }) else KeyboardActions.Default,
@@ -116,6 +121,10 @@ fun RemTextField(
                     indication = null,
                 ) { trailing.second() },
             )
+        }
+        if (trailingContent != null) {
+            Spacer(Modifier.width(6.dp))
+            trailingContent()
         }
     }
 }

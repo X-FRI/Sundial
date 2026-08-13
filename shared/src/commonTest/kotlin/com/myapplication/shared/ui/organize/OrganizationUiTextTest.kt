@@ -35,24 +35,34 @@ class OrganizationUiTextTest {
     }
 
     @Test
+    fun visibleSuggestionsKeepLongTitleButHideInboxAfterDateIsArranged() {
+        val suggestions = listOf(
+            OrganizationSuggestion(todo(1), setOf(OrganizationReason.Inbox), listOf(OrganizationAction.MoveToList)),
+            OrganizationSuggestion(todo(2), setOf(OrganizationReason.LongTitle), listOf(OrganizationAction.EditTitle)),
+        )
+
+        assertEquals(listOf(2L), suggestions.visibleOrganizationSuggestions().map { it.todo.id })
+    }
+
+    @Test
     fun reasonsAndActionsUseChineseLabelsInsteadOfEnumNames() {
         val reasonText = organizationReasonText(
             setOf(
                 OrganizationReason.Inbox,
                 OrganizationReason.NoDate,
-                OrganizationReason.MissingNextStep,
+                OrganizationReason.LongTitle,
             ),
         )
         val actionLabels = listOf(
             OrganizationAction.ScheduleToday,
             OrganizationAction.ScheduleTomorrow,
             OrganizationAction.MoveToList,
-            OrganizationAction.CreateSubtask,
+            OrganizationAction.EditTitle,
             OrganizationAction.Trash,
         ).map { it.organizationActionLabel() }
 
-        assertEquals("待归类 · 无日期 · 缺少下一步", reasonText)
-        assertEquals(listOf("安排今天", "安排明天", "移动列表", "拆子任务", "删除"), actionLabels)
+        assertEquals("待归类 · 无日期 · 标题过长", reasonText)
+        assertEquals(listOf("安排今天", "安排明天", "移动列表", "编辑标题", "删除"), actionLabels)
         assertFalse(reasonText.contains("Inbox"))
         assertFalse(actionLabels.any { label -> OrganizationAction.entries.any { label == it.name } })
     }

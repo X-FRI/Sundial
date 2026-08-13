@@ -53,6 +53,10 @@ class FakeTodoRepository : TodoRepository {
     var recurrenceRule: RecurrenceRule? = null
     var lastSetTitleId: Long? = null
     var lastSetTitleValue: String? = null
+    var lastSetDueDateId: Long? = null
+    var lastSetDueDateValue: Instant? = null
+    var lastMovedTodoId: Long? = null
+    var lastMovedListId: Long? = null
     var lastDeleteListPolicy: DeleteListPolicy? = null
     var lastUpdatedListName: String? = null
     var lastUpdatedListColor: String? = null
@@ -260,7 +264,14 @@ class FakeTodoRepository : TodoRepository {
         return Either.Right(Unit)
     }
     override suspend fun setNote(id: Long, note: String): Either<TodoError, Unit> = Either.Right(Unit)
-    override suspend fun setDueDate(id: Long, dueDate: Instant?): Either<TodoError, Unit> = Either.Right(Unit)
+    override suspend fun setDueDate(id: Long, dueDate: Instant?): Either<TodoError, Unit> {
+        lastSetDueDateId = id
+        lastSetDueDateValue = dueDate
+        todosState.value = todosState.value.map { todo ->
+            if (todo.id == id) todo.copy(dueDate = dueDate) else todo
+        }
+        return Either.Right(Unit)
+    }
     override suspend fun setRecurrence(id: Long, rule: RecurrenceRule?): Either<TodoError, Unit> {
         recurrenceId = id
         recurrenceRule = rule
@@ -269,7 +280,14 @@ class FakeTodoRepository : TodoRepository {
         }
         return Either.Right(Unit)
     }
-    override suspend fun moveToList(id: Long, listId: Long): Either<TodoError, Unit> = Either.Right(Unit)
+    override suspend fun moveToList(id: Long, listId: Long): Either<TodoError, Unit> {
+        lastMovedTodoId = id
+        lastMovedListId = listId
+        todosState.value = todosState.value.map { todo ->
+            if (todo.id == id) todo.copy(listId = listId) else todo
+        }
+        return Either.Right(Unit)
+    }
     override suspend fun trash(id: Long): Either<TodoError, Unit> = Either.Right(Unit)
     override suspend fun restore(id: Long): Either<TodoError, Unit> = Either.Right(Unit)
     override suspend fun deleteForever(id: Long): Either<TodoError, Unit> = Either.Right(Unit)

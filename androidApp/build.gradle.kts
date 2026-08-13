@@ -37,8 +37,8 @@ android {
         applicationId = "com.myapplication.MyApplication"
         minSdk = (findProperty("android.minSdk") as String).toInt()
         targetSdk = (findProperty("android.targetSdk") as String).toInt()
-        versionCode = 9
-        versionName = "0.8.0"
+        versionCode = 10
+        versionName = "0.9.0"
     }
     signingConfigs {
         if (keystoreProps.getProperty("keystore.storeFile") != null) {

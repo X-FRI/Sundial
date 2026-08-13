@@ -121,13 +121,12 @@ internal fun OrganizationReason.organizationReasonLabel(): String = when (this) 
     OrganizationReason.NoDate -> "无日期"
     OrganizationReason.Overdue -> "已逾期"
     OrganizationReason.LongTitle -> "标题过长"
-    OrganizationReason.MissingNextStep -> "缺少下一步"
 }
 
 internal fun OrganizationAction.organizationActionLabel(): String = when (this) {
     OrganizationAction.ScheduleToday -> "安排今天"
     OrganizationAction.ScheduleTomorrow -> "安排明天"
     OrganizationAction.MoveToList -> "移动列表"
-    OrganizationAction.CreateSubtask -> "拆子任务"
+    OrganizationAction.EditTitle -> "编辑标题"
     OrganizationAction.Trash -> "删除"
 }

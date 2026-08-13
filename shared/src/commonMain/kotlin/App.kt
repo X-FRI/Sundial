@@ -25,6 +25,7 @@ import com.myapplication.shared.ui.main.LaunchTarget
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Route
 import com.myapplication.shared.ui.settings.SettingsScreen
+import com.myapplication.shared.ui.settings.SettingsViewModel
 import com.myapplication.shared.ui.shell.DesktopShell
 import com.myapplication.shared.ui.shell.MobileShell
 import com.myapplication.shared.ui.theme.LocalRemColors
@@ -42,9 +43,15 @@ import com.myapplication.shared.ui.uiMessage
  */
 @Composable
 fun App(launchTarget: String? = null, launchNonce: Int = 0) {
-    RemindersTheme {
-        val graph = remember { createAppGraph() }
-        AppRoot(graph, launchTarget, launchNonce)
+    val graph = remember { createAppGraph() }
+    val settingsVm: SettingsViewModel = viewModel { graph.settingsViewModelFactory() }
+    val preferences by settingsVm.preferences.collectAsState()
+    RemindersTheme(
+        themeMode = preferences.themeMode,
+        displayDensity = preferences.displayDensity,
+        fontFamily = preferences.fontFamily,
+    ) {
+        AppRoot(graph, settingsVm, launchTarget, launchNonce)
     }
 }
 
@@ -58,7 +65,12 @@ fun App(launchTarget: String? = null, launchNonce: Int = 0) {
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun AppRoot(graph: AppGraph, launchTarget: String? = null, launchNonce: Int = 0) {
+fun AppRoot(
+    graph: AppGraph,
+    settingsVm: SettingsViewModel,
+    launchTarget: String? = null,
+    launchNonce: Int = 0,
+) {
     val mainVm: MainViewModel = viewModel {
         MainViewModel(graph.repository, graph.addTodo, graph.timeZone, graph.completeRecurringTodo)
     }
@@ -93,7 +105,7 @@ fun AppRoot(graph: AppGraph, launchTarget: String? = null, launchNonce: Int = 0)
         when {
             // 分支 1：设置页全屏覆盖（不参与宽/窄分屏）。
             route == Route.Settings -> SettingsScreen(
-                vm = viewModel { graph.settingsViewModelFactory() },
+                vm = settingsVm,
                 mainVm = mainVm,
                 onBack = mainVm::back,
             )

@@ -121,13 +121,8 @@ private fun AnalyticsHeader(model: AnalyticsModel, compact: Boolean) {
     val colors = LocalRemColors.current
     Column {
         androidx.compose.foundation.text.BasicText(
-            "分析",
-            style = if (compact) RemType.title20.copy(color = colors.textHigh) else RemType.title24.copy(color = colors.textHigh),
-        )
-        Spacer(Modifier.height(4.dp))
-        androidx.compose.foundation.text.BasicText(
             model.encouragement,
-            style = RemType.text14.copy(color = colors.textLow),
+            style = if (compact) RemType.text14.copy(color = colors.textLow) else RemType.title18.copy(color = colors.textHigh),
         )
     }
 }

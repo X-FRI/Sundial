@@ -9,7 +9,6 @@ internal enum class SettingsSection(
 ) {
     Sync("同步", "连接、状态和手动同步", IconName.Sync),
     Lists("列表", "管理列表、颜色和统计", IconName.Inbox),
-    Widgets("小组件", "今天摘要和桌面组件", IconName.Today),
     Data("数据", "导出、备份和垃圾箱", IconName.Tray),
     Appearance("外观", "主题和显示密度", IconName.Settings),
     About("关于", "版本和许可证", IconName.Device),

@@ -1,7 +1,5 @@
 package com.myapplication.shared.ui.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,7 +40,7 @@ enum class RemButtonVariant { Default, Ghost, Danger }
  *
  * 设计要点：
  * - 自绘交互状态：通过 [MutableInteractionSource] 收集 hover/pressed，
- *   背景与前景色均用 animateColorAsState 做 200ms 过渡；
+ *   背景与前景色即时切换，避免桌面端 hover 区域边界反复重组产生闪烁；
  * - 关闭默认 indication（水波纹），风格统一为纯色渐变；
  * - 禁用态按变体处理：Default 变灰的品牌色，其余变体完全透明 + 弱化文字；
  * - Danger 变体仅画边框，底色靠 hover 叠加，避免常驻红色块过重。
@@ -60,31 +58,23 @@ fun RemButton(
     val hovered by interactionSource.collectIsHoveredAsState()
     val pressed by interactionSource.collectIsPressedAsState()
     // 背景色状态机：禁用 > 变体主色 > hover 反馈 > 透明兜底
-    val bg by animateColorAsState(
-        when {
-            !enabled && variant == RemButtonVariant.Default -> colors.brand.copy(alpha = 0.4f)
-            !enabled -> Color.Transparent
-            variant == RemButtonVariant.Default && hovered -> colors.brandHover
-            variant == RemButtonVariant.Default -> colors.brand
-            variant == RemButtonVariant.Danger && hovered -> colors.error.copy(alpha = 0.08f)
-            hovered -> colors.bgSecondary
-            else -> Color.Transparent
-        },
-        tween(200),
-        label = "btn-bg",
-    )
+    val bg = when {
+        !enabled && variant == RemButtonVariant.Default -> colors.brand.copy(alpha = 0.4f)
+        !enabled -> Color.Transparent
+        variant == RemButtonVariant.Default && hovered -> colors.brandHover
+        variant == RemButtonVariant.Default -> colors.brand
+        variant == RemButtonVariant.Danger && hovered -> colors.error.copy(alpha = 0.08f)
+        hovered -> colors.bgSecondary
+        else -> Color.Transparent
+    }
     // 前景色状态机：禁用态弱化、Default 恒白字、Danger 恒红字
-    val fg by animateColorAsState(
-        when {
-            !enabled && variant == RemButtonVariant.Default -> Color.White.copy(alpha = 0.7f)
-            !enabled -> colors.textLow.copy(alpha = 0.6f)
-            variant == RemButtonVariant.Default -> Color.White
-            variant == RemButtonVariant.Danger -> colors.error
-            else -> colors.textNormal
-        },
-        tween(200),
-        label = "btn-fg",
-    )
+    val fg = when {
+        !enabled && variant == RemButtonVariant.Default -> Color.White.copy(alpha = 0.7f)
+        !enabled -> colors.textLow.copy(alpha = 0.6f)
+        variant == RemButtonVariant.Default -> Color.White
+        variant == RemButtonVariant.Danger -> colors.error
+        else -> colors.textNormal
+    }
     val shape = RoundedCornerShape(RemRadii.r4)
     Box(
         modifier
@@ -130,7 +120,7 @@ fun RemIconButton(
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
     val pressed by interactionSource.collectIsPressedAsState()
-    val bg by animateColorAsState(if (hovered) colors.bgSecondary else Color.Transparent, tween(200), label = "ib-bg")
+    val bg = if (hovered) colors.bgSecondary else Color.Transparent
     Box(
         modifier
             .size(containerSize)

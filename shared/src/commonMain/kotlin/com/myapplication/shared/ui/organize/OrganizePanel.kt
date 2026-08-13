@@ -3,6 +3,7 @@ package com.myapplication.shared.ui.organize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.myapplication.shared.domain.organize.OrganizationAction
+import com.myapplication.shared.domain.organize.OrganizationReason
 import com.myapplication.shared.domain.organize.OrganizationSuggestion
 
 internal const val OrganizationSuggestionLimit = 5
@@ -31,4 +32,4 @@ fun OrganizePanel(
 }
 
 internal fun List<OrganizationSuggestion>.visibleOrganizationSuggestions(): List<OrganizationSuggestion> =
-    filter { it.reasons.size >= 2 }.take(OrganizationSuggestionLimit)
+    filter { it.reasons.size >= 2 || OrganizationReason.LongTitle in it.reasons }.take(OrganizationSuggestionLimit)

@@ -43,6 +43,7 @@ create table if not exists public.todo (
 
 alter table public.todo add column if not exists recurrence_frequency text;
 alter table public.todo add column if not exists recurrence_interval bigint;
+notify pgrst, 'reload schema';
 
 create index if not exists idx_todo_list_trash on public.todo(list_id, is_trashed);
 create index if not exists idx_todo_trash_due on public.todo(is_trashed, due_date);
@@ -74,6 +75,29 @@ alter publication supabase_realtime add table public.todo;
 3. 打开 Dashboard → Realtime，确认 `todo` 与 `reminder_list` 已在 publication 中（若 SQL Editor 已执行上述脚本，默认已加入）。
 4. 打开应用 → 侧边栏 → 设置 → 选择「Supabase 云端」→ 填入项目的 URL（Project Settings → API → Project URL）与 anon key（Project Settings → API → anon public key）→ 保存。
 5. 应用开始推送本地 outbox 并订阅远端变化；设置页显示连接与待同步状态。
+
+## 升级到含循环任务字段后的修复
+
+如果设置页同步状态出现类似错误：
+
+```text
+Could not find the 'recurrence_frequency' column of 'todo' in the schema cache
+Code: PGRST204
+```
+
+说明当前应用已经会同步循环任务字段，但你的 Supabase `public.todo` 表还是旧结构，或 PostgREST schema cache 还没有刷新。打开 Supabase Dashboard → SQL Editor，执行下面这段 SQL 即可（可重复执行）：
+
+```sql
+alter table public.todo
+  add column if not exists recurrence_frequency text;
+
+alter table public.todo
+  add column if not exists recurrence_interval bigint;
+
+notify pgrst, 'reload schema';
+```
+
+执行完成后回到 Sundial，点击一次「同步」；如果仍然报同样错误，等待十几秒后再点一次，或在 Supabase Dashboard 中重启 API 服务刷新 schema cache。
 
 ## 安全边界（重要）
 

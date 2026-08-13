@@ -1,7 +1,9 @@
 package com.myapplication.shared.ui.ledger
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,8 +11,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -20,16 +25,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.organize.OrganizationAction
+import com.myapplication.shared.domain.organize.OrganizationSuggestion
 import com.myapplication.shared.domain.organize.buildOrganizationSuggestions
+import com.myapplication.shared.ui.components.IconName
+import com.myapplication.shared.ui.components.RemDialog
+import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemButton
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Scope
 import com.myapplication.shared.ui.main.scopeTitle
 import com.myapplication.shared.ui.organize.OrganizePanel
+import com.myapplication.shared.ui.theme.ListColorOf
 import com.myapplication.shared.ui.theme.RemControlSize
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemType
@@ -63,6 +74,7 @@ fun MainLedger(
     val query by mainVm.searchQuery.collectAsState()
     val lists by mainVm.lists.collectAsState()
     var showCreate by remember { mutableStateOf(false) }
+    var movingSuggestion by remember { mutableStateOf<OrganizationSuggestion?>(null) }
     val groups = remember(todos) { buildTaskGroups(todos) }
     val trashGroups = remember(todos) { buildTrashGroups(todos) }
     val trashScope = scope == Scope.Trash
@@ -127,7 +139,7 @@ fun MainLedger(
                 showDayRail = scope == Scope.Today && !trashScope,
                 onOpen = mainVm::openDetail,
             )
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(12.dp))
         }
         LazyColumn(Modifier.fillMaxSize()) {
             if (trashScope) {
@@ -152,10 +164,12 @@ fun MainLedger(
                             selectedId = selectedId,
                             onOpen = mainVm::openDetail,
                             onAction = { suggestion, action ->
-                                if (action == OrganizationAction.Trash) {
-                                    mainVm.trash(suggestion.todo)
-                                } else {
-                                    mainVm.openDetail(suggestion.todo.id)
+                                when (action) {
+                                    OrganizationAction.ScheduleToday -> mainVm.scheduleToday(suggestion.todo)
+                                    OrganizationAction.ScheduleTomorrow -> mainVm.scheduleTomorrow(suggestion.todo)
+                                    OrganizationAction.MoveToList -> movingSuggestion = suggestion
+                                    OrganizationAction.EditTitle -> mainVm.openDetail(suggestion.todo.id)
+                                    OrganizationAction.Trash -> mainVm.trash(suggestion.todo)
                                 }
                             },
                             showRowContainer = !edgeToEdgeRows,
@@ -198,6 +212,67 @@ fun MainLedger(
             },
         )
     }
+
+    movingSuggestion?.let { suggestion ->
+        MoveSuggestionListDialog(
+            suggestion = suggestion,
+            lists = lists,
+            onDismiss = { movingSuggestion = null },
+            onMove = { list ->
+                movingSuggestion = null
+                mainVm.moveTodoToList(suggestion.todo, list.id)
+            },
+        )
+    }
+}
+
+@Composable
+private fun MoveSuggestionListDialog(
+    suggestion: OrganizationSuggestion,
+    lists: List<TodoList>,
+    onDismiss: () -> Unit,
+    onMove: (TodoList) -> Unit,
+) {
+    val colors = LocalRemColors.current
+    RemDialog(
+        title = "移动到列表",
+        onDismiss = onDismiss,
+        confirmText = "确定",
+        onConfirm = onDismiss,
+        showButtons = false,
+        content = {
+            androidx.compose.foundation.text.BasicText(
+                suggestion.todo.title,
+                style = RemType.text12.copy(color = colors.textLow),
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            lists.forEach { list ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = androidx.compose.runtime.remember { MutableInteractionSource() },
+                            indication = null,
+                        ) {
+                            onMove(list)
+                        }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.size(10.dp).background(ListColorOf[list.colorKey] ?: Color.Gray, CircleShape))
+                    Spacer(Modifier.width(8.dp))
+                    androidx.compose.foundation.text.BasicText(
+                        list.name,
+                        style = RemType.text14.copy(color = colors.textHigh),
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (list.id == suggestion.todo.listId) {
+                        RemIcon(IconName.CheckCircle, colors.brand, Modifier.size(16.dp))
+                    }
+                }
+            }
+        },
+    )
 }
 
 fun Scope.toTimelineScope(inboxListId: Long?): TimelineScope = when (this) {
@@ -220,7 +295,7 @@ private fun ledgerTitle(
     return when (scope) {
         is Scope.List -> {
             val list = lists.firstOrNull { it.id == scope.listId }
-            if (scope.listId == inboxListId) "收件箱 · 待整理" else list?.name ?: "列表"
+            list?.name ?: "列表"
         }
         Scope.Analytics -> "分析"
         else -> scopeTitle(scope, query)

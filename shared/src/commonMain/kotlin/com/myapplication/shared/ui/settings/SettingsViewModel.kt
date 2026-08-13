@@ -50,8 +50,12 @@ class SettingsViewModel(
     private val _form = MutableStateFlow(SettingsForm())
     val form: StateFlow<SettingsForm> = _form
 
+    private val _preferences = MutableStateFlow(SettingsPreferences())
+    val preferences: StateFlow<SettingsPreferences> = _preferences
+
     /** 持久化表单是否已加载完成；为 false 时 save() 一律拒绝。 */
     private var formLoaded = false
+    private var preferencesLoaded = false
 
     init {
         // 异步加载已保存的设置并回填表单；读取失败（getOrNull() == null）时
@@ -64,7 +68,9 @@ class SettingsViewModel(
                 supabaseKey = settings["sync.supabase.key"] ?: "",
                 sundialUrl = settings["sync.sundial.url"] ?: "",
             )
+            _preferences.value = SettingsPreferences.fromSettingsMap(settings)
             formLoaded = true
+            preferencesLoaded = true
         }
     }
 
@@ -78,6 +84,28 @@ class SettingsViewModel(
 
     fun setSupabaseKey(value: String) {
         _form.value = _form.value.copy(supabaseKey = value)
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        updatePreferences(_preferences.value.copy(themeMode = mode))
+    }
+
+    fun setDisplayDensity(density: DisplayDensity) {
+        updatePreferences(_preferences.value.copy(displayDensity = density))
+    }
+
+    fun setFontFamily(value: String) {
+        updatePreferences(_preferences.value.copy(fontFamily = value))
+    }
+
+    private fun updatePreferences(next: SettingsPreferences) {
+        _preferences.value = next
+        if (!preferencesLoaded) return
+        viewModelScope.launch {
+            next.toSettingsMap().forEach { (key, value) ->
+                repository.setSetting(key, value).onLeft { }
+            }
+        }
     }
 
     /**

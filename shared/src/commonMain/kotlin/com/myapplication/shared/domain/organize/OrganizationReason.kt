@@ -5,5 +5,4 @@ enum class OrganizationReason {
     NoDate,
     Overdue,
     LongTitle,
-    MissingNextStep,
 }

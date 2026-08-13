@@ -1,7 +1,7 @@
 package com.myapplication.shared.ui.sidebar
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,7 +18,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.domain.sync.SyncMode
 import com.myapplication.shared.domain.sync.SyncStatus
@@ -27,11 +26,15 @@ import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemIconButton
 import com.myapplication.shared.ui.components.RemSyncIndicator
 import com.myapplication.shared.ui.components.RemTextField
+import com.myapplication.shared.ui.components.SundialNavRow
+import com.myapplication.shared.ui.design.SundialDestination
+import com.myapplication.shared.ui.design.destinationForScope
+import com.myapplication.shared.ui.design.scopeForDestination
+import com.myapplication.shared.ui.design.sundialPrimaryDestinations
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Scope
 import com.myapplication.shared.ui.sync.phase
 import com.myapplication.shared.ui.theme.LocalRemColors
-import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
 
 @Composable
@@ -55,8 +58,9 @@ fun SidebarNav(
     Column(
         modifier
             .fillMaxHeight()
-            .width(260.dp)
-            .background(colors.surfaceAlt)
+            .width(272.dp)
+            .background(colors.bgPrimary)
+            .border(1.dp, colors.borderSubtle)
             .statusBarsPadding()
             .padding(16.dp),
     ) {
@@ -68,51 +72,89 @@ fun SidebarNav(
         Spacer(Modifier.height(18.dp))
         RemTextField(value = query, onValueChange = mainVm::setSearch, placeholder = "搜索", leadingIcon = IconName.Search)
         Spacer(Modifier.height(18.dp))
-        val listMode = scope is Scope.List
-        NavRow(IconName.Layers, "工作台", allCount, !listMode && scope != Scope.Analytics) { mainVm.selectScope(Scope.All) }
-        NavRow(IconName.Tray, "列表", lists.size, listMode) {
-            lists.firstOrNull()?.let { mainVm.selectScope(Scope.List(it.id)) } ?: mainVm.selectScope(Scope.All)
+        val destination = destinationForScope(scope)
+        sundialPrimaryDestinations().forEach { item ->
+            SundialNavRow(
+                icon = item.icon,
+                label = item.label,
+                count = when (item.destination) {
+                    SundialDestination.Workbench -> allCount
+                    SundialDestination.Lists -> lists.size
+                    SundialDestination.Analytics -> null
+                },
+                selected = destination == item.destination,
+                primary = true,
+                onClick = { mainVm.selectScope(scopeForDestination(item.destination, lists)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
-        NavRow(IconName.Chart, "分析", completedCount, scope == Scope.Analytics) { mainVm.selectScope(Scope.Analytics) }
         Spacer(Modifier.height(18.dp))
+        val listMode = scope is Scope.List
         if (listMode) {
-            androidx.compose.foundation.text.BasicText("我的列表", style = RemType.label12.copy(color = colors.textLow))
+            androidx.compose.foundation.text.BasicText("列表", style = RemType.label12.copy(color = colors.textLow))
             Spacer(Modifier.height(6.dp))
             lists.forEach { list ->
-                NavRow(IconName.Inbox, list.name, listCounts[list.id] ?: 0, scope == Scope.List(list.id)) {
-                    mainVm.selectScope(Scope.List(list.id))
-                }
+                SundialNavRow(
+                    icon = IconName.Inbox,
+                    label = list.name,
+                    count = listCounts[list.id] ?: 0,
+                    selected = scope == Scope.List(list.id),
+                    primary = false,
+                    onClick = { mainVm.selectScope(Scope.List(list.id)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         } else {
             androidx.compose.foundation.text.BasicText("工作台视图", style = RemType.label12.copy(color = colors.textLow))
             Spacer(Modifier.height(6.dp))
-            NavRow(IconName.Layers, "全部", allCount, scope == Scope.All) { mainVm.selectScope(Scope.All) }
-            NavRow(IconName.Today, "今天", todayCount, scope == Scope.Today) { mainVm.selectScope(Scope.Today) }
-            NavRow(IconName.Scheduled, "计划", scheduledCount, scope == Scope.Scheduled) { mainVm.selectScope(Scope.Scheduled) }
-            NavRow(IconName.CheckCircle, "已完成", completedCount, scope == Scope.Completed) { mainVm.selectScope(Scope.Completed) }
-            NavRow(IconName.Trash, "垃圾箱", trashCount, scope == Scope.Trash) { mainVm.selectScope(Scope.Trash) }
+            SundialNavRow(
+                icon = IconName.Layers,
+                label = "全部",
+                count = allCount,
+                selected = scope == Scope.All,
+                primary = false,
+                onClick = { mainVm.selectScope(Scope.All) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            SundialNavRow(
+                icon = IconName.Today,
+                label = "今天",
+                count = todayCount,
+                selected = scope == Scope.Today,
+                primary = false,
+                onClick = { mainVm.selectScope(Scope.Today) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            SundialNavRow(
+                icon = IconName.Scheduled,
+                label = "计划",
+                count = scheduledCount,
+                selected = scope == Scope.Scheduled,
+                primary = false,
+                onClick = { mainVm.selectScope(Scope.Scheduled) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            SundialNavRow(
+                icon = IconName.CheckCircle,
+                label = "已完成",
+                count = completedCount,
+                selected = scope == Scope.Completed,
+                primary = false,
+                onClick = { mainVm.selectScope(Scope.Completed) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+            SundialNavRow(
+                icon = IconName.Trash,
+                label = "垃圾箱",
+                count = trashCount,
+                selected = scope == Scope.Trash,
+                primary = false,
+                onClick = { mainVm.selectScope(Scope.Trash) },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
         Spacer(Modifier.weight(1f))
         SyncFooter(syncStatus, mainVm::openSettings, onSyncNow)
-    }
-}
-
-@Composable
-private fun NavRow(icon: IconName, label: String, count: Int, selected: Boolean, onClick: () -> Unit) {
-    val colors = LocalRemColors.current
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(RemRadii.r4))
-            .background(if (selected) colors.brandSubtle else colors.surfaceAlt)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RemIcon(icon, if (selected) colors.brand else colors.textLow, Modifier.size(18.dp))
-        Spacer(Modifier.width(10.dp))
-        androidx.compose.foundation.text.BasicText(label, style = RemType.text14.copy(color = colors.textHigh), modifier = Modifier.weight(1f))
-        androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text12.copy(color = colors.textLow))
     }
 }
 

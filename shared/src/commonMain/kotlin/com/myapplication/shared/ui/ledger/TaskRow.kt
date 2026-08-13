@@ -14,10 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +33,7 @@ import com.myapplication.shared.ui.components.RemButtonVariant
 import com.myapplication.shared.ui.components.RemCheckbox
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemIconButton
+import com.myapplication.shared.ui.components.SundialAccordionSection
 import com.myapplication.shared.ui.components.rememberHoverBackground
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemControlSize
@@ -65,50 +63,24 @@ fun TaskSection(
     emptyText: String = "没有待办",
 ) {
     val colors = LocalRemColors.current
-    var expanded by remember(title) { mutableStateOf(true) }
     val titleColor = headerColor ?: if (completed) colors.textLow else colors.textHigh
-    Column(modifier.fillMaxWidth()) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clickable { expanded = !expanded }
-                .padding(horizontal = if (showRowContainer) 4.dp else 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RemIcon(if (expanded) IconName.ChevronDown else IconName.ChevronRight, titleColor, Modifier.size(14.dp))
-            Spacer(Modifier.width(7.dp))
-            androidx.compose.foundation.text.BasicText(
-                title,
-                style = RemType.label12.copy(color = titleColor),
-            )
-            Spacer(Modifier.width(6.dp))
-            androidx.compose.foundation.text.BasicText(
-                rows.size.toString(),
-                style = RemType.label12.copy(color = titleColor),
-            )
-            Spacer(Modifier.weight(1f))
-        }
-        if (!expanded) return@Column
+    SundialAccordionSection(
+        title = title,
+        count = rows.size,
+        tone = titleColor,
+        modifier = modifier,
+        emptyText = emptyText,
+        headerInset = !showRowContainer,
+        contentSurface = showRowContainer,
+    ) {
         val rowContainerModifier = if (showRowContainer) {
-            Modifier
-                .fillMaxWidth()
-                .background(colors.surface)
+            Modifier.fillMaxWidth()
         } else {
             Modifier.fillMaxWidth()
         }
         Column(
             rowContainerModifier,
         ) {
-            if (rows.isEmpty()) {
-                androidx.compose.foundation.text.BasicText(
-                    emptyText,
-                    style = RemType.text12.copy(color = colors.textLow),
-                    modifier = Modifier.padding(
-                        horizontal = if (showRowContainer) 10.dp else 37.dp,
-                        vertical = 10.dp,
-                    ),
-                )
-            }
             rows.forEachIndexed { index, row ->
                 TaskRow(
                     model = row,
@@ -145,31 +117,15 @@ fun TrashSection(
     emptyText: String = "没有待清理项目",
 ) {
     val colors = LocalRemColors.current
-    var expanded by remember(title) { mutableStateOf(true) }
     val titleColor = headerColor ?: colors.textHigh
-    Column(modifier.fillMaxWidth()) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clickable { expanded = !expanded }
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RemIcon(if (expanded) IconName.ChevronDown else IconName.ChevronRight, titleColor, Modifier.size(14.dp))
-            Spacer(Modifier.width(7.dp))
-            androidx.compose.foundation.text.BasicText(title, style = RemType.label12.copy(color = titleColor))
-            Spacer(Modifier.width(6.dp))
-            androidx.compose.foundation.text.BasicText(rows.size.toString(), style = RemType.label12.copy(color = titleColor))
-            Spacer(Modifier.weight(1f))
-        }
-        if (!expanded) return@Column
-        if (rows.isEmpty()) {
-            androidx.compose.foundation.text.BasicText(
-                emptyText,
-                style = RemType.text12.copy(color = colors.textLow),
-                modifier = Modifier.padding(horizontal = 37.dp, vertical = 10.dp),
-            )
-        }
+    SundialAccordionSection(
+        title = title,
+        count = rows.size,
+        tone = titleColor,
+        modifier = modifier,
+        emptyText = emptyText,
+        headerInset = true,
+    ) {
         rows.forEachIndexed { index, item ->
             TrashRow(
                 item = item,

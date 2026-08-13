@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -38,8 +37,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.myapplication.shared.ui.components.RemButton
 import com.myapplication.shared.ui.components.RemIcon
+import com.myapplication.shared.ui.components.SundialBackAction
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
@@ -183,7 +182,7 @@ private fun SettingsHomeHeader(onBack: () -> Unit) {
             Spacer(Modifier.height(2.dp))
             BasicText("配置 Sundial", style = RemType.text12.copy(color = colors.textLow))
         }
-        RemButton("返回", onClick = onBack)
+        SundialBackAction("返回", onClick = onBack)
     }
 }
 
@@ -200,19 +199,9 @@ private fun SettingsSectionContent(
         when (selected) {
             SettingsSection.Sync -> SyncSettingsContent(vm, onBack)
             SettingsSection.Lists -> ListSettingsScreen(mainVm, showHeader = !compact)
-            SettingsSection.Widgets -> WidgetSettingsScreen()
-            SettingsSection.Data -> PlaceholderSection(
-                section = selected,
-                description = "导出、备份、恢复和垃圾箱等数据工具会汇总到这里。",
-            )
-            SettingsSection.Appearance -> PlaceholderSection(
-                section = selected,
-                description = "主题、显示密度和界面偏好会在这里逐步开放。",
-            )
-            SettingsSection.About -> PlaceholderSection(
-                section = selected,
-                description = "版本、许可证和项目信息会集中展示在这里。",
-            )
+            SettingsSection.Data -> DataSettingsScreen(settingsVm = vm, mainVm = mainVm)
+            SettingsSection.Appearance -> AppearanceSettingsScreen(vm)
+            SettingsSection.About -> AboutSettingsScreen()
         }
     }
 }
@@ -285,47 +274,5 @@ private fun SettingsSectionPill(
         RemIcon(section.icon, if (selected) colors.brand else colors.textLow, Modifier.size(16.dp))
         Spacer(Modifier.width(8.dp))
         BasicText(section.title, style = RemType.label12.copy(color = colors.textHigh))
-    }
-}
-
-@Composable
-private fun PlaceholderSection(
-    section: SettingsSection,
-    description: String,
-) {
-    val colors = LocalRemColors.current
-    Column(
-        Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .widthIn(max = 560.dp),
-        ) {
-            Spacer(Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(RemRadii.r4))
-                        .background(colors.brandSubtle),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    RemIcon(section.icon, colors.brand, Modifier.size(20.dp), contentDescription = section.title)
-                }
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    BasicText(section.title, style = RemType.title20.copy(color = colors.textHigh))
-                    Spacer(Modifier.height(2.dp))
-                    BasicText(section.subtitle, style = RemType.text12.copy(color = colors.textLow))
-                }
-            }
-            Spacer(Modifier.height(18.dp))
-            BasicText(description, style = RemType.text14.copy(color = colors.textNormal))
-        }
     }
 }

@@ -45,13 +45,13 @@ class OrganizationRulesTest {
     }
 
     @Test
-    fun longTitleAndMissingNextStepReasonsUseTitleAndBlankNote() {
+    fun longTitleReasonOnlyAppliesAfterOneHundredCharacters() {
         val suggestions = buildOrganizationSuggestions(
             todos = listOf(
                 todo(
                     id = 1,
                     listId = 20,
-                    title = "This title is intentionally much longer than thirty six characters",
+                    title = "x".repeat(101),
                     note = "   ",
                     dueMillis = Instant.parse("2026-08-13T09:00:00Z").toEpochMilliseconds(),
                 ),
@@ -62,9 +62,29 @@ class OrganizationRulesTest {
         )
 
         assertEquals(
-            setOf(OrganizationReason.LongTitle, OrganizationReason.MissingNextStep),
+            setOf(OrganizationReason.LongTitle),
             suggestions.single().reasons,
         )
+    }
+
+    @Test
+    fun titlesUnderOneHundredCharactersAreNotSuggestedJustBecauseNoteIsBlank() {
+        val suggestions = buildOrganizationSuggestions(
+            todos = listOf(
+                todo(
+                    id = 1,
+                    listId = 20,
+                    title = "x".repeat(100),
+                    note = "",
+                    dueMillis = Instant.parse("2026-08-13T09:00:00Z").toEpochMilliseconds(),
+                ),
+            ),
+            inboxListId = 10,
+            today = today,
+            timeZone = tz,
+        )
+
+        assertEquals(emptyList(), suggestions)
     }
 
     @Test
@@ -92,7 +112,7 @@ class OrganizationRulesTest {
                 todo(
                     id = 1,
                     listId = 10,
-                    title = "This title is intentionally much longer than thirty six characters",
+                    title = "x".repeat(101),
                     note = "",
                     dueMillis = null,
                 ),
@@ -102,6 +122,13 @@ class OrganizationRulesTest {
                     title = "This title is long enough",
                     note = "",
                     dueMillis = Instant.parse("2026-08-12T09:00:00Z").toEpochMilliseconds(),
+                ),
+                todo(
+                    id = 3,
+                    listId = 20,
+                    title = "x".repeat(101),
+                    note = "",
+                    dueMillis = Instant.parse("2026-08-13T09:00:00Z").toEpochMilliseconds(),
                 ),
             ),
             inboxListId = 10,
@@ -121,9 +148,16 @@ class OrganizationRulesTest {
             listOf(
                 OrganizationAction.ScheduleToday,
                 OrganizationAction.ScheduleTomorrow,
-                OrganizationAction.CreateSubtask,
+                OrganizationAction.Trash,
             ),
             suggestions.first { it.todo.id == 2L }.actions,
+        )
+        assertEquals(
+            listOf(
+                OrganizationAction.EditTitle,
+                OrganizationAction.Trash,
+            ),
+            suggestions.first { it.todo.id == 3L }.actions,
         )
         assertTrue(suggestions.all { it.actions.size <= 3 })
         assertTrue(suggestions.all { it.actions.distinct() == it.actions })

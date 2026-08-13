@@ -218,6 +218,71 @@ class MainViewModelTest {
     }
 
     @Test
+    fun scheduleTodayDelegatesDueDateWithoutOpeningDetail() = runTest(dispatcher) {
+        val repo = FakeTodoRepository()
+        val fixedClock = object : kotlin.time.Clock {
+            override fun now(): Instant = Instant.parse("2026-08-13T12:00:00Z")
+        }
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.UTC, clock = fixedClock)
+        collect(vm)
+        val item = TodoItem(6, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
+
+        vm.scheduleToday(item)
+        advanceUntilIdle()
+
+        assertEquals(6L, repo.lastSetDueDateId)
+        assertEquals(Instant.parse("2026-08-13T09:00:00Z"), repo.lastSetDueDateValue)
+        assertEquals(Route.Main, vm.route.value)
+    }
+
+    @Test
+    fun scheduleTomorrowPreservesExistingTimeWithoutOpeningDetail() = runTest(dispatcher) {
+        val repo = FakeTodoRepository()
+        val fixedClock = object : kotlin.time.Clock {
+            override fun now(): Instant = Instant.parse("2026-08-13T12:00:00Z")
+        }
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.UTC, clock = fixedClock)
+        collect(vm)
+        val item = TodoItem(
+            7,
+            1,
+            "x",
+            "",
+            Instant.parse("2026-08-10T15:30:00Z"),
+            false,
+            false,
+            null,
+            false,
+            null,
+            null,
+            0.0,
+            Instant.fromEpochMilliseconds(0),
+        )
+
+        vm.scheduleTomorrow(item)
+        advanceUntilIdle()
+
+        assertEquals(7L, repo.lastSetDueDateId)
+        assertEquals(Instant.parse("2026-08-14T15:30:00Z"), repo.lastSetDueDateValue)
+        assertEquals(Route.Main, vm.route.value)
+    }
+
+    @Test
+    fun moveTodoToListDelegatesWithoutOpeningDetail() = runTest(dispatcher) {
+        val repo = FakeTodoRepository()
+        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.UTC)
+        collect(vm)
+        val item = TodoItem(8, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
+
+        vm.moveTodoToList(item, 3)
+        advanceUntilIdle()
+
+        assertEquals(8L, repo.lastMovedTodoId)
+        assertEquals(3L, repo.lastMovedListId)
+        assertEquals(Route.Main, vm.route.value)
+    }
+
+    @Test
     fun openDetailAndBack() {
         // 导航是同步路由切换：open → Detail(3)，back → 主界面
         val vm = vm(FakeTodoRepository())

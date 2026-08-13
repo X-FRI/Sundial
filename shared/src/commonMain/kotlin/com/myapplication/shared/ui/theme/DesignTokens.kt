@@ -54,8 +54,13 @@ data class RemColors(
     val bgPanel: Color,
     val surface: Color,
     val surfaceAlt: Color,
+    val surfaceRaised: Color,
+    val surfaceInset: Color,
+    val overlay: Color,
     val brandSubtle: Color,
     val borderSubtle: Color,
+    val rowHover: Color,
+    val rowSelected: Color,
     val textHigh: Color,
     val textNormal: Color,
     val textLow: Color,
@@ -68,6 +73,10 @@ data class RemColors(
     val success: Color,
     val warning: Color,
     val info: Color,
+    val destructiveSubtle: Color,
+    val successSubtle: Color,
+    val infoSubtle: Color,
+    val warningSubtle: Color,
     val focusRing: Color,
 )
 
@@ -81,8 +90,13 @@ val LightRemColors = RemColors(
     bgPanel = Color(0xFFE3E3E3),
     surface = Color(0xFFFFFFFF),
     surfaceAlt = Color(0xFFF7F7F5),
+    surfaceRaised = Color(0xFFFFFFFF),
+    surfaceInset = Color(0xFFF6F6F4),
+    overlay = Color(0x66000000),
     brandSubtle = Color(0xFFFFF2E8),
     borderSubtle = Color(0xFFEAE7E2),
+    rowHover = Color(0xFFF4F4F2),
+    rowSelected = Color(0xFFFFF2E8),
     textHigh = Color(0xFF0D0D0D),
     textNormal = Color(0xFF333333),
     textLow = Color(0xFF636363),
@@ -95,6 +109,10 @@ val LightRemColors = RemColors(
     success = Color(0xFF54B04F),
     warning = Color(0xFFDB7706),
     info = Color(0xFF3C83F6),
+    destructiveSubtle = Color(0xFFFFEEEE),
+    successSubtle = Color(0xFFEFF8EF),
+    infoSubtle = Color(0xFFEFF5FF),
+    warningSubtle = Color(0xFFFFF4E3),
     focusRing = Color(0xFFEA7A2A),
 )
 
@@ -104,8 +122,13 @@ val DarkRemColors = RemColors(
     bgPanel = Color(0xFF292929),
     surface = Color(0xFF242424),
     surfaceAlt = Color(0xFF1B1B1B),
+    surfaceRaised = Color(0xFF282828),
+    surfaceInset = Color(0xFF1B1B1B),
+    overlay = Color(0x99000000),
     brandSubtle = Color(0xFF3A2416),
     borderSubtle = Color(0xFF363331),
+    rowHover = Color(0xFF2C2C2C),
+    rowSelected = Color(0xFF3A2416),
     textHigh = Color(0xFFF5F5F5),
     textNormal = Color(0xFFC4C4C4),
     textLow = Color(0xFF8F8F8F),
@@ -118,6 +141,10 @@ val DarkRemColors = RemColors(
     success = Color(0xFF54B04F),
     warning = Color(0xFFE0913E),
     info = Color(0xFF3C83F6),
+    destructiveSubtle = Color(0xFF3A2020),
+    successSubtle = Color(0xFF1E3320),
+    infoSubtle = Color(0xFF1B2A44),
+    warningSubtle = Color(0xFF352717),
     focusRing = Color(0xFFE79255),
 )
 
@@ -127,27 +154,51 @@ val DarkRemColors = RemColors(
  * 等宽场景（如徽章数字）由调用方覆盖 FontFamily。
  */
 object RemType {
-    val text10 = TextStyle(fontFamily = FontFamily.Default, fontSize = 10.sp)
-    val text12 = TextStyle(fontFamily = FontFamily.Default, fontSize = 12.sp)
-    val text14 = TextStyle(fontFamily = FontFamily.Default, fontSize = 14.sp)
-    val text16 = TextStyle(fontFamily = FontFamily.Default, fontSize = 16.sp)
-    val title18 = TextStyle(fontFamily = FontFamily.Default, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-    val title20 = TextStyle(fontFamily = FontFamily.Default, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-    val title24 = TextStyle(fontFamily = FontFamily.Default, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
-    val label10 = TextStyle(fontFamily = FontFamily.Default, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-    val label12 = TextStyle(fontFamily = FontFamily.Default, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    val text10 get() = TextStyle(fontFamily = CurrentRemFontFamily, fontSize = 10.sp)
+    val text12 get() = TextStyle(fontFamily = CurrentRemFontFamily, fontSize = 12.sp)
+    val text14 get() = TextStyle(fontFamily = CurrentRemFontFamily, fontSize = 14.sp)
+    val text16 get() = TextStyle(fontFamily = CurrentRemFontFamily, fontSize = 16.sp)
+    val title18 get() = TextStyle(fontFamily = CurrentRemFontFamily, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+    val title20 get() = TextStyle(fontFamily = CurrentRemFontFamily, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+    val title24 get() = TextStyle(fontFamily = CurrentRemFontFamily, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+    val label10 get() = TextStyle(fontFamily = CurrentRemFontFamily, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+    val label12 get() = TextStyle(fontFamily = CurrentRemFontFamily, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
 }
+
+private var CurrentRemFontFamily: FontFamily = FontFamily.Default
+
+fun applyRemFontFamilyPreference(value: String) {
+    CurrentRemFontFamily = remFontFamilyFromPreference(value)
+}
+
+fun remFontFamilyFromPreference(value: String): FontFamily {
+    val trimmed = value.trim()
+    return when (trimmed.lowercase()) {
+        "monospace" -> FontFamily.Monospace
+        "serif" -> FontFamily.Serif
+        "sans", "sansserif", "sans-serif", "system", "" -> FontFamily.Default
+        else -> platformFontFamilyFromName(trimmed) ?: FontFamily.Default
+    }
+}
+
+expect fun platformFontFamilyFromName(fontFamilyName: String): FontFamily?
 
 /**
  * 控件尺寸令牌：图标按钮外触达热区（iconSmall/iconMedium/touch）、
  * 行高（rowDesktop/rowMobile），组件触达尺寸应从这里取。
  */
 object RemControlSize {
-    val iconSmall = 32.dp
-    val iconMedium = 36.dp
-    val touch = 44.dp
-    val rowDesktop = 42.dp
-    val rowMobile = 48.dp
+    val iconSmall get() = if (CurrentRemCompactDensity) 28.dp else 32.dp
+    val iconMedium get() = if (CurrentRemCompactDensity) 32.dp else 36.dp
+    val touch get() = if (CurrentRemCompactDensity) 40.dp else 44.dp
+    val rowDesktop get() = if (CurrentRemCompactDensity) 38.dp else 42.dp
+    val rowMobile get() = if (CurrentRemCompactDensity) 44.dp else 48.dp
+}
+
+private var CurrentRemCompactDensity: Boolean = false
+
+fun applyRemDisplayDensityPreference(value: String) {
+    CurrentRemCompactDensity = value.trim().lowercase() == "compact"
 }
 
 /** 间距令牌：4 档幂级步长（2/4/8/12/16），组件间距应从这里取。 */

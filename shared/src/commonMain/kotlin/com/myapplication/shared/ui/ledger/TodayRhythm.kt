@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.ui.components.IconName
 import com.myapplication.shared.ui.components.RemBadge
@@ -57,21 +59,15 @@ fun ContextTimelineCompact(
     Column(
         modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         if (showTodayLabels) {
             CompactDayTimeline(state = state, timeline = timeline)
             return@Column
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            androidx.compose.foundation.text.BasicText(state.title, style = RemType.label12.copy(color = colors.textNormal))
-            Spacer(Modifier.weight(1f))
-            androidx.compose.foundation.text.BasicText(state.subtitle, style = RemType.text10.copy(color = colors.textLow))
-        }
-        TimelineDistributionRail(state.segments, Modifier.padding(top = 10.dp))
-        if (state.segments.all { it.count == 0 }) {
-            androidx.compose.foundation.text.BasicText(state.emptyText, style = RemType.text10.copy(color = colors.textLow), modifier = Modifier.padding(top = 8.dp))
-        }
+        TimelineDistributionRail(state.segments)
+        TimelineLegendWithTotal(state.segments, compact = true, modifier = Modifier.padding(top = 8.dp))
+        TimelineEmptyText(state, compact = true)
     }
 }
 
@@ -104,32 +100,78 @@ private fun ContextTimelineSummary(
 ) {
     val colors = LocalRemColors.current
     val total = state.segments.sumOf { it.count }
-    val focus = state.segments.maxByOrNull { it.count }
     Column(
         modifier
             .fillMaxWidth()
             .background(colors.surface, RoundedCornerShape(RemRadii.r4))
-            .padding(16.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.foundation.text.BasicText(state.title, style = RemType.title18.copy(color = colors.textHigh))
-                    Spacer(Modifier.width(8.dp))
-                    RemIcon(IconName.Clock, colors.textLow, Modifier.size(14.dp))
-                }
-                androidx.compose.foundation.text.BasicText(state.subtitle, style = RemType.text12.copy(color = colors.textLow), modifier = Modifier.padding(top = 3.dp))
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                androidx.compose.foundation.text.BasicText("总计", style = RemType.text10.copy(color = colors.textLow))
-                androidx.compose.foundation.text.BasicText(total.toString(), style = RemType.title20.copy(color = colors.textHigh))
+        TimelineDistributionRail(state.segments)
+        TimelineLegendWithTotal(state.segments, compact = false, modifier = Modifier.padding(top = 10.dp))
+        TimelineEmptyText(state, compact = false)
+    }
+}
+
+@Composable
+private fun TimelineLegendWithTotal(
+    segments: List<TimelineSegment>,
+    compact: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalRemColors.current
+    val total = segments.sumOf { it.count }
+    FlowRow(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        segments.forEach { segment ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(6.dp)
+                        .background(segment.tone.timelineColor(), RoundedCornerShape(3.dp)),
+                )
+                Spacer(Modifier.width(5.dp))
+                androidx.compose.foundation.text.BasicText(
+                    segment.label,
+                    style = (if (compact) RemType.text10 else RemType.text12).copy(color = colors.textLow),
+                )
+                Spacer(Modifier.width(4.dp))
+                androidx.compose.foundation.text.BasicText(
+                    segment.count.toString(),
+                    style = RemType.label10.copy(
+                        color = if (segment.count > 0) segment.tone.timelineColor() else colors.textLow,
+                        fontFamily = FontFamily.Monospace,
+                    ),
+                )
             }
         }
-        TimelineDistributionRail(state.segments, Modifier.padding(top = 16.dp))
-        if (state.segments.all { it.count == 0 }) {
-            androidx.compose.foundation.text.BasicText(state.emptyText, style = RemType.text12.copy(color = colors.textLow), modifier = Modifier.padding(top = 10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.foundation.text.BasicText(
+                "总计",
+                style = (if (compact) RemType.text10 else RemType.text12).copy(color = colors.textLow),
+            )
+            Spacer(Modifier.width(4.dp))
+            androidx.compose.foundation.text.BasicText(
+                total.toString(),
+                style = RemType.label10.copy(color = colors.textHigh, fontFamily = FontFamily.Monospace),
+            )
         }
     }
+}
+
+@Composable
+private fun TimelineEmptyText(
+    state: ContextTimelineState,
+    compact: Boolean,
+) {
+    if (state.segments.any { it.count > 0 }) return
+    androidx.compose.foundation.text.BasicText(
+        state.emptyText,
+        style = (if (compact) RemType.text10 else RemType.text12).copy(color = LocalRemColors.current.textLow),
+        modifier = Modifier.padding(top = if (compact) 8.dp else 10.dp),
+    )
 }
 
 @Composable
@@ -142,18 +184,18 @@ private fun TimelineDistributionRail(
     Row(
         modifier
             .fillMaxWidth()
-            .height(8.dp)
+            .height(6.dp)
             .clip(RoundedCornerShape(RemRadii.r2))
             .background(colors.bgPanel),
     ) {
         if (total == 0) {
-            Box(Modifier.weight(1f).height(8.dp).background(colors.borderSubtle))
+            Box(Modifier.weight(1f).height(6.dp).background(colors.borderSubtle))
         } else {
             segments.filter { it.count > 0 }.forEach { segment ->
                 Box(
                     Modifier
                         .weight(segment.count.toFloat())
-                        .height(8.dp)
+                        .height(6.dp)
                         .background(segment.tone.timelineColor().copy(alpha = 0.82f)),
                 )
             }

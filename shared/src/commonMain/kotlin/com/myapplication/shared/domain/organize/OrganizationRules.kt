@@ -18,8 +18,7 @@ fun buildOrganizationSuggestions(
                 if (inboxListId != null && todo.listId == inboxListId) add(OrganizationReason.Inbox)
                 if (todo.dueDate == null) add(OrganizationReason.NoDate)
                 if (todo.localDueDate(timeZone)?.let { it < today } == true) add(OrganizationReason.Overdue)
-                if (todo.title.length > 36) add(OrganizationReason.LongTitle)
-                if (todo.title.length > 20 && todo.note.isBlank()) add(OrganizationReason.MissingNextStep)
+                if (todo.title.length > 100) add(OrganizationReason.LongTitle)
             }
             if (reasons.isEmpty()) {
                 null
@@ -34,10 +33,12 @@ fun buildOrganizationSuggestions(
 
 private fun actionsFor(reasons: Set<OrganizationReason>): List<OrganizationAction> =
     buildList {
-        if (OrganizationReason.Overdue in reasons || OrganizationReason.NoDate in reasons) add(OrganizationAction.ScheduleToday)
-        add(OrganizationAction.ScheduleTomorrow)
+        if (OrganizationReason.Overdue in reasons || OrganizationReason.NoDate in reasons) {
+            add(OrganizationAction.ScheduleToday)
+            add(OrganizationAction.ScheduleTomorrow)
+        }
         if (OrganizationReason.Inbox in reasons) add(OrganizationAction.MoveToList)
-        if (OrganizationReason.LongTitle in reasons || OrganizationReason.MissingNextStep in reasons) add(OrganizationAction.CreateSubtask)
+        if (OrganizationReason.LongTitle in reasons) add(OrganizationAction.EditTitle)
         add(OrganizationAction.Trash)
     }.distinct().take(3)
 

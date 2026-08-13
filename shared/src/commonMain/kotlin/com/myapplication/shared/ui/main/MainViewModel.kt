@@ -12,6 +12,7 @@ import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.usecase.AddTodoInput
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
 import com.myapplication.shared.ui.effects.launchTodoEffect
+import com.myapplication.shared.util.todayDate
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,9 +22,14 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlin.time.Clock
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 
 /**
  * 全局路由状态机：决定当前显示哪个「页面」。
@@ -84,6 +90,7 @@ class MainViewModel(
     private val addTodo: AddTodoUseCase,
     private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
     private val completeRecurringTodo: CompleteRecurringTodoUseCase? = null,
+    private val clock: Clock = Clock.System,
 ) : ViewModel() {
 
     /** 当前列表范围（智能列表或自定义列表）。 */
@@ -238,6 +245,18 @@ class MainViewModel(
         launchTodoEffect(lastError) { repository.trash(item.id) }
     }
 
+    fun scheduleToday(item: TodoItem) {
+        scheduleOn(item, todayDate(clock, timeZone))
+    }
+
+    fun scheduleTomorrow(item: TodoItem) {
+        scheduleOn(item, todayDate(clock, timeZone).plus(1, DateTimeUnit.DAY))
+    }
+
+    fun moveTodoToList(item: TodoItem, listId: Long) {
+        launchTodoEffect(lastError) { repository.moveToList(item.id, listId) }
+    }
+
     fun restore(item: TodoItem) {
         launchTodoEffect(lastError) { repository.restore(item.id) }
     }
@@ -271,6 +290,15 @@ class MainViewModel(
 
     fun deleteList(list: TodoList) {
         deleteList(list, DeleteListPolicy.MoveTasksToInbox)
+    }
+
+    private fun scheduleOn(item: TodoItem, date: kotlinx.datetime.LocalDate) {
+        val time = item.dueDate
+            ?.toLocalDateTime(timeZone)
+            ?.time
+            ?.takeIf { it.hour != 0 || it.minute != 0 }
+            ?: LocalTime(9, 0)
+        launchTodoEffect(lastError) { repository.setDueDate(item.id, LocalDateTime(date, time).toInstant(timeZone)) }
     }
 }
 
