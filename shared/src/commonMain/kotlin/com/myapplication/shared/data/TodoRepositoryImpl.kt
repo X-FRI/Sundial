@@ -136,8 +136,8 @@ class TodoRepositoryImpl(
             parentId = parent_id,
             sortPosition = sort_position,
             flag = flag,
-            recurrence_frequency = recurrence_frequency,
-            recurrence_interval = recurrence_interval,
+            recurrenceFrequency = recurrence_frequency,
+            recurrenceInterval = recurrence_interval,
             createdAt = created_at,
             updatedAt = updated_at,
             updatedBy = updated_by,
@@ -567,18 +567,21 @@ class TodoRepositoryImpl(
      * 而这两条语句在所有目标平台上都可用。
      */
     override suspend fun applyRemoteUpsert(row: TodoRowDto): Either<TodoError, Unit> = dbCommand("应用远端待办失败") {
+        val recurrenceRule = decodeRecurrenceRule(row.recurrenceFrequency, row.recurrenceInterval)
+        val recurrenceFrequency = recurrenceRule.toFrequencyString()
+        val recurrenceInterval = recurrenceRule.toIntervalLong()
         db.transaction {
             // 1. 本地已有且较旧 -> 覆盖（WHERE updated_at <= 远端 updated_at）
             db.todoDbQueries.updateTodoIfNewer(
                 row.listId, row.title, row.note, row.dueDate, row.isCompleted, row.completedAt,
                 row.isTrashed, row.trashedAt, row.parentId, row.sortPosition, row.flag,
-                row.recurrence_frequency, row.recurrence_interval, row.createdAt, row.updatedAt, row.updatedBy, row.id, row.updatedAt,
+                recurrenceFrequency, recurrenceInterval, row.createdAt, row.updatedAt, row.updatedBy, row.id, row.updatedAt,
             )
             // 2. 本地没有 -> 插入（WHERE NOT EXISTS 原子补插）
             db.todoDbQueries.insertTodoIfMissing(
                 row.id, row.listId, row.title, row.note, row.dueDate, row.isCompleted, row.completedAt,
                 row.isTrashed, row.trashedAt, row.parentId, row.sortPosition, row.flag,
-                row.recurrence_frequency, row.recurrence_interval, row.createdAt, row.updatedAt, row.updatedBy, row.id,
+                recurrenceFrequency, recurrenceInterval, row.createdAt, row.updatedAt, row.updatedBy, row.id,
             )
         }
     }

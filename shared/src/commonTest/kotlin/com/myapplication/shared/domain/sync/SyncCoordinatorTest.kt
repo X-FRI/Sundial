@@ -126,8 +126,8 @@ class SyncCoordinatorTest {
                 parentId = null,
                 sortPosition = 0.0,
                 flag = false,
-                recurrence_frequency = "daily",
-                recurrence_interval = 1,
+                recurrenceFrequency = "daily",
+                recurrenceInterval = 1,
                 createdAt = 0,
                 updatedAt = 200,
                 updatedBy = "device-b",
@@ -137,8 +137,8 @@ class SyncCoordinatorTest {
         assertTrue(result.isRight())
         // payload 正确解码后原样交给 repository
         assertEquals("远程", repo.appliedUpserts.single().title)
-        assertEquals("daily", repo.appliedUpserts.single().recurrence_frequency)
-        assertEquals(1L, repo.appliedUpserts.single().recurrence_interval)
+        assertEquals("daily", repo.appliedUpserts.single().recurrenceFrequency)
+        assertEquals(1L, repo.appliedUpserts.single().recurrenceInterval)
     }
 
     @Test
