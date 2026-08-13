@@ -15,5 +15,6 @@ iosApp/iosApp.xcodeproj/*
 shared/shared.podspec
 /keystore/
 .superpowers/
+.worktrees/
 
 .kotlin/
