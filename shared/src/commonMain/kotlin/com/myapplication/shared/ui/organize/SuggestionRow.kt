@@ -45,13 +45,14 @@ fun SuggestionRow(
     val interaction = remember { MutableInteractionSource() }
     val hover = rememberHoverBackground(interaction)
     val rowBg = if (selected) colors.brandSubtle else hover
-    val rowModifier = modifier
-        .fillMaxWidth()
-        .background(rowBg)
-        .clickable(interactionSource = interaction, indication = null, onClick = onOpen)
-        .semantics { contentDescription = "打开整理建议：${suggestion.todo.title}" }
-        .heightIn(min = if (edgeToEdge) RemControlSize.rowMobile else RemControlSize.rowDesktop)
-        .padding(horizontal = if (edgeToEdge) 16.dp else 10.dp, vertical = if (edgeToEdge) 8.dp else 7.dp)
+    val rowModifier =
+        modifier
+            .fillMaxWidth()
+            .background(rowBg)
+            .clickable(interactionSource = interaction, indication = null, onClick = onOpen)
+            .semantics { contentDescription = "打开整理建议：${suggestion.todo.title}" }
+            .heightIn(min = if (edgeToEdge) RemControlSize.rowMobile else RemControlSize.rowDesktop)
+            .padding(horizontal = if (edgeToEdge) 16.dp else 10.dp, vertical = if (edgeToEdge) 8.dp else 7.dp)
 
     if (edgeToEdge) {
         Column(rowModifier) {
@@ -116,17 +117,19 @@ internal fun organizationReasonText(reasons: Set<OrganizationReason>): String =
         .filter { it in reasons }
         .joinToString(" · ") { it.organizationReasonLabel() }
 
-internal fun OrganizationReason.organizationReasonLabel(): String = when (this) {
-    OrganizationReason.Inbox -> "待归类"
-    OrganizationReason.NoDate -> "无日期"
-    OrganizationReason.Overdue -> "已逾期"
-    OrganizationReason.LongTitle -> "标题过长"
-}
+internal fun OrganizationReason.organizationReasonLabel(): String =
+    when (this) {
+        OrganizationReason.Inbox -> "待归类"
+        OrganizationReason.NoDate -> "无日期"
+        OrganizationReason.Overdue -> "已逾期"
+        OrganizationReason.LongTitle -> "标题过长"
+    }
 
-internal fun OrganizationAction.organizationActionLabel(): String = when (this) {
-    OrganizationAction.ScheduleToday -> "安排今天"
-    OrganizationAction.ScheduleTomorrow -> "安排明天"
-    OrganizationAction.MoveToList -> "移动列表"
-    OrganizationAction.EditTitle -> "编辑标题"
-    OrganizationAction.Trash -> "删除"
-}
+internal fun OrganizationAction.organizationActionLabel(): String =
+    when (this) {
+        OrganizationAction.ScheduleToday -> "安排今天"
+        OrganizationAction.ScheduleTomorrow -> "安排明天"
+        OrganizationAction.MoveToList -> "移动列表"
+        OrganizationAction.EditTitle -> "编辑标题"
+        OrganizationAction.Trash -> "删除"
+    }

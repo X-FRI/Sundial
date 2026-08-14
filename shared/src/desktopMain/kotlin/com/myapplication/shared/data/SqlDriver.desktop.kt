@@ -20,7 +20,7 @@ actual fun createSqlDriver(): SqlDriver {
     Files.createDirectories(dir)
     val dbFile = dir.resolve("reminders.db")
     val freshDatabase = !Files.exists(dbFile) || Files.size(dbFile) == 0L
-    val driver = JdbcSqliteDriver("jdbc:sqlite:${dbFile}")
+    val driver = JdbcSqliteDriver("jdbc:sqlite:$dbFile")
     val targetVersion = TodoDb.Schema.version
 
     if (freshDatabase) {

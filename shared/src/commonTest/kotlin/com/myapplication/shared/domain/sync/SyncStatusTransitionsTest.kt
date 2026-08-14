@@ -6,14 +6,15 @@ import kotlin.test.assertEquals
 class SyncStatusTransitionsTest {
     @Test
     fun configuringModePreservesHistoricalFieldsAndStopsActiveSync() {
-        val status = SyncStatus(
-            mode = SyncMode.Supabase,
-            connected = true,
-            pendingCount = 7,
-            lastSyncAt = 1_000L,
-            lastError = "old error",
-            syncing = true,
-        )
+        val status =
+            SyncStatus(
+                mode = SyncMode.Supabase,
+                connected = true,
+                pendingCount = 7,
+                lastSyncAt = 1_000L,
+                lastError = "old error",
+                syncing = true,
+            )
 
         assertEquals(
             SyncStatus(
@@ -30,14 +31,15 @@ class SyncStatusTransitionsTest {
 
     @Test
     fun configurationFailureKeepsPendingAndLastSyncForAccurateOfflineState() {
-        val status = SyncStatus(
-            mode = SyncMode.Local,
-            connected = true,
-            pendingCount = 3,
-            lastSyncAt = 2_000L,
-            lastError = null,
-            syncing = true,
-        )
+        val status =
+            SyncStatus(
+                mode = SyncMode.Local,
+                connected = true,
+                pendingCount = 3,
+                lastSyncAt = 2_000L,
+                lastError = null,
+                syncing = true,
+            )
 
         assertEquals(
             SyncStatus(
@@ -54,14 +56,15 @@ class SyncStatusTransitionsTest {
 
     @Test
     fun successfulSyncMarksConnectedClearsErrorAndKeepsSpinnerOnlyWhenPendingRemains() {
-        val status = SyncStatus(
-            mode = SyncMode.Supabase,
-            connected = false,
-            pendingCount = 5,
-            lastSyncAt = null,
-            lastError = "network down",
-            syncing = true,
-        )
+        val status =
+            SyncStatus(
+                mode = SyncMode.Supabase,
+                connected = false,
+                pendingCount = 5,
+                lastSyncAt = null,
+                lastError = "network down",
+                syncing = true,
+            )
 
         assertEquals(
             SyncStatus(

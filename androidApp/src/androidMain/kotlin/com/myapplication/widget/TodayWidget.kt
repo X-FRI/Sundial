@@ -2,7 +2,6 @@ package com.myapplication.widget
 
 import android.content.Context
 import android.content.Intent
-import arrow.core.getOrElse
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
@@ -12,9 +11,9 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
-import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
@@ -30,6 +29,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import arrow.core.getOrElse
 import com.myapplication.MainActivity
 import com.myapplication.shared.data.setAndroidAppContext
 import com.myapplication.shared.di.AppGraph
@@ -53,24 +53,29 @@ class TodayWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 class TodayWidget : GlanceAppWidget() {
-    override val sizeMode: SizeMode = SizeMode.Responsive(
-        setOf(
-            DpSize(120.dp, 80.dp),
-            DpSize(160.dp, 96.dp),
-            DpSize(260.dp, 140.dp),
-            DpSize(320.dp, 220.dp),
-        ),
-    )
+    override val sizeMode: SizeMode =
+        SizeMode.Responsive(
+            setOf(
+                DpSize(120.dp, 80.dp),
+                DpSize(160.dp, 96.dp),
+                DpSize(260.dp, 140.dp),
+                DpSize(320.dp, 220.dp),
+            ),
+        )
 
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
+    override suspend fun provideGlance(
+        context: Context,
+        id: GlanceId,
+    ) {
         val snapshot = withContext(Dispatchers.IO) { loadSnapshot(context) }
         provideContent {
             val size = LocalSize.current
-            val widgetSize = when {
-                size.width < 220.dp || size.height < 120.dp -> WidgetSnapshotSize.Small
-                size.height < 190.dp -> WidgetSnapshotSize.Medium
-                else -> WidgetSnapshotSize.Large
-            }
+            val widgetSize =
+                when {
+                    size.width < 220.dp || size.height < 120.dp -> WidgetSnapshotSize.Small
+                    size.height < 190.dp -> WidgetSnapshotSize.Medium
+                    else -> WidgetSnapshotSize.Large
+                }
             TodayWidgetContent(context = context, snapshot = snapshot, size = widgetSize)
         }
     }
@@ -78,13 +83,14 @@ class TodayWidget : GlanceAppWidget() {
     private suspend fun loadSnapshot(context: Context): TodayWidgetSnapshot {
         val cache = WidgetSnapshotCache(context)
         setAndroidAppContext(context)
-        val graph = try {
-            createAppGraph()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            return fallbackSnapshot(cache, Clock.System.now(), TimeZone.currentSystemDefault())
-        }
+        val graph =
+            try {
+                createAppGraph()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                return fallbackSnapshot(cache, Clock.System.now(), TimeZone.currentSystemDefault())
+            }
 
         return try {
             val fresh = loadFreshSnapshot(graph)
@@ -104,9 +110,10 @@ class TodayWidget : GlanceAppWidget() {
     }
 
     private suspend fun loadFreshSnapshot(graph: AppGraph): TodayWidgetSnapshot {
-        val ensuredInboxId = graph.repository.ensureInbox().getOrElse { error ->
-            throw IllegalStateException("Unable to ensure widget inbox: $error")
-        }
+        val ensuredInboxId =
+            graph.repository.ensureInbox().getOrElse { error ->
+                throw IllegalStateException("Unable to ensure widget inbox: $error")
+            }
         val lists = graph.repository.observeLists().first()
         val inboxListId = lists.firstOrNull { it.id == ensuredInboxId }?.id
         val todos = graph.repository.observeAllActive().first()
@@ -124,26 +131,32 @@ class TodayWidget : GlanceAppWidget() {
         now: kotlin.time.Instant,
         timeZone: TimeZone,
     ): TodayWidgetSnapshot =
-        cache.read()
+        cache
+            .read()
             ?.takeIf { snapshot -> snapshot.isCurrentFor(now, timeZone) }
             ?: TodayWidgetSnapshot.empty(now)
 }
 
 @Composable
-private fun TodayWidgetContent(context: Context, snapshot: TodayWidgetSnapshot, size: WidgetSnapshotSize) {
+private fun TodayWidgetContent(
+    context: Context,
+    snapshot: TodayWidgetSnapshot,
+    size: WidgetSnapshotSize,
+) {
     val todayIntent = launchIntent(context, MainActivity.TARGET_TODAY)
     Column(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .background(WidgetColors.Background)
-            .clickable(actionStartActivity(launchIntent(context, MainActivity.TARGET_WORKBENCH)))
-            .padding(
-                when (size) {
-                    WidgetSnapshotSize.Small -> 7.dp
-                    WidgetSnapshotSize.Medium -> 12.dp
-                    WidgetSnapshotSize.Large -> 12.dp
-                },
-            ),
+        modifier =
+            GlanceModifier
+                .fillMaxSize()
+                .background(WidgetColors.Background)
+                .clickable(actionStartActivity(launchIntent(context, MainActivity.TARGET_WORKBENCH)))
+                .padding(
+                    when (size) {
+                        WidgetSnapshotSize.Small -> 7.dp
+                        WidgetSnapshotSize.Medium -> 12.dp
+                        WidgetSnapshotSize.Large -> 12.dp
+                    },
+                ),
     ) {
         when (size) {
             WidgetSnapshotSize.Small -> SmallTodayWidget(snapshot)
@@ -158,16 +171,20 @@ private fun SmallTodayWidget(snapshot: TodayWidgetSnapshot) {
     WidgetTitleRow(snapshot = snapshot, titleFontSize = 14, countFontSize = 11)
     Spacer(GlanceModifier.height(3.dp))
     Text(
-        text = snapshot.nextTaskTitle?.let { title ->
-            listOfNotNull(snapshot.nextTaskDueLabel, title).joinToString(" ")
-        } ?: compactCounts(snapshot),
+        text =
+            snapshot.nextTaskTitle?.let { title ->
+                listOfNotNull(snapshot.nextTaskDueLabel, title).joinToString(" ")
+            } ?: compactCounts(snapshot),
         style = TextStyle(color = WidgetColors.Body, fontSize = 11.sp, fontWeight = FontWeight.Medium),
         maxLines = 1,
     )
 }
 
 @Composable
-private fun MediumTodayWidget(snapshot: TodayWidgetSnapshot, todayIntent: Intent) {
+private fun MediumTodayWidget(
+    snapshot: TodayWidgetSnapshot,
+    todayIntent: Intent,
+) {
     WidgetTitleRow(snapshot = snapshot, titleFontSize = 16, countFontSize = 12)
     Spacer(GlanceModifier.height(5.dp))
     NextTaskText(snapshot = snapshot, fontSize = 12)
@@ -185,7 +202,10 @@ private fun MediumTodayWidget(snapshot: TodayWidgetSnapshot, todayIntent: Intent
 }
 
 @Composable
-private fun LargeTodayWidget(snapshot: TodayWidgetSnapshot, todayIntent: Intent) {
+private fun LargeTodayWidget(
+    snapshot: TodayWidgetSnapshot,
+    todayIntent: Intent,
+) {
     SummaryChips(snapshot)
     Spacer(GlanceModifier.height(7.dp))
     snapshot.topTodayTasks.take(visibleTodayTasks(WidgetSnapshotSize.Large)).forEach { task ->
@@ -218,15 +238,20 @@ private fun LargeTodayWidget(snapshot: TodayWidgetSnapshot, todayIntent: Intent)
 }
 
 @Composable
-private fun WidgetTitleRow(snapshot: TodayWidgetSnapshot, titleFontSize: Int, countFontSize: Int) {
+private fun WidgetTitleRow(
+    snapshot: TodayWidgetSnapshot,
+    titleFontSize: Int,
+    countFontSize: Int,
+) {
     Row(GlanceModifier.fillMaxWidth()) {
         Text(
             text = "今天",
-            style = TextStyle(
-                color = WidgetColors.Primary,
-                fontSize = titleFontSize.sp,
-                fontWeight = FontWeight.Bold,
-            ),
+            style =
+                TextStyle(
+                    color = WidgetColors.Primary,
+                    fontSize = titleFontSize.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
         )
         Spacer(GlanceModifier.width(6.dp))
         Text(
@@ -237,18 +262,26 @@ private fun WidgetTitleRow(snapshot: TodayWidgetSnapshot, titleFontSize: Int, co
 }
 
 @Composable
-private fun NextTaskText(snapshot: TodayWidgetSnapshot, fontSize: Int) {
+private fun NextTaskText(
+    snapshot: TodayWidgetSnapshot,
+    fontSize: Int,
+) {
     Text(
-        text = snapshot.nextTaskTitle?.let { title ->
-            "下一件 ${snapshot.nextTaskDueLabel ?: ""} $title".trim()
-        } ?: "今天没有定时待办",
+        text =
+            snapshot.nextTaskTitle?.let { title ->
+                "下一件 ${snapshot.nextTaskDueLabel ?: ""} $title".trim()
+            } ?: "今天没有定时待办",
         style = TextStyle(color = WidgetColors.Body, fontSize = fontSize.sp, fontWeight = FontWeight.Medium),
         maxLines = 1,
     )
 }
 
 @Composable
-private fun TaskLine(task: WidgetTask, fontSize: Int, intent: Intent) {
+private fun TaskLine(
+    task: WidgetTask,
+    fontSize: Int,
+    intent: Intent,
+) {
     Text(
         text = listOfNotNull(task.dueLabel, task.title).joinToString("  "),
         modifier = GlanceModifier.clickable(actionStartActivity(intent)),
@@ -257,7 +290,10 @@ private fun TaskLine(task: WidgetTask, fontSize: Int, intent: Intent) {
     )
 }
 
-private fun launchIntent(context: Context, target: String): Intent =
+private fun launchIntent(
+    context: Context,
+    target: String,
+): Intent =
     Intent(context, MainActivity::class.java)
         .setAction(Intent.ACTION_VIEW)
         .putExtra(MainActivity.EXTRA_SUNDIAL_TARGET, target)
@@ -277,17 +313,23 @@ private fun SummaryChips(snapshot: TodayWidgetSnapshot) {
 }
 
 @Composable
-private fun SummaryChip(label: String, value: Int, emphasized: Boolean = false) {
+private fun SummaryChip(
+    label: String,
+    value: Int,
+    emphasized: Boolean = false,
+) {
     Text(
         text = "$label $value",
-        modifier = GlanceModifier
-            .background(if (emphasized) WidgetColors.AccentSurface else WidgetColors.ChipBackground)
-            .padding(horizontal = 5.dp, vertical = 2.dp),
-        style = TextStyle(
-            color = if (emphasized) WidgetColors.Accent else WidgetColors.Body,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Medium,
-        ),
+        modifier =
+            GlanceModifier
+                .background(if (emphasized) WidgetColors.AccentSurface else WidgetColors.ChipBackground)
+                .padding(horizontal = 5.dp, vertical = 2.dp),
+        style =
+            TextStyle(
+                color = if (emphasized) WidgetColors.Accent else WidgetColors.Body,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+            ),
         maxLines = 1,
     )
 }
@@ -306,10 +348,12 @@ private fun visibleOverdueTasks(size: WidgetSnapshotSize): Int =
         WidgetSnapshotSize.Large -> 2
     }
 
-private fun compactCounts(snapshot: TodayWidgetSnapshot): String =
-    "逾期 ${snapshot.overdueCount} · 待整理 ${snapshot.inboxCount} · 完成 ${snapshot.completedTodayCount}"
+private fun compactCounts(snapshot: TodayWidgetSnapshot): String = "逾期 ${snapshot.overdueCount} · 待整理 ${snapshot.inboxCount} · 完成 ${snapshot.completedTodayCount}"
 
-private fun formatUpdatedAt(instant: Instant, timeZone: TimeZone): String {
+private fun formatUpdatedAt(
+    instant: Instant,
+    timeZone: TimeZone,
+): String {
     val time = instant.toLocalDateTime(timeZone).time
     return "${time.hour.toString().padStart(2, '0')}:${time.minute.toString().padStart(2, '0')}"
 }

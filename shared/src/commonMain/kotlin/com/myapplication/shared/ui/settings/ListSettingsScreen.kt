@@ -49,12 +49,12 @@ import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemControlSize
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
-import kotlin.time.Instant
-import kotlin.time.Clock
 import kotlinx.coroutines.delay
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @Composable
 internal fun ListSettingsScreen(
@@ -76,17 +76,18 @@ internal fun ListSettingsScreen(
         }
     }
     val today = listAnalyticsToday(now, timeZone)
-    val analyticsModel = remember(selectedList?.id, analyticsTodos, today, timeZone) {
-        selectedList?.let { list ->
-            buildListAnalyticsModel(
-                listId = list.id,
-                todos = analyticsTodos,
-                today = today,
-                range = AnalyticsRange.Week,
-                timeZone = timeZone,
-            )
+    val analyticsModel =
+        remember(selectedList?.id, analyticsTodos, today, timeZone) {
+            selectedList?.let { list ->
+                buildListAnalyticsModel(
+                    listId = list.id,
+                    todos = analyticsTodos,
+                    today = today,
+                    range = AnalyticsRange.Week,
+                    timeZone = timeZone,
+                )
+            }
         }
-    }
     var editing by remember { mutableStateOf<TodoList?>(null) }
     var creating by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<TodoList?>(null) }
@@ -187,13 +188,11 @@ private fun ListSettingsRow(
                 width = 1.dp,
                 color = if (selected) colors.brand.copy(alpha = 0.28f) else Color.Transparent,
                 shape = shape,
-            )
-            .clickable(
+            ).clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onSelect,
-            )
-            .padding(horizontal = 10.dp, vertical = 11.dp),
+            ).padding(horizontal = 10.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ListColorDot(list.colorKey, isInbox)
@@ -202,10 +201,11 @@ private fun ListSettingsRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BasicText(
                     list.name,
-                    style = RemType.text14.copy(
-                        color = colors.textHigh,
-                        fontWeight = FontWeight.Medium,
-                    ),
+                    style =
+                        RemType.text14.copy(
+                            color = colors.textHigh,
+                            fontWeight = FontWeight.Medium,
+                        ),
                 )
                 if (isInbox) {
                     Spacer(Modifier.width(8.dp))
@@ -213,7 +213,7 @@ private fun ListSettingsRow(
                 }
             }
             Spacer(Modifier.height(3.dp))
-            BasicText("${count} 项", style = RemType.text12.copy(color = colors.textLow))
+            BasicText("$count 项", style = RemType.text12.copy(color = colors.textLow))
         }
         if (isInbox) {
             RemIcon(IconName.Inbox, colors.textLow, Modifier.size(17.dp), contentDescription = "收件箱")
@@ -240,7 +240,10 @@ private fun ListSettingsRow(
 }
 
 @Composable
-private fun ListColorDot(colorKey: String, isInbox: Boolean) {
+private fun ListColorDot(
+    colorKey: String,
+    isInbox: Boolean,
+) {
     val colors = LocalRemColors.current
     Box(
         Modifier
@@ -258,15 +261,21 @@ private fun RowDivider() {
         Modifier
             .fillMaxWidth()
             .height(1.dp)
-            .clip(androidx.compose.foundation.shape.RoundedCornerShape(RemRadii.r2))
-            .background(colors.borderSubtle),
+            .clip(
+                androidx.compose.foundation.shape
+                    .RoundedCornerShape(RemRadii.r2),
+            ).background(colors.borderSubtle),
     )
 }
 
 private fun TodoList.isInbox(): Boolean = name == "收件箱" && position == 0
 
-internal fun resolveSelectedList(lists: List<TodoList>, selectedListId: Long?): TodoList? =
-    lists.firstOrNull { it.id == selectedListId } ?: lists.firstOrNull()
+internal fun resolveSelectedList(
+    lists: List<TodoList>,
+    selectedListId: Long?,
+): TodoList? = lists.firstOrNull { it.id == selectedListId } ?: lists.firstOrNull()
 
-internal fun listAnalyticsToday(now: Instant, timeZone: TimeZone): LocalDate =
-    now.toLocalDateTime(timeZone).date
+internal fun listAnalyticsToday(
+    now: Instant,
+    timeZone: TimeZone,
+): LocalDate = now.toLocalDateTime(timeZone).date

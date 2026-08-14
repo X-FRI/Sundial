@@ -21,14 +21,16 @@ class ChartSeriesTest {
 
     @Test
     fun maxValueUsesLargestPointValue() {
-        val series = ChartSeries(
-            title = "精力输出",
-            points = listOf(
-                ChartPoint("8/11", 2),
-                ChartPoint("8/12", 7),
-                ChartPoint("8/13", 4),
-            ),
-        )
+        val series =
+            ChartSeries(
+                title = "精力输出",
+                points =
+                    listOf(
+                        ChartPoint("8/11", 2),
+                        ChartPoint("8/12", 7),
+                        ChartPoint("8/13", 4),
+                    ),
+            )
 
         assertEquals(7, series.maxValue)
     }

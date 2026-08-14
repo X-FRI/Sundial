@@ -31,5 +31,4 @@ fun OrganizePanel(
     )
 }
 
-internal fun List<OrganizationSuggestion>.visibleOrganizationSuggestions(): List<OrganizationSuggestion> =
-    filter { it.reasons.size >= 2 || OrganizationReason.LongTitle in it.reasons }.take(OrganizationSuggestionLimit)
+internal fun List<OrganizationSuggestion>.visibleOrganizationSuggestions(): List<OrganizationSuggestion> = filter { it.reasons.size >= 2 || OrganizationReason.LongTitle in it.reasons }.take(OrganizationSuggestionLimit)

@@ -14,12 +14,13 @@ fun buildOrganizationSuggestions(
     todos
         .filter { !it.isTrashed && !it.isCompleted && it.parentId == null }
         .mapNotNull { todo ->
-            val reasons = buildSet {
-                if (inboxListId != null && todo.listId == inboxListId) add(OrganizationReason.Inbox)
-                if (todo.dueDate == null) add(OrganizationReason.NoDate)
-                if (todo.localDueDate(timeZone)?.let { it < today } == true) add(OrganizationReason.Overdue)
-                if (todo.title.length > 100) add(OrganizationReason.LongTitle)
-            }
+            val reasons =
+                buildSet {
+                    if (inboxListId != null && todo.listId == inboxListId) add(OrganizationReason.Inbox)
+                    if (todo.dueDate == null) add(OrganizationReason.NoDate)
+                    if (todo.localDueDate(timeZone)?.let { it < today } == true) add(OrganizationReason.Overdue)
+                    if (todo.title.length > 100) add(OrganizationReason.LongTitle)
+                }
             if (reasons.isEmpty()) {
                 null
             } else {
@@ -42,5 +43,4 @@ private fun actionsFor(reasons: Set<OrganizationReason>): List<OrganizationActio
         add(OrganizationAction.Trash)
     }.distinct().take(3)
 
-private fun TodoItem.localDueDate(timeZone: TimeZone): LocalDate? =
-    dueDate?.toLocalDateTime(timeZone)?.date
+private fun TodoItem.localDueDate(timeZone: TimeZone): LocalDate? = dueDate?.toLocalDateTime(timeZone)?.date

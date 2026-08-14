@@ -3,19 +3,25 @@ package com.myapplication.shared.domain.recurrence
 sealed interface RecurrenceRule {
     val interval: Int
 
-    data class Daily(override val interval: Int = 1) : RecurrenceRule {
+    data class Daily(
+        override val interval: Int = 1,
+    ) : RecurrenceRule {
         init {
             require(interval > 0) { "Recurrence interval must be positive." }
         }
     }
 
-    data class Weekly(override val interval: Int = 1) : RecurrenceRule {
+    data class Weekly(
+        override val interval: Int = 1,
+    ) : RecurrenceRule {
         init {
             require(interval > 0) { "Recurrence interval must be positive." }
         }
     }
 
-    data class Monthly(override val interval: Int = 1) : RecurrenceRule {
+    data class Monthly(
+        override val interval: Int = 1,
+    ) : RecurrenceRule {
         init {
             require(interval > 0) { "Recurrence interval must be positive." }
         }

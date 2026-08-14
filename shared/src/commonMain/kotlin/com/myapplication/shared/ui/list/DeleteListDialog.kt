@@ -47,10 +47,11 @@ internal fun DeleteListDialog(
                 )
                 Spacer(Modifier.height(8.dp))
                 BasicText(
-                    text = stats?.let {
-                        "影响：未完成 ${it.activeCount} · 已完成 ${it.completedCount} · 已在垃圾箱 ${it.trashedCount}\n" +
-                            "时间：逾期 ${it.overdueCount} · 今天 ${it.todayCount} · 无日期 ${it.noDateCount}"
-                    } ?: "正在读取列表统计，加载完成后才能删除…",
+                    text =
+                        stats?.let {
+                            "影响：未完成 ${it.activeCount} · 已完成 ${it.completedCount} · 已在垃圾箱 ${it.trashedCount}\n" +
+                                "时间：逾期 ${it.overdueCount} · 今天 ${it.todayCount} · 无日期 ${it.noDateCount}"
+                        } ?: "正在读取列表统计，加载完成后才能删除…",
                     style = RemType.text12.copy(color = colors.textLow),
                 )
                 Spacer(Modifier.height(16.dp))

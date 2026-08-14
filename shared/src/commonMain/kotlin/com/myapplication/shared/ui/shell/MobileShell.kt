@@ -39,6 +39,7 @@ import com.myapplication.shared.di.AppGraph
 import com.myapplication.shared.domain.sync.SyncMode
 import com.myapplication.shared.domain.sync.SyncStatus
 import com.myapplication.shared.ui.analytics.AnalyticsScreen
+import com.myapplication.shared.ui.components.BrandLogo
 import com.myapplication.shared.ui.components.IconName
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemIconButton
@@ -94,9 +95,10 @@ fun MobileShell(
     val timeline = remember(todos, now) { buildTodayTimelineState(todos, now, graph.timeZone) }
     val inboxListId = remember(lists) { lists.firstOrNull { it.name == "收件箱" }?.id }
     val contextScope = remember(scope, inboxListId) { scope.toTimelineScope(inboxListId) }
-    val contextTimeline = remember(todos, contextScope, now, inboxListId) {
-        buildContextTimelineState(todos, contextScope, now, graph.timeZone, inboxListId)
-    }
+    val contextTimeline =
+        remember(todos, contextScope, now, inboxListId) {
+            buildContextTimelineState(todos, contextScope, now, graph.timeZone, inboxListId)
+        }
     var showCreate by remember { mutableStateOf(false) }
 
     Box(modifier.fillMaxSize().background(colors.bgSecondary)) {
@@ -159,12 +161,13 @@ fun MobileShell(
                     graph = graph,
                     todoId = selectedId,
                     showCloseButton = true,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .fillMaxWidth()
-                        .background(colors.bgPrimary)
-                        .statusBarsPadding()
-                        .navigationBarsPadding(),
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .fillMaxWidth()
+                            .background(colors.bgPrimary)
+                            .statusBarsPadding()
+                            .navigationBarsPadding(),
                 )
             }
         }
@@ -195,17 +198,20 @@ private fun MobileTopBar(
     val lists by mainVm.lists.collectAsState()
     var searching by remember { mutableStateOf(false) }
     val inboxListId = remember(lists) { lists.firstOrNull { it.name == "收件箱" }?.id }
-    val title = remember(scope, query, lists, inboxListId) {
-        if (query.isNotBlank()) {
-            scopeTitle(scope, query)
-        } else when (val currentScope = scope) {
-            is Scope.List -> {
-                val list = lists.firstOrNull { it.id == currentScope.listId }
-                list?.name ?: "列表"
+    val title =
+        remember(scope, query, lists, inboxListId) {
+            if (query.isNotBlank()) {
+                scopeTitle(scope, query)
+            } else {
+                when (val currentScope = scope) {
+                    is Scope.List -> {
+                        val list = lists.firstOrNull { it.id == currentScope.listId }
+                        list?.name ?: "列表"
+                    }
+                    else -> scopeTitle(scope, query)
+                }
             }
-            else -> scopeTitle(scope, query)
         }
-    }
     Column(
         Modifier
             .fillMaxWidth()
@@ -236,8 +242,14 @@ private fun MobileTopBar(
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    androidx.compose.foundation.text.BasicText("Sundial", style = RemType.label12.copy(color = colors.brand))
-                    androidx.compose.foundation.text.BasicText(title, style = RemType.title20.copy(color = colors.textHigh))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        BrandLogo(size = 16.dp)
+                        Spacer(Modifier.width(4.dp))
+                        androidx.compose.foundation.text
+                            .BasicText("Sundial", style = RemType.label12.copy(color = colors.brand))
+                    }
+                    androidx.compose.foundation.text
+                        .BasicText(title, style = RemType.title20.copy(color = colors.textHigh))
                 }
                 if (syncStatus.mode != SyncMode.Local) {
                     val syncInteraction = remember { MutableInteractionSource() }
@@ -334,8 +346,10 @@ private fun MobileFilterChip(
     ) {
         RemIcon(icon, if (selected) colors.brand else colors.textLow, Modifier.size(14.dp))
         Spacer(Modifier.width(6.dp))
-        androidx.compose.foundation.text.BasicText(label, style = RemType.text12.copy(color = if (selected) colors.brand else colors.textNormal))
+        androidx.compose.foundation.text
+            .BasicText(label, style = RemType.text12.copy(color = if (selected) colors.brand else colors.textNormal))
         Spacer(Modifier.width(6.dp))
-        androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.text10.copy(color = colors.textLow))
+        androidx.compose.foundation.text
+            .BasicText(count.toString(), style = RemType.text10.copy(color = colors.textLow))
     }
 }

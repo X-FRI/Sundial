@@ -46,7 +46,6 @@ import kotlin.test.assertTrue
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModelTest {
-
     private val dispatcher = StandardTestDispatcher()
 
     @BeforeTest
@@ -65,59 +64,62 @@ class MainViewModelTest {
         backgroundScope.launch { vm.lists.collect {} }
     }
 
-    private fun vm(repo: FakeTodoRepository): MainViewModel =
-        MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+    private fun vm(repo: FakeTodoRepository): MainViewModel = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
 
     @Test
-    fun createTodoWithDateAndNote() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        repo.ensureInbox()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
-        collect(vm)
-        val due = LocalDateTime(2026, 8, 12, 15, 0)
-        vm.createTodo("交报告", "备注内容", due)
-        advanceUntilIdle()
-        // 标题/备注/日期全部落到仓库；非子任务 → parentId 为 null
-        assertEquals("交报告", repo.lastInserted?.title)
-        assertNotNull(repo.lastInserted?.dueDate)
-        assertNull(repo.lastInserted?.parentId)
-    }
+    fun createTodoWithDateAndNote() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            repo.ensureInbox()
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            collect(vm)
+            val due = LocalDateTime(2026, 8, 12, 15, 0)
+            vm.createTodo("交报告", "备注内容", due)
+            advanceUntilIdle()
+            // 标题/备注/日期全部落到仓库；非子任务 → parentId 为 null
+            assertEquals("交报告", repo.lastInserted?.title)
+            assertNotNull(repo.lastInserted?.dueDate)
+            assertNull(repo.lastInserted?.parentId)
+        }
 
     @Test
-    fun createTodoInListAddsToList() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        repo.ensureInbox()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
-        collect(vm)
-        vm.createTodo("写周报", "", null, false, 7)
-        advanceUntilIdle()
-        assertEquals(7L, repo.lastInserted?.listId)
-    }
+    fun createTodoInListAddsToList() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            repo.ensureInbox()
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            collect(vm)
+            vm.createTodo("写周报", "", null, false, 7)
+            advanceUntilIdle()
+            assertEquals(7L, repo.lastInserted?.listId)
+        }
 
     @Test
-    fun createTodoBlankShowsEmptyTitleError() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
-        collect(vm)
-        vm.createTodo("   ", "", null)
-        advanceUntilIdle()
-        // 空标题：错误进入 lastError，仓库零写入
-        assertEquals(TodoError.EmptyTitle, vm.lastError.value)
-        assertNull(repo.lastInserted)
-    }
+    fun createTodoBlankShowsEmptyTitleError() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            collect(vm)
+            vm.createTodo("   ", "", null)
+            advanceUntilIdle()
+            // 空标题：错误进入 lastError，仓库零写入
+            assertEquals(TodoError.EmptyTitle, vm.lastError.value)
+            assertNull(repo.lastInserted)
+        }
 
     @Test
-    fun persistenceFailureSurfacesError() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        repo.ensureInbox()
-        repo.failNextInsert = true
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
-        collect(vm)
-        vm.createTodo("写不了", "", null)
-        advanceUntilIdle()
-        // 仓库持久化失败 → 原样暴露 Persistence（UI 可据此提示）
-        assertTrue(vm.lastError.value is TodoError.Persistence)
-    }
+    fun persistenceFailureSurfacesError() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            repo.ensureInbox()
+            repo.failNextInsert = true
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            collect(vm)
+            vm.createTodo("写不了", "", null)
+            advanceUntilIdle()
+            // 仓库持久化失败 → 原样暴露 Persistence（UI 可据此提示）
+            assertTrue(vm.lastError.value is TodoError.Persistence)
+        }
 
     @Test
     fun dismissErrorClearsLastError() {
@@ -130,157 +132,170 @@ class MainViewModelTest {
     }
 
     @Test
-    fun toggleCompletedDelegates() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        repo.ensureInbox()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
-        collect(vm)
-        // 构造一个内存 item（id=5）触发切换，验证只转发 id + 目标值
-        val item = TodoItem(5, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
-        vm.toggleCompleted(item)
-        advanceUntilIdle()
-        assertEquals(5L, repo.toggledId)
-        assertEquals(true, repo.toggledValue)
-    }
-
-    @Test
-    fun completingRecurringTodoCreatesNextOccurrence() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        repo.ensureInbox()
-        val vm = MainViewModel(
-            repo,
-            AddTodoUseCase(repo),
-            TimeZone.UTC,
-            CompleteRecurringTodoUseCase(repo, TimeZone.UTC),
-        )
-        collect(vm)
-        repo.insertTodo(1, "站会", "", Instant.parse("2026-08-13T09:00:00Z"), null, false)
-        val item = repo.todos.first().copy(recurrenceRule = RecurrenceRule.Daily())
-        repo.replaceTodo(item)
-
-        vm.toggleCompleted(item)
-        vm.toggleCompleted(item)
-        advanceUntilIdle()
-
-        assertEquals(true, repo.todos.first { it.id == item.id }.isCompleted)
-        assertEquals(2, repo.todos.size)
-        assertEquals(Instant.parse("2026-08-14T09:00:00Z"), repo.todos.last().dueDate)
-        assertEquals(RecurrenceRule.Daily(), repo.todos.last().recurrenceRule)
-    }
-
-    @Test
-    fun uncompletingRecurringTodoKeepsDefaultToggleBehavior() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        repo.ensureInbox()
-        val vm = MainViewModel(
-            repo,
-            AddTodoUseCase(repo),
-            TimeZone.UTC,
-            CompleteRecurringTodoUseCase(repo, TimeZone.UTC),
-        )
-        collect(vm)
-        val item = TodoItem(
-            7,
-            1,
-            "站会",
-            "",
-            Instant.parse("2026-08-13T09:00:00Z"),
-            true,
-            false,
-            null,
-            false,
-            null,
-            null,
-            0.0,
-            Instant.fromEpochMilliseconds(0),
-            RecurrenceRule.Daily(),
-        )
-
-        vm.toggleCompleted(item)
-        advanceUntilIdle()
-
-        assertEquals(7L, repo.toggledId)
-        assertEquals(false, repo.toggledValue)
-        assertEquals(0, repo.todos.size)
-    }
-
-    @Test
-    fun toggleFlagDelegates() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        repo.ensureInbox()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
-        collect(vm)
-        val item = TodoItem(6, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
-        vm.toggleFlag(item)
-        advanceUntilIdle()
-        assertEquals(6L, repo.flaggedId)
-        assertEquals(true, repo.flaggedValue)
-    }
-
-    @Test
-    fun scheduleTodayDelegatesDueDateWithoutOpeningDetail() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        val fixedClock = object : kotlin.time.Clock {
-            override fun now(): Instant = Instant.parse("2026-08-13T12:00:00Z")
+    fun toggleCompletedDelegates() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            repo.ensureInbox()
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            collect(vm)
+            // 构造一个内存 item（id=5）触发切换，验证只转发 id + 目标值
+            val item = TodoItem(5, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
+            vm.toggleCompleted(item)
+            advanceUntilIdle()
+            assertEquals(5L, repo.toggledId)
+            assertEquals(true, repo.toggledValue)
         }
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.UTC, clock = fixedClock)
-        collect(vm)
-        val item = TodoItem(6, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
-
-        vm.scheduleToday(item)
-        advanceUntilIdle()
-
-        assertEquals(6L, repo.lastSetDueDateId)
-        assertEquals(Instant.parse("2026-08-13T09:00:00Z"), repo.lastSetDueDateValue)
-        assertEquals(Route.Main, vm.route.value)
-    }
 
     @Test
-    fun scheduleTomorrowPreservesExistingTimeWithoutOpeningDetail() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        val fixedClock = object : kotlin.time.Clock {
-            override fun now(): Instant = Instant.parse("2026-08-13T12:00:00Z")
+    fun completingRecurringTodoCreatesNextOccurrence() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            repo.ensureInbox()
+            val vm =
+                MainViewModel(
+                    repo,
+                    AddTodoUseCase(repo),
+                    TimeZone.UTC,
+                    CompleteRecurringTodoUseCase(repo, TimeZone.UTC),
+                )
+            collect(vm)
+            repo.insertTodo(1, "站会", "", Instant.parse("2026-08-13T09:00:00Z"), null, false)
+            val item = repo.todos.first().copy(recurrenceRule = RecurrenceRule.Daily())
+            repo.replaceTodo(item)
+
+            vm.toggleCompleted(item)
+            vm.toggleCompleted(item)
+            advanceUntilIdle()
+
+            assertEquals(true, repo.todos.first { it.id == item.id }.isCompleted)
+            assertEquals(2, repo.todos.size)
+            assertEquals(Instant.parse("2026-08-14T09:00:00Z"), repo.todos.last().dueDate)
+            assertEquals(RecurrenceRule.Daily(), repo.todos.last().recurrenceRule)
         }
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.UTC, clock = fixedClock)
-        collect(vm)
-        val item = TodoItem(
-            7,
-            1,
-            "x",
-            "",
-            Instant.parse("2026-08-10T15:30:00Z"),
-            false,
-            false,
-            null,
-            false,
-            null,
-            null,
-            0.0,
-            Instant.fromEpochMilliseconds(0),
-        )
-
-        vm.scheduleTomorrow(item)
-        advanceUntilIdle()
-
-        assertEquals(7L, repo.lastSetDueDateId)
-        assertEquals(Instant.parse("2026-08-14T15:30:00Z"), repo.lastSetDueDateValue)
-        assertEquals(Route.Main, vm.route.value)
-    }
 
     @Test
-    fun moveTodoToListDelegatesWithoutOpeningDetail() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.UTC)
-        collect(vm)
-        val item = TodoItem(8, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
+    fun uncompletingRecurringTodoKeepsDefaultToggleBehavior() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            repo.ensureInbox()
+            val vm =
+                MainViewModel(
+                    repo,
+                    AddTodoUseCase(repo),
+                    TimeZone.UTC,
+                    CompleteRecurringTodoUseCase(repo, TimeZone.UTC),
+                )
+            collect(vm)
+            val item =
+                TodoItem(
+                    7,
+                    1,
+                    "站会",
+                    "",
+                    Instant.parse("2026-08-13T09:00:00Z"),
+                    true,
+                    false,
+                    null,
+                    false,
+                    null,
+                    null,
+                    0.0,
+                    Instant.fromEpochMilliseconds(0),
+                    RecurrenceRule.Daily(),
+                )
 
-        vm.moveTodoToList(item, 3)
-        advanceUntilIdle()
+            vm.toggleCompleted(item)
+            advanceUntilIdle()
 
-        assertEquals(8L, repo.lastMovedTodoId)
-        assertEquals(3L, repo.lastMovedListId)
-        assertEquals(Route.Main, vm.route.value)
-    }
+            assertEquals(7L, repo.toggledId)
+            assertEquals(false, repo.toggledValue)
+            assertEquals(0, repo.todos.size)
+        }
+
+    @Test
+    fun toggleFlagDelegates() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            repo.ensureInbox()
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            collect(vm)
+            val item = TodoItem(6, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
+            vm.toggleFlag(item)
+            advanceUntilIdle()
+            assertEquals(6L, repo.flaggedId)
+            assertEquals(true, repo.flaggedValue)
+        }
+
+    @Test
+    fun scheduleTodayDelegatesDueDateWithoutOpeningDetail() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            val fixedClock =
+                object : kotlin.time.Clock {
+                    override fun now(): Instant = Instant.parse("2026-08-13T12:00:00Z")
+                }
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.UTC, clock = fixedClock)
+            collect(vm)
+            val item = TodoItem(6, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
+
+            vm.scheduleToday(item)
+            advanceUntilIdle()
+
+            assertEquals(6L, repo.lastSetDueDateId)
+            assertEquals(Instant.parse("2026-08-13T09:00:00Z"), repo.lastSetDueDateValue)
+            assertEquals(Route.Main, vm.route.value)
+        }
+
+    @Test
+    fun scheduleTomorrowPreservesExistingTimeWithoutOpeningDetail() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            val fixedClock =
+                object : kotlin.time.Clock {
+                    override fun now(): Instant = Instant.parse("2026-08-13T12:00:00Z")
+                }
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.UTC, clock = fixedClock)
+            collect(vm)
+            val item =
+                TodoItem(
+                    7,
+                    1,
+                    "x",
+                    "",
+                    Instant.parse("2026-08-10T15:30:00Z"),
+                    false,
+                    false,
+                    null,
+                    false,
+                    null,
+                    null,
+                    0.0,
+                    Instant.fromEpochMilliseconds(0),
+                )
+
+            vm.scheduleTomorrow(item)
+            advanceUntilIdle()
+
+            assertEquals(7L, repo.lastSetDueDateId)
+            assertEquals(Instant.parse("2026-08-14T15:30:00Z"), repo.lastSetDueDateValue)
+            assertEquals(Route.Main, vm.route.value)
+        }
+
+    @Test
+    fun moveTodoToListDelegatesWithoutOpeningDetail() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.UTC)
+            collect(vm)
+            val item = TodoItem(8, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
+
+            vm.moveTodoToList(item, 3)
+            advanceUntilIdle()
+
+            assertEquals(8L, repo.lastMovedTodoId)
+            assertEquals(3L, repo.lastMovedListId)
+            assertEquals(Route.Main, vm.route.value)
+        }
 
     @Test
     fun openDetailAndBack() {
@@ -315,90 +330,96 @@ class MainViewModelTest {
     }
 
     @Test
-    fun selectScopeClearsSearchQuery() = runTest(dispatcher) {
-        // 切 scope 时清空搜索词，避免跨列表残留过滤条件
-        val vm = vm(FakeTodoRepository())
-        vm.setSearch("牛奶")
-        vm.selectScope(Scope.Today)
-        assertEquals("", vm.searchQuery.value)
-    }
+    fun selectScopeClearsSearchQuery() =
+        runTest(dispatcher) {
+            // 切 scope 时清空搜索词，避免跨列表残留过滤条件
+            val vm = vm(FakeTodoRepository())
+            vm.setSearch("牛奶")
+            vm.selectScope(Scope.Today)
+            assertEquals("", vm.searchQuery.value)
+        }
 
     @Test
-    fun deleteSelectedListResetsScopeToAll() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        repo.ensureInbox()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
-        collect(vm)
-        vm.selectScope(Scope.List(7))
-        // 当前 scope 对应的列表被删 → scope 回退到 All，避免指向不存在的列表
-        vm.deleteList(TodoList(7, "x", "blue", 1, Instant.fromEpochMilliseconds(0)))
-        advanceUntilIdle()
-        assertEquals(Scope.All, vm.scope.value)
-    }
+    fun deleteSelectedListResetsScopeToAll() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            repo.ensureInbox()
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            collect(vm)
+            vm.selectScope(Scope.List(7))
+            // 当前 scope 对应的列表被删 → scope 回退到 All，避免指向不存在的列表
+            vm.deleteList(TodoList(7, "x", "blue", 1, Instant.fromEpochMilliseconds(0)))
+            advanceUntilIdle()
+            assertEquals(Scope.All, vm.scope.value)
+        }
 
     @Test
-    fun deleteListDefaultsToMoveTasksToInbox() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        repo.ensureInbox()
-        repo.addList("项目", "blue")
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
-        collect(vm)
-        val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
+    fun deleteListDefaultsToMoveTasksToInbox() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            repo.ensureInbox()
+            repo.addList("项目", "blue")
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            collect(vm)
+            val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
 
-        vm.deleteList(list)
-        advanceUntilIdle()
+            vm.deleteList(list)
+            advanceUntilIdle()
 
-        assertEquals(DeleteListPolicy.MoveTasksToInbox, repo.lastDeleteListPolicy)
-    }
-
-    @Test
-    fun updateListTrimsNameBeforeWriting() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        repo.ensureInbox()
-        repo.addList("项目", "blue")
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
-        collect(vm)
-        val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
-
-        vm.updateList(list, "  研究  ", "red")
-        advanceUntilIdle()
-
-        assertEquals("研究", repo.lastUpdatedListName)
-        assertEquals("red", repo.lastUpdatedListColor)
-    }
+            assertEquals(DeleteListPolicy.MoveTasksToInbox, repo.lastDeleteListPolicy)
+        }
 
     @Test
-    fun deleteListWithDangerPolicyDelegatesPolicy() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        repo.ensureInbox()
-        repo.addList("项目", "blue")
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
-        collect(vm)
-        val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
+    fun updateListTrimsNameBeforeWriting() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            repo.ensureInbox()
+            repo.addList("项目", "blue")
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            collect(vm)
+            val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
 
-        vm.deleteList(list, DeleteListPolicy.MoveTasksToTrash)
-        advanceUntilIdle()
+            vm.updateList(list, "  研究  ", "red")
+            advanceUntilIdle()
 
-        assertEquals(DeleteListPolicy.MoveTasksToTrash, repo.lastDeleteListPolicy)
-    }
+            assertEquals("研究", repo.lastUpdatedListName)
+            assertEquals("red", repo.lastUpdatedListColor)
+        }
 
     @Test
-    fun blankListNamesDoNotWrite() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        repo.ensureInbox()
-        repo.addList("项目", "blue")
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
-        collect(vm)
-        val beforeLists = repo.listsState.value
-        val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
+    fun deleteListWithDangerPolicyDelegatesPolicy() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            repo.ensureInbox()
+            repo.addList("项目", "blue")
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            collect(vm)
+            val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
 
-        vm.addList("   ", "red")
-        vm.updateList(list, "   ", "red")
-        advanceUntilIdle()
+            vm.deleteList(list, DeleteListPolicy.MoveTasksToTrash)
+            advanceUntilIdle()
 
-        assertEquals(beforeLists, repo.listsState.value)
-        assertNull(repo.lastUpdatedListName)
-    }
+            assertEquals(DeleteListPolicy.MoveTasksToTrash, repo.lastDeleteListPolicy)
+        }
+
+    @Test
+    fun blankListNamesDoNotWrite() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            repo.ensureInbox()
+            repo.addList("项目", "blue")
+            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            collect(vm)
+            val beforeLists = repo.listsState.value
+            val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
+
+            vm.addList("   ", "red")
+            vm.updateList(list, "   ", "red")
+            advanceUntilIdle()
+
+            assertEquals(beforeLists, repo.listsState.value)
+            assertNull(repo.lastUpdatedListName)
+        }
 
     @Test
     fun selectScopeClosesDetail() {

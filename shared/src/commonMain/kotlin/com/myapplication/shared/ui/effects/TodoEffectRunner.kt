@@ -20,11 +20,12 @@ fun <A> ViewModel.launchTodoEffect(
     effect: suspend () -> Either<TodoError, A>,
 ) {
     viewModelScope.launch {
-        val result = runTodoEffect {
-            catchPersistence("命令执行失败") {
-                effect()
-            }.bind()
-        }
+        val result =
+            runTodoEffect {
+                catchPersistence("命令执行失败") {
+                    effect()
+                }.bind()
+            }
         when (result) {
             is Either.Left -> lastError.value = result.value
             is Either.Right -> Unit

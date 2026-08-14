@@ -43,10 +43,10 @@ import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemColors
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
-import kotlin.time.Clock
 import kotlinx.coroutines.delay
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 @Composable
 fun AnalyticsScreen(
@@ -66,15 +66,17 @@ fun AnalyticsScreen(
             delay(60_000)
         }
     }
-    val model = remember(todos, lists, now, timeZone) {
-        buildAnalyticsModel(todos, lists, now.toLocalDateTime(timeZone).date, timeZone)
-    }
+    val model =
+        remember(todos, lists, now, timeZone) {
+            buildAnalyticsModel(todos, lists, now.toLocalDateTime(timeZone).date, timeZone)
+        }
     LazyColumn(
         modifier.fillMaxSize().background(colors.bgSecondary),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            horizontal = if (compact) 14.dp else 24.dp,
-            vertical = if (compact) 14.dp else 20.dp,
-        ),
+        contentPadding =
+            androidx.compose.foundation.layout.PaddingValues(
+                horizontal = if (compact) 14.dp else 24.dp,
+                vertical = if (compact) 14.dp else 20.dp,
+            ),
         verticalArrangement = Arrangement.spacedBy(if (compact) 12.dp else 16.dp),
     ) {
         item {
@@ -117,7 +119,10 @@ fun AnalyticsScreen(
 }
 
 @Composable
-private fun AnalyticsHeader(model: AnalyticsModel, compact: Boolean) {
+private fun AnalyticsHeader(
+    model: AnalyticsModel,
+    compact: Boolean,
+) {
     val colors = LocalRemColors.current
     Column {
         androidx.compose.foundation.text.BasicText(
@@ -128,7 +133,10 @@ private fun AnalyticsHeader(model: AnalyticsModel, compact: Boolean) {
 }
 
 @Composable
-private fun KpiGrid(model: AnalyticsModel, compact: Boolean) {
+private fun KpiGrid(
+    model: AnalyticsModel,
+    compact: Boolean,
+) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val useGrid = !compact && maxWidth > 720.dp
         if (useGrid) {
@@ -170,21 +178,27 @@ private fun KpiCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             RemIcon(icon, colors.brand, Modifier.size(15.dp))
             Spacer(Modifier.width(8.dp))
-            androidx.compose.foundation.text.BasicText(label, style = RemType.label12.copy(color = colors.textLow))
+            androidx.compose.foundation.text
+                .BasicText(label, style = RemType.label12.copy(color = colors.textLow))
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.Bottom) {
-            androidx.compose.foundation.text.BasicText(value, style = RemType.title24.copy(color = colors.textHigh))
+            androidx.compose.foundation.text
+                .BasicText(value, style = RemType.title24.copy(color = colors.textHigh))
             if (unit.isNotEmpty()) {
                 Spacer(Modifier.width(4.dp))
-                androidx.compose.foundation.text.BasicText(unit, style = RemType.text12.copy(color = colors.textLow))
+                androidx.compose.foundation.text
+                    .BasicText(unit, style = RemType.text12.copy(color = colors.textLow))
             }
         }
     }
 }
 
 @Composable
-private fun CompletionTrendCard(model: AnalyticsModel, modifier: Modifier = Modifier) {
+private fun CompletionTrendCard(
+    model: AnalyticsModel,
+    modifier: Modifier = Modifier,
+) {
     AnalyticsCard("完成趋势", "最近 7 天每天完成的任务数量", modifier) {
         CompletionTrendChart(
             points = model.days.map { ChartPoint(it.label, it.completedCount) },
@@ -193,7 +207,10 @@ private fun CompletionTrendCard(model: AnalyticsModel, modifier: Modifier = Modi
 }
 
 @Composable
-private fun EnergyTrendCard(model: AnalyticsModel, modifier: Modifier = Modifier) {
+private fun EnergyTrendCard(
+    model: AnalyticsModel,
+    modifier: Modifier = Modifier,
+) {
     AnalyticsCard("精力输出", "按完成任务复杂度估算的输出点数", modifier) {
         EnergyOutputChart(
             points = model.days.map { ChartPoint(it.label, it.energy) },
@@ -202,7 +219,10 @@ private fun EnergyTrendCard(model: AnalyticsModel, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun PressureCard(model: AnalyticsModel, modifier: Modifier = Modifier) {
+private fun PressureCard(
+    model: AnalyticsModel,
+    modifier: Modifier = Modifier,
+) {
     AnalyticsCard("待办压力", "当前未完成任务的时间分布", modifier) {
         PressureDistributionChart(
             buckets = model.pressure.map { ChartBucket(it.label, it.count, it.tone.toChartTone()) },
@@ -217,7 +237,10 @@ private fun PressureCard(model: AnalyticsModel, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun EnergyStructureCard(model: AnalyticsModel, modifier: Modifier = Modifier) {
+private fun EnergyStructureCard(
+    model: AnalyticsModel,
+    modifier: Modifier = Modifier,
+) {
     AnalyticsCard("输出结构", "让你看到完成的不是数量，而是推进量", modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             InsightRow("深度任务", model.deepWorkCount, "完成后输出点数 >= 3")
@@ -244,50 +267,67 @@ private fun AnalyticsCard(
             .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            androidx.compose.foundation.text.BasicText(title, style = RemType.title18.copy(color = colors.textHigh))
+            androidx.compose.foundation.text
+                .BasicText(title, style = RemType.title18.copy(color = colors.textHigh))
             Spacer(Modifier.weight(1f))
             RemIcon(IconName.Chart, colors.textLow, Modifier.size(15.dp))
         }
         Spacer(Modifier.height(4.dp))
-        androidx.compose.foundation.text.BasicText(subtitle, style = RemType.text12.copy(color = colors.textLow))
+        androidx.compose.foundation.text
+            .BasicText(subtitle, style = RemType.text12.copy(color = colors.textLow))
         Spacer(Modifier.height(16.dp))
         content()
     }
 }
 
 @Composable
-private fun LegendRow(label: String, count: Int, tone: AnalyticsTone) {
+private fun LegendRow(
+    label: String,
+    count: Int,
+    tone: AnalyticsTone,
+) {
     val colors = LocalRemColors.current
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(8.dp).background(tone.color(colors), CircleShape))
         Spacer(Modifier.width(8.dp))
-        androidx.compose.foundation.text.BasicText(label, style = RemType.text12.copy(color = colors.textNormal), modifier = Modifier.weight(1f))
-        androidx.compose.foundation.text.BasicText(count.toString(), style = RemType.label12.copy(color = tone.color(colors)))
+        androidx.compose.foundation.text
+            .BasicText(label, style = RemType.text12.copy(color = colors.textNormal), modifier = Modifier.weight(1f))
+        androidx.compose.foundation.text
+            .BasicText(count.toString(), style = RemType.label12.copy(color = tone.color(colors)))
     }
 }
 
 @Composable
-private fun InsightRow(label: String, value: Int, hint: String) {
+private fun InsightRow(
+    label: String,
+    value: Int,
+    hint: String,
+) {
     val colors = LocalRemColors.current
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            androidx.compose.foundation.text.BasicText(label, style = RemType.label12.copy(color = colors.textNormal))
-            androidx.compose.foundation.text.BasicText(hint, style = RemType.text10.copy(color = colors.textLow))
+            androidx.compose.foundation.text
+                .BasicText(label, style = RemType.label12.copy(color = colors.textNormal))
+            androidx.compose.foundation.text
+                .BasicText(hint, style = RemType.text10.copy(color = colors.textLow))
         }
-        androidx.compose.foundation.text.BasicText(value.toString(), style = RemType.title18.copy(color = colors.textHigh))
+        androidx.compose.foundation.text
+            .BasicText(value.toString(), style = RemType.title18.copy(color = colors.textHigh))
     }
 }
 
-private fun AnalyticsTone.color(colors: RemColors): Color = when (this) {
-    AnalyticsTone.Danger -> colors.error
-    AnalyticsTone.Brand -> colors.brand
-    AnalyticsTone.Info -> colors.info
-    AnalyticsTone.Neutral -> colors.textLow
-}
+private fun AnalyticsTone.color(colors: RemColors): Color =
+    when (this) {
+        AnalyticsTone.Danger -> colors.error
+        AnalyticsTone.Brand -> colors.brand
+        AnalyticsTone.Info -> colors.info
+        AnalyticsTone.Neutral -> colors.textLow
+    }
 
-internal fun AnalyticsTone.toChartTone(): ChartTone = when (this) {
-    AnalyticsTone.Danger -> ChartTone.Danger
-    AnalyticsTone.Brand -> ChartTone.Primary
-    AnalyticsTone.Info -> ChartTone.Info
-    AnalyticsTone.Neutral -> ChartTone.Neutral
-}
+internal fun AnalyticsTone.toChartTone(): ChartTone =
+    when (this) {
+        AnalyticsTone.Danger -> ChartTone.Danger
+        AnalyticsTone.Brand -> ChartTone.Primary
+        AnalyticsTone.Info -> ChartTone.Info
+        AnalyticsTone.Neutral -> ChartTone.Neutral
+    }

@@ -8,8 +8,7 @@ import kotlinx.coroutines.CancellationException
 
 typealias TodoEffect<A> = suspend Raise<TodoError>.() -> A
 
-suspend fun <A> runTodoEffect(effect: TodoEffect<A>): Either<TodoError, A> =
-    either { effect() }
+suspend fun <A> runTodoEffect(effect: TodoEffect<A>): Either<TodoError, A> = either { effect() }
 
 suspend fun <A> Raise<TodoError>.catchPersistence(
     fallbackMessage: String,

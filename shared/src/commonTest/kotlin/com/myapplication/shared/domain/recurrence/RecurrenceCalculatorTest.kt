@@ -1,9 +1,9 @@
 package com.myapplication.shared.domain.recurrence
 
+import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlinx.datetime.LocalDate
 
 class RecurrenceCalculatorTest {
     @Test

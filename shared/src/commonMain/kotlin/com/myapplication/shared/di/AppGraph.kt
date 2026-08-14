@@ -12,12 +12,12 @@ import com.myapplication.shared.domain.usecase.AddSubTaskUseCase
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
 import com.myapplication.shared.ui.settings.SettingsViewModel
 import com.myapplication.shared.util.createDeviceId
-import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.newSingleThreadContext
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.TimeZone
+import kotlin.time.Clock
 
 /**
  * 应用依赖图（手写 DI，无框架）：集中创建 SQLite 数据库、repository、
@@ -40,8 +40,10 @@ class AppGraph(
     val timeZone: TimeZone = TimeZone.currentSystemDefault(),
 ) {
     private val db = TodoDb(driver)
+
     // 所有 SQLite 访问收敛到专用单线程（JdbcDriver 非线程安全，单线程串行化全部 DB 调用）
     private val dbDispatcher = newSingleThreadContext("sqlite-db")
+
     // repository 构造时即同步读取/生成 deviceId（见 loadDeviceId 说明）
     val repository: TodoRepository by lazy { TodoRepositoryImpl(db, clock, timeZone, loadDeviceId(), dbDispatcher) }
     val addTodo: AddTodoUseCase by lazy { AddTodoUseCase(repository) }
@@ -69,16 +71,17 @@ class AppGraph(
      * 先 updateSetting 再 insertSettingIfMissing，覆盖"旧库已有行"与
      * "全新库无行"两种情况（update 无行不报错）。
      */
-    private fun loadDeviceId(): String = runBlocking(dbDispatcher) {
-        val existing = db.todoDbQueries.getSetting("sync.deviceId").executeAsOneOrNull()
-        if (existing != null) return@runBlocking existing
-        val id = createDeviceId()
-        db.transaction {
-            db.todoDbQueries.updateSetting(id, "sync.deviceId")
-            db.todoDbQueries.insertSettingIfMissing("sync.deviceId", id, "sync.deviceId")
+    private fun loadDeviceId(): String =
+        runBlocking(dbDispatcher) {
+            val existing = db.todoDbQueries.getSetting("sync.deviceId").executeAsOneOrNull()
+            if (existing != null) return@runBlocking existing
+            val id = createDeviceId()
+            db.transaction {
+                db.todoDbQueries.updateSetting(id, "sync.deviceId")
+                db.todoDbQueries.insertSettingIfMissing("sync.deviceId", id, "sync.deviceId")
+            }
+            id
         }
-        id
-    }
 
     /**
      * 从 settings 表装配同步配置。

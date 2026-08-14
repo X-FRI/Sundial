@@ -4,7 +4,10 @@ import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 
-fun nextOccurrence(baseDate: LocalDate, rule: RecurrenceRule): LocalDate =
+fun nextOccurrence(
+    baseDate: LocalDate,
+    rule: RecurrenceRule,
+): LocalDate =
     when (rule) {
         is RecurrenceRule.Daily -> baseDate + DatePeriod(days = rule.interval)
         is RecurrenceRule.Weekly -> baseDate + DatePeriod(days = rule.interval * 7)

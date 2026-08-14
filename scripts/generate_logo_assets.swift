@@ -4,7 +4,7 @@ import Foundation
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 
 guard CommandLine.arguments.count > 1 else {
-    fatalError("Usage: swift scripts/generate_logo_assets.swift /absolute/path/to/logo-lockup.png")
+    fatalError("Usage: swift scripts/generate_logo_assets.swift /absolute/path/to/logo-lockup-or-icon.png")
 }
 
 let sourceURL = URL(fileURLWithPath: CommandLine.arguments[1])
@@ -60,6 +60,33 @@ func resized(_ image: NSImage, size: Int) -> NSImage {
     }
 }
 
+func padded(
+    _ image: NSImage,
+    size: Int,
+    scale: CGFloat = 0.84,
+    visualOffsetX: CGFloat = 0,
+    visualOffsetY: CGFloat = 0,
+) -> NSImage {
+    guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+        fatalError("Unable to read source image")
+    }
+    let drawSize = CGFloat(size) * scale
+    let origin = (CGFloat(size) - drawSize) / 2
+    return bitmap(width: size, height: size) { context in
+        context.setFillColor(CGColor(red: 1.0, green: 0.972, blue: 0.93, alpha: 1.0))
+        context.fill(CGRect(x: 0, y: 0, width: size, height: size))
+        context.draw(
+            cgImage,
+            in: CGRect(
+                x: origin + CGFloat(size) * visualOffsetX,
+                y: origin + CGFloat(size) * visualOffsetY,
+                width: drawSize,
+                height: drawSize,
+            ),
+        )
+    }
+}
+
 func cropIcon() -> NSImage {
     let crop = CGRect(x: 112, y: 614 - 476, width: 360, height: 360)
     guard let icon = cgSource.cropping(to: crop) else {
@@ -68,9 +95,15 @@ func cropIcon() -> NSImage {
     return NSImage(cgImage: icon, size: NSSize(width: 360, height: 360))
 }
 
-let icon = cropIcon()
-savePNG(source, "docs/assets/sundial-logo-lockup.png")
-savePNG(resized(icon, size: 1024), "docs/assets/sundial-icon.png")
+let isIconSource = abs(cgSource.width - cgSource.height) <= 4
+let icon = isIconSource ? source : cropIcon()
+let projectIcon = isIconSource ? resized(icon, size: 1024) : padded(icon, size: 1024)
+
+if !isIconSource {
+    savePNG(source, "docs/assets/sundial-logo-lockup.png")
+}
+savePNG(projectIcon, "docs/assets/sundial-icon.png")
+savePNG(projectIcon, "desktopApp/src/jvmMain/resources/brand/sundial-icon.png")
 
 let androidSizes = [
     "mdpi": 48,
@@ -81,8 +114,45 @@ let androidSizes = [
 ]
 
 for (bucket, size) in androidSizes {
-    let image = resized(icon, size: size)
+    let image = isIconSource ? resized(icon, size: size) : padded(icon, size: size)
     savePNG(image, "androidApp/src/androidMain/res/mipmap-\(bucket)/ic_launcher.png")
     savePNG(image, "androidApp/src/androidMain/res/mipmap-\(bucket)/ic_launcher_round.png")
     savePNG(image, "androidApp/src/androidMain/res/mipmap-\(bucket)/ic_launcher_foreground.png")
+}
+
+let iconsetURL = root.appendingPathComponent("desktopApp/build/generated/sundial.iconset")
+try? FileManager.default.removeItem(at: iconsetURL)
+try! FileManager.default.createDirectory(at: iconsetURL, withIntermediateDirectories: true)
+
+let iconsetSizes = [
+    ("icon_16x16.png", 16),
+    ("icon_16x16@2x.png", 32),
+    ("icon_32x32.png", 32),
+    ("icon_32x32@2x.png", 64),
+    ("icon_128x128.png", 128),
+    ("icon_128x128@2x.png", 256),
+    ("icon_256x256.png", 256),
+    ("icon_256x256@2x.png", 512),
+    ("icon_512x512.png", 512),
+    ("icon_512x512@2x.png", 1024),
+]
+
+for (name, size) in iconsetSizes {
+    let image = isIconSource ? resized(icon, size: size) : padded(icon, size: size)
+    savePNG(image, "desktopApp/build/generated/sundial.iconset/\(name)")
+}
+
+let iconutil = Process()
+iconutil.executableURL = URL(fileURLWithPath: "/usr/bin/iconutil")
+iconutil.arguments = [
+    "-c",
+    "icns",
+    iconsetURL.path,
+    "-o",
+    root.appendingPathComponent("desktopApp/src/jvmMain/resources/icon.icns").path,
+]
+try! iconutil.run()
+iconutil.waitUntilExit()
+if iconutil.terminationStatus != 0 {
+    fatalError("iconutil failed with status \(iconutil.terminationStatus)")
 }

@@ -35,5 +35,4 @@ fun buildListStats(
     )
 }
 
-private fun TodoItem.localDueDate(timeZone: TimeZone): LocalDate? =
-    dueDate?.toLocalDateTime(timeZone)?.date
+private fun TodoItem.localDueDate(timeZone: TimeZone): LocalDate? = dueDate?.toLocalDateTime(timeZone)?.date

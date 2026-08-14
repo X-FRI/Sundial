@@ -18,16 +18,19 @@ import kotlinx.serialization.Serializable
  */
 sealed interface SyncMode {
     data object Local : SyncMode
+
     data object Supabase : SyncMode
+
     data object SundialServer : SyncMode
 
     companion object {
         /** 由设置里的模式字符串（"supabase"/"sundial"）解析，未知值回退 Local。 */
-        fun fromKey(key: String): SyncMode = when (key) {
-            "supabase" -> Supabase
-            "sundial" -> SundialServer
-            else -> Local
-        }
+        fun fromKey(key: String): SyncMode =
+            when (key) {
+                "supabase" -> Supabase
+                "sundial" -> SundialServer
+                else -> Local
+            }
     }
 }
 
@@ -93,7 +96,10 @@ data class SyncConfig(
 
 /** 同步层统一错误：Transport 为网络/服务端/解析错误，NotConfigured 为配置缺失。 */
 sealed interface SyncError {
-    data class Transport(val message: String) : SyncError
+    data class Transport(
+        val message: String,
+    ) : SyncError
+
     data object NotConfigured : SyncError
 }
 

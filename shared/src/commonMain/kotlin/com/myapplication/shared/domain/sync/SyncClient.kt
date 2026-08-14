@@ -19,8 +19,12 @@ import kotlinx.coroutines.flow.Flow
  */
 interface SyncClient {
     suspend fun push(rows: List<SyncRow>): Either<SyncError, Unit>
+
     suspend fun pull(): Either<SyncError, List<SyncRow>>
+
     fun observeRemoteChanges(): Flow<SyncRow>
+
     fun observeConnectionStatus(): Flow<Boolean>
+
     suspend fun close()
 }

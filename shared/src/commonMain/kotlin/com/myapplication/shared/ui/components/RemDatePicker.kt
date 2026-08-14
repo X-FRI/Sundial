@@ -77,11 +77,12 @@ fun RemDatePicker(
                 RemIconButton(IconName.ChevronBack, "上个月", onClick = { month = month.minusMonth() }, size = 14.dp)
                 androidx.compose.foundation.text.BasicText(
                     "${month.year} 年 ${month.month.number} 月",
-                    style = RemType.text14.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.textHigh,
-                        textAlign = TextAlign.Center,
-                    ),
+                    style =
+                        RemType.text14.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.textHigh,
+                            textAlign = TextAlign.Center,
+                        ),
                     modifier = Modifier.weight(1f),
                 )
                 RemIconButton(IconName.ChevronRight, "下个月", onClick = { month = month.plusMonth() }, size = 14.dp)
@@ -123,18 +124,23 @@ fun RemDatePicker(
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
-                                    ) { onPick(date); onDismiss() },
+                                    ) {
+                                        onPick(date)
+                                        onDismiss()
+                                    },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 androidx.compose.foundation.text.BasicText(
                                     "$d",
-                                    style = RemType.text14.copy(
-                                        color = when {
-                                            isSelected -> Color.White
-                                            isToday -> colors.brand
-                                            else -> colors.textHigh
-                                        },
-                                    ),
+                                    style =
+                                        RemType.text14.copy(
+                                            color =
+                                                when {
+                                                    isSelected -> Color.White
+                                                    isToday -> colors.brand
+                                                    else -> colors.textHigh
+                                                },
+                                        ),
                                 )
                             }
                         }
@@ -143,7 +149,8 @@ fun RemDatePicker(
             }
             Spacer(Modifier.height(12.dp))
             TimePickerRow(initialTime = initialTime, onPickTime = onPickTime)
-        })
+        },
+    )
 }
 
 /**
@@ -155,13 +162,17 @@ fun RemDatePicker(
  * - "清除时间"回调 (-1, -1)，由调用方解释为删除时间。
  */
 @Composable
-private fun TimePickerRow(initialTime: LocalTime?, onPickTime: (Int, Int) -> Unit) {
+private fun TimePickerRow(
+    initialTime: LocalTime?,
+    onPickTime: (Int, Int) -> Unit,
+) {
     val colors = LocalRemColors.current
     // 默认 9:00；若已有初始时间则沿用
     var hour by remember { mutableStateOf(initialTime?.hour ?: 9) }
     var minute by remember { mutableStateOf(initialTime?.minute ?: 0) }
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        androidx.compose.foundation.text.BasicText("时间", style = RemType.text14.copy(color = colors.textNormal))
+        androidx.compose.foundation.text
+            .BasicText("时间", style = RemType.text14.copy(color = colors.textNormal))
         Spacer(Modifier.weight(1f))
         // 小时步进：+23 再取模等价于 -1，实现 0→23 环形回绕
         RemIconButton(IconName.ChevronBack, "减一小时", onClick = {
@@ -182,7 +193,8 @@ private fun TimePickerRow(initialTime: LocalTime?, onPickTime: (Int, Int) -> Uni
             minute = (minute + 55) % 60
             onPickTime(hour, minute)
         }, size = 14.dp)
-        androidx.compose.foundation.text.BasicText("分", style = RemType.text12.copy(color = colors.textLow))
+        androidx.compose.foundation.text
+            .BasicText("分", style = RemType.text12.copy(color = colors.textLow))
         RemIconButton(IconName.ChevronRight, "加五分钟", onClick = {
             minute = (minute + 5) % 60
             onPickTime(hour, minute)

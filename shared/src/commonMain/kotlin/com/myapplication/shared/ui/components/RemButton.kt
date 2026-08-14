@@ -58,23 +58,25 @@ fun RemButton(
     val hovered by interactionSource.collectIsHoveredAsState()
     val pressed by interactionSource.collectIsPressedAsState()
     // 背景色状态机：禁用 > 变体主色 > hover 反馈 > 透明兜底
-    val bg = when {
-        !enabled && variant == RemButtonVariant.Default -> colors.brand.copy(alpha = 0.4f)
-        !enabled -> Color.Transparent
-        variant == RemButtonVariant.Default && hovered -> colors.brandHover
-        variant == RemButtonVariant.Default -> colors.brand
-        variant == RemButtonVariant.Danger && hovered -> colors.error.copy(alpha = 0.08f)
-        hovered -> colors.bgSecondary
-        else -> Color.Transparent
-    }
+    val bg =
+        when {
+            !enabled && variant == RemButtonVariant.Default -> colors.brand.copy(alpha = 0.4f)
+            !enabled -> Color.Transparent
+            variant == RemButtonVariant.Default && hovered -> colors.brandHover
+            variant == RemButtonVariant.Default -> colors.brand
+            variant == RemButtonVariant.Danger && hovered -> colors.error.copy(alpha = 0.08f)
+            hovered -> colors.bgSecondary
+            else -> Color.Transparent
+        }
     // 前景色状态机：禁用态弱化、Default 恒白字、Danger 恒红字
-    val fg = when {
-        !enabled && variant == RemButtonVariant.Default -> Color.White.copy(alpha = 0.7f)
-        !enabled -> colors.textLow.copy(alpha = 0.6f)
-        variant == RemButtonVariant.Default -> Color.White
-        variant == RemButtonVariant.Danger -> colors.error
-        else -> colors.textNormal
-    }
+    val fg =
+        when {
+            !enabled && variant == RemButtonVariant.Default -> Color.White.copy(alpha = 0.7f)
+            !enabled -> colors.textLow.copy(alpha = 0.6f)
+            variant == RemButtonVariant.Default -> Color.White
+            variant == RemButtonVariant.Danger -> colors.error
+            else -> colors.textNormal
+        }
     val shape = RoundedCornerShape(RemRadii.r4)
     Box(
         modifier
@@ -86,8 +88,7 @@ fun RemButton(
                 indication = null,
                 enabled = enabled,
                 onClick = onClick,
-            )
-            .height(32.dp)
+            ).height(32.dp)
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
     ) {

@@ -78,7 +78,8 @@ private fun CompactDayTimeline(
 ) {
     val colors = LocalRemColors.current
     Row(verticalAlignment = Alignment.CenterVertically) {
-        androidx.compose.foundation.text.BasicText(state.title, style = RemType.label12.copy(color = colors.textNormal))
+        androidx.compose.foundation.text
+            .BasicText(state.title, style = RemType.label12.copy(color = colors.textNormal))
         Spacer(Modifier.width(8.dp))
         RemIcon(IconName.Clock, colors.textLow, Modifier.size(13.dp))
         Spacer(Modifier.weight(1f))
@@ -86,10 +87,14 @@ private fun CompactDayTimeline(
     }
     TimelineRail(timeline, Modifier.padding(top = 10.dp))
     Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        androidx.compose.foundation.text.BasicText(timeline.startLabel, style = RemType.text10.copy(color = colors.textLow))
-        androidx.compose.foundation.text.BasicText("12:00", style = RemType.text10.copy(color = colors.textLow))
-        androidx.compose.foundation.text.BasicText("18:00", style = RemType.text10.copy(color = colors.textLow))
-        androidx.compose.foundation.text.BasicText(timeline.endLabel, style = RemType.text10.copy(color = colors.textLow))
+        androidx.compose.foundation.text
+            .BasicText(timeline.startLabel, style = RemType.text10.copy(color = colors.textLow))
+        androidx.compose.foundation.text
+            .BasicText("12:00", style = RemType.text10.copy(color = colors.textLow))
+        androidx.compose.foundation.text
+            .BasicText("18:00", style = RemType.text10.copy(color = colors.textLow))
+        androidx.compose.foundation.text
+            .BasicText(timeline.endLabel, style = RemType.text10.copy(color = colors.textLow))
     }
 }
 
@@ -140,10 +145,11 @@ private fun TimelineLegendWithTotal(
                 Spacer(Modifier.width(4.dp))
                 androidx.compose.foundation.text.BasicText(
                     segment.count.toString(),
-                    style = RemType.label10.copy(
-                        color = if (segment.count > 0) segment.tone.timelineColor() else colors.textLow,
-                        fontFamily = FontFamily.Monospace,
-                    ),
+                    style =
+                        RemType.label10.copy(
+                            color = if (segment.count > 0) segment.tone.timelineColor() else colors.textLow,
+                            fontFamily = FontFamily.Monospace,
+                        ),
                 )
             }
         }
@@ -218,7 +224,8 @@ fun TodayRhythm(
             .padding(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            androidx.compose.foundation.text.BasicText("今日时间线", style = RemType.label12.copy(color = colors.textNormal))
+            androidx.compose.foundation.text
+                .BasicText("今日时间线", style = RemType.label12.copy(color = colors.textNormal))
             Spacer(Modifier.width(8.dp))
             RemIcon(IconName.Clock, colors.textLow, Modifier.size(14.dp))
             Spacer(Modifier.weight(1f))
@@ -226,16 +233,23 @@ fun TodayRhythm(
         }
         TimelineRail(timeline, Modifier.padding(top = 14.dp))
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            androidx.compose.foundation.text.BasicText(timeline.startLabel, style = RemType.text10.copy(color = colors.textLow))
-            androidx.compose.foundation.text.BasicText("12:00", style = RemType.text10.copy(color = colors.textLow))
-            androidx.compose.foundation.text.BasicText("18:00", style = RemType.text10.copy(color = colors.textLow))
-            androidx.compose.foundation.text.BasicText(timeline.endLabel, style = RemType.text10.copy(color = colors.textLow))
+            androidx.compose.foundation.text
+                .BasicText(timeline.startLabel, style = RemType.text10.copy(color = colors.textLow))
+            androidx.compose.foundation.text
+                .BasicText("12:00", style = RemType.text10.copy(color = colors.textLow))
+            androidx.compose.foundation.text
+                .BasicText("18:00", style = RemType.text10.copy(color = colors.textLow))
+            androidx.compose.foundation.text
+                .BasicText(timeline.endLabel, style = RemType.text10.copy(color = colors.textLow))
         }
     }
 }
 
 @Composable
-private fun TimelineRail(timeline: TodayTimelineState, modifier: Modifier = Modifier) {
+private fun TimelineRail(
+    timeline: TodayTimelineState,
+    modifier: Modifier = Modifier,
+) {
     val colors = LocalRemColors.current
     BoxWithConstraints(modifier.fillMaxWidth().height(34.dp)) {
         Canvas(Modifier.fillMaxWidth().height(34.dp)) {

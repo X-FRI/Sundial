@@ -9,8 +9,7 @@ import kotlinx.coroutines.CancellationException
 
 typealias SyncEffect<A> = suspend Raise<SyncError>.() -> A
 
-suspend fun <A> runSyncEffect(effect: SyncEffect<A>): Either<SyncError, A> =
-    either { effect() }
+suspend fun <A> runSyncEffect(effect: SyncEffect<A>): Either<SyncError, A> = either { effect() }
 
 suspend fun <A> Raise<SyncError>.catchTransport(
     fallbackMessage: String,
@@ -24,8 +23,6 @@ suspend fun <A> Raise<SyncError>.catchTransport(
         raise(SyncError.Transport(e.message ?: fallbackMessage))
     }
 
-fun TodoError.toSyncError(): SyncError =
-    SyncError.Transport((this as? TodoError.Persistence)?.message ?: "本地读取失败")
+fun TodoError.toSyncError(): SyncError = SyncError.Transport((this as? TodoError.Persistence)?.message ?: "本地读取失败")
 
-fun <A> Raise<SyncError>.bindLocal(effect: Either<TodoError, A>): A =
-    effect.mapLeft { it.toSyncError() }.bind()
+fun <A> Raise<SyncError>.bindLocal(effect: Either<TodoError, A>): A = effect.mapLeft { it.toSyncError() }.bind()

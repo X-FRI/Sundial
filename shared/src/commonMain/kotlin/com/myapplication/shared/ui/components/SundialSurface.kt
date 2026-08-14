@@ -25,13 +25,14 @@ fun SundialSurface(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val colors = LocalRemColors.current
-    val bg = when (tone) {
-        SundialSurfaceTone.Page -> colors.bgPrimary
-        SundialSurfaceTone.Panel -> colors.surface
-        SundialSurfaceTone.Raised -> colors.surfaceRaised
-        SundialSurfaceTone.Inset -> colors.surfaceInset
-        SundialSurfaceTone.Transparent -> Color.Transparent
-    }
+    val bg =
+        when (tone) {
+            SundialSurfaceTone.Page -> colors.bgPrimary
+            SundialSurfaceTone.Panel -> colors.surface
+            SundialSurfaceTone.Raised -> colors.surfaceRaised
+            SundialSurfaceTone.Inset -> colors.surfaceInset
+            SundialSurfaceTone.Transparent -> Color.Transparent
+        }
     val shape = RoundedCornerShape(radius)
     Box(
         modifier

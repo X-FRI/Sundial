@@ -27,17 +27,21 @@ fun RemSyncIndicator(
     size: Dp = 12.dp,
 ) {
     val colors = LocalRemColors.current
-    val tint = when (state) {
-        SyncIndicatorState.Syncing -> colors.brand
-        SyncIndicatorState.Synced -> colors.success
-        SyncIndicatorState.Error -> colors.error
-        SyncIndicatorState.Idle -> colors.textLow
-    }
-    val rotation = if (state == SyncIndicatorState.Syncing) {
-        val transition = rememberInfiniteTransition(label = "sync-rotation")
-        val angle by transition.animateFloat(0f, 360f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "sync-angle")
-        angle
-    } else 0f
+    val tint =
+        when (state) {
+            SyncIndicatorState.Syncing -> colors.brand
+            SyncIndicatorState.Synced -> colors.success
+            SyncIndicatorState.Error -> colors.error
+            SyncIndicatorState.Idle -> colors.textLow
+        }
+    val rotation =
+        if (state == SyncIndicatorState.Syncing) {
+            val transition = rememberInfiniteTransition(label = "sync-rotation")
+            val angle by transition.animateFloat(0f, 360f, infiniteRepeatable(tween(900, easing = LinearEasing)), label = "sync-angle")
+            angle
+        } else {
+            0f
+        }
     Box(modifier.size(size), contentAlignment = Alignment.Center) {
         RemIcon(IconName.Sync, tint, Modifier.fillMaxSize().graphicsLayer { rotationZ = rotation })
     }

@@ -34,12 +34,13 @@ fun RecurrencePicker(
     onDismiss: () -> Unit,
 ) {
     val colors = LocalRemColors.current
-    val options = listOf<RecurrenceRule?>(
-        null,
-        RecurrenceRule.Daily(),
-        RecurrenceRule.Weekly(),
-        RecurrenceRule.Monthly(),
-    )
+    val options =
+        listOf<RecurrenceRule?>(
+            null,
+            RecurrenceRule.Daily(),
+            RecurrenceRule.Weekly(),
+            RecurrenceRule.Monthly(),
+        )
 
     RemDialog(
         title = "重复",
@@ -62,8 +63,7 @@ fun RecurrencePicker(
                             ) {
                                 onSelect(option)
                                 onDismiss()
-                            }
-                            .padding(vertical = 10.dp),
+                            }.padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         BasicText(

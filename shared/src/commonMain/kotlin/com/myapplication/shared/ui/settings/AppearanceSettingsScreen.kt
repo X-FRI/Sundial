@@ -45,11 +45,12 @@ internal fun AppearanceSettingsScreen(vm: SettingsViewModel) {
             ThemeMode.entries.forEach { mode ->
                 ChoiceRow(
                     title = mode.label,
-                    subtitle = when (mode) {
-                        ThemeMode.System -> "自动跟随系统深浅色"
-                        ThemeMode.Light -> "始终使用浅色界面"
-                        ThemeMode.Dark -> "始终使用深色界面"
-                    },
+                    subtitle =
+                        when (mode) {
+                            ThemeMode.System -> "自动跟随系统深浅色"
+                            ThemeMode.Light -> "始终使用浅色界面"
+                            ThemeMode.Dark -> "始终使用深色界面"
+                        },
                     selected = preferences.themeMode == mode,
                     onClick = { vm.setThemeMode(mode) },
                 )
@@ -63,10 +64,11 @@ internal fun AppearanceSettingsScreen(vm: SettingsViewModel) {
             DisplayDensity.entries.forEach { density ->
                 ChoiceRow(
                     title = density.label,
-                    subtitle = when (density) {
-                        DisplayDensity.Comfortable -> "更高的触控和阅读余量"
-                        DisplayDensity.Compact -> "更高的信息密度，适合桌面"
-                    },
+                    subtitle =
+                        when (density) {
+                            DisplayDensity.Comfortable -> "更高的触控和阅读余量"
+                            DisplayDensity.Compact -> "更高的信息密度，适合桌面"
+                        },
                     selected = preferences.displayDensity == density,
                     onClick = { vm.setDisplayDensity(density) },
                 )
@@ -86,11 +88,12 @@ internal fun AppearanceSettingsScreen(vm: SettingsViewModel) {
             Spacer(Modifier.height(12.dp))
             BasicText(
                 "Sundial 让待办回到清楚、可执行、低压力的节奏里。",
-                style = RemType.title20.copy(
-                    color = colors.textHigh,
-                    fontFamily = remFontFamilyFromPreference(preferences.fontFamily),
-                    fontWeight = FontWeight.SemiBold,
-                ),
+                style =
+                    RemType.title20.copy(
+                        color = colors.textHigh,
+                        fontFamily = remFontFamilyFromPreference(preferences.fontFamily),
+                        fontWeight = FontWeight.SemiBold,
+                    ),
             )
             Spacer(Modifier.height(4.dp))
             BasicText(

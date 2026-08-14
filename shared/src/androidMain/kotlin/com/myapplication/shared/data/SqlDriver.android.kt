@@ -17,8 +17,9 @@ fun setAndroidAppContext(context: Context) {
 }
 
 actual fun createSqlDriver(): SqlDriver {
-    val context = requireNotNull(appContext) {
-        "setAndroidAppContext() must be called before createSqlDriver()"
-    }
+    val context =
+        requireNotNull(appContext) {
+            "setAndroidAppContext() must be called before createSqlDriver()"
+        }
     return AndroidSqliteDriver(TodoDb.Schema, context, "reminders.db")
 }

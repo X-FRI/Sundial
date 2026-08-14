@@ -19,7 +19,6 @@ import kotlin.test.assertEquals
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
-
     private val dispatcher = StandardTestDispatcher()
 
     @BeforeTest
@@ -33,42 +32,45 @@ class DetailViewModelTest {
     }
 
     @Test
-    fun setSubTaskTitleWritesSubtaskId() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        val vm = DetailViewModel(repo, AddSubTaskUseCase(repo), todoId = 1)
-        val subtask = TodoItem(
-            id = 42,
-            listId = 1,
-            title = "旧标题",
-            note = "",
-            dueDate = null,
-            isCompleted = false,
-            flag = false,
-            completedAt = null,
-            isTrashed = false,
-            trashedAt = null,
-            parentId = 1,
-            sortPosition = 0.0,
-            createdAt = Instant.fromEpochMilliseconds(0),
-        )
+    fun setSubTaskTitleWritesSubtaskId() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            val vm = DetailViewModel(repo, AddSubTaskUseCase(repo), todoId = 1)
+            val subtask =
+                TodoItem(
+                    id = 42,
+                    listId = 1,
+                    title = "旧标题",
+                    note = "",
+                    dueDate = null,
+                    isCompleted = false,
+                    flag = false,
+                    completedAt = null,
+                    isTrashed = false,
+                    trashedAt = null,
+                    parentId = 1,
+                    sortPosition = 0.0,
+                    createdAt = Instant.fromEpochMilliseconds(0),
+                )
 
-        vm.setSubTaskTitle(subtask, "新标题")
-        advanceUntilIdle()
+            vm.setSubTaskTitle(subtask, "新标题")
+            advanceUntilIdle()
 
-        assertEquals(42L, repo.lastSetTitleId)
-        assertEquals("新标题", repo.lastSetTitleValue)
-    }
+            assertEquals(42L, repo.lastSetTitleId)
+            assertEquals("新标题", repo.lastSetTitleValue)
+        }
 
     @Test
-    fun setRecurrenceWritesCurrentTodoIdAndRule() = runTest(dispatcher) {
-        val repo = FakeTodoRepository()
-        val vm = DetailViewModel(repo, AddSubTaskUseCase(repo), todoId = 7)
-        val rule = RecurrenceRule.Weekly()
+    fun setRecurrenceWritesCurrentTodoIdAndRule() =
+        runTest(dispatcher) {
+            val repo = FakeTodoRepository()
+            val vm = DetailViewModel(repo, AddSubTaskUseCase(repo), todoId = 7)
+            val rule = RecurrenceRule.Weekly()
 
-        vm.setRecurrence(rule)
-        advanceUntilIdle()
+            vm.setRecurrence(rule)
+            advanceUntilIdle()
 
-        assertEquals(7L, repo.recurrenceId)
-        assertEquals(rule, repo.recurrenceRule)
-    }
+            assertEquals(7L, repo.recurrenceId)
+            assertEquals(rule, repo.recurrenceRule)
+        }
 }

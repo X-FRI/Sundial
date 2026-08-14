@@ -16,7 +16,6 @@ import kotlin.test.assertNull
  * 以及"仅日期无标题"时标题回退、英文词边界不误伤子串等边界。
  */
 class DateParserTest {
-
     private val today: LocalDate = LocalDate(2026, Month.AUGUST, 11) // 周二
 
     @Test

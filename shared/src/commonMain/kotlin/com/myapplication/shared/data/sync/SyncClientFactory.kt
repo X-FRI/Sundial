@@ -16,15 +16,16 @@ import com.myapplication.shared.domain.sync.SyncMode
  * - SundialServer：自建服务尚未实现，统一返回 NotConfigured。
  */
 object SyncClientFactory {
-    fun create(config: SyncConfig): Either<SyncError, SyncClient> = when (config.mode) {
-        SyncMode.Local -> NoopSyncClient().right()
-        SyncMode.Supabase -> {
-            if (config.supabaseUrl.isBlank() || config.supabaseKey.isBlank()) {
-                SyncError.NotConfigured.left()
-            } else {
-                SupabaseSyncClient(config.supabaseUrl, config.supabaseKey, config.deviceId).right()
+    fun create(config: SyncConfig): Either<SyncError, SyncClient> =
+        when (config.mode) {
+            SyncMode.Local -> NoopSyncClient().right()
+            SyncMode.Supabase -> {
+                if (config.supabaseUrl.isBlank() || config.supabaseKey.isBlank()) {
+                    SyncError.NotConfigured.left()
+                } else {
+                    SupabaseSyncClient(config.supabaseUrl, config.supabaseKey, config.deviceId).right()
+                }
             }
+            SyncMode.SundialServer -> SyncError.NotConfigured.left()
         }
-        SyncMode.SundialServer -> SyncError.NotConfigured.left()
-    }
 }

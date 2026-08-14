@@ -42,7 +42,10 @@ import com.myapplication.shared.ui.uiMessage
  *   本文件只负责「根据路由与屏宽决定画什么」，不持有业务状态。
  */
 @Composable
-fun App(launchTarget: String? = null, launchNonce: Int = 0) {
+fun App(
+    launchTarget: String? = null,
+    launchNonce: Int = 0,
+) {
     val graph = remember { createAppGraph() }
     val settingsVm: SettingsViewModel = viewModel { graph.settingsViewModelFactory() }
     val preferences by settingsVm.preferences.collectAsState()
@@ -71,9 +74,10 @@ fun AppRoot(
     launchTarget: String? = null,
     launchNonce: Int = 0,
 ) {
-    val mainVm: MainViewModel = viewModel {
-        MainViewModel(graph.repository, graph.addTodo, graph.timeZone, graph.completeRecurringTodo)
-    }
+    val mainVm: MainViewModel =
+        viewModel {
+            MainViewModel(graph.repository, graph.addTodo, graph.timeZone, graph.completeRecurringTodo)
+        }
     LaunchedEffect(launchEffectKey(launchTarget, launchNonce)) {
         when (launchTarget) {
             "today" -> mainVm.applyLaunchTarget(LaunchTarget.Today)
@@ -104,11 +108,12 @@ fun AppRoot(
         val wide = maxWidth >= 900.dp
         when {
             // 分支 1：设置页全屏覆盖（不参与宽/窄分屏）。
-            route == Route.Settings -> SettingsScreen(
-                vm = settingsVm,
-                mainVm = mainVm,
-                onBack = mainVm::back,
-            )
+            route == Route.Settings ->
+                SettingsScreen(
+                    vm = settingsVm,
+                    mainVm = mainVm,
+                    onBack = mainVm::back,
+                )
             // 分支 2：宽屏桌面外壳（Sidebar / 台账 / 详情检查器）。
             wide -> {
                 DesktopShell(graph = graph, mainVm = mainVm)
@@ -130,13 +135,19 @@ fun AppRoot(
             onConfirm = mainVm::dismissError,
             showButtons = false,
             content = {
-                androidx.compose.foundation.text.BasicText(errorMsg, style = RemType.text14.copy(color = colors.textNormal))
+                androidx.compose.foundation.text
+                    .BasicText(errorMsg, style = RemType.text14.copy(color = colors.textNormal))
             },
         )
     }
 }
 
-internal data class LaunchEffectKey(val target: String?, val nonce: Int)
+internal data class LaunchEffectKey(
+    val target: String?,
+    val nonce: Int,
+)
 
-internal fun launchEffectKey(target: String?, nonce: Int): LaunchEffectKey =
-    LaunchEffectKey(target, nonce)
+internal fun launchEffectKey(
+    target: String?,
+    nonce: Int,
+): LaunchEffectKey = LaunchEffectKey(target, nonce)

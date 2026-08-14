@@ -24,11 +24,12 @@ fun RemindersTheme(
 ) {
     applyRemFontFamilyPreference(fontFamily)
     applyRemDisplayDensityPreference(displayDensity.key)
-    val colors = when (themeMode) {
-        ThemeMode.System -> if (isSystemInDarkTheme()) DarkRemColors else LightRemColors
-        ThemeMode.Light -> LightRemColors
-        ThemeMode.Dark -> DarkRemColors
-    }
+    val colors =
+        when (themeMode) {
+            ThemeMode.System -> if (isSystemInDarkTheme()) DarkRemColors else LightRemColors
+            ThemeMode.Light -> LightRemColors
+            ThemeMode.Dark -> DarkRemColors
+        }
     CompositionLocalProvider(
         LocalRemColors provides colors,
     ) {

@@ -14,4 +14,7 @@ import androidx.compose.runtime.Composable
  * 主路由下的返回键放行给系统（退出应用）。
  */
 @Composable
-expect fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit)
+expect fun PlatformBackHandler(
+    enabled: Boolean,
+    onBack: () -> Unit,
+)

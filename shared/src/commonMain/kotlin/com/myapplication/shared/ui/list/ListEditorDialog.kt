@@ -10,10 +10,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -118,8 +118,7 @@ private fun ColorSwatch(
                 indication = null,
                 role = Role.RadioButton,
                 onClick = onClick,
-            )
-            .semantics { contentDescription = "$label 列表颜色" },
+            ).semantics { contentDescription = "$label 列表颜色" },
         contentAlignment = Alignment.Center,
     ) {
         androidx.compose.foundation.layout.Box(

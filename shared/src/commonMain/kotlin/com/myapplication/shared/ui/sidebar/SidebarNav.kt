@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.myapplication.shared.domain.sync.SyncMode
 import com.myapplication.shared.domain.sync.SyncStatus
+import com.myapplication.shared.ui.components.BrandLogo
 import com.myapplication.shared.ui.components.IconName
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.RemIconButton
@@ -65,9 +66,10 @@ fun SidebarNav(
             .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            RemIcon(IconName.Today, colors.brand, Modifier.size(24.dp))
+            BrandLogo(size = 28.dp)
             Spacer(Modifier.width(8.dp))
-            androidx.compose.foundation.text.BasicText("Sundial", style = RemType.title20.copy(color = colors.textHigh))
+            androidx.compose.foundation.text
+                .BasicText("Sundial", style = RemType.title20.copy(color = colors.textHigh))
         }
         Spacer(Modifier.height(18.dp))
         RemTextField(value = query, onValueChange = mainVm::setSearch, placeholder = "搜索", leadingIcon = IconName.Search)
@@ -77,11 +79,12 @@ fun SidebarNav(
             SundialNavRow(
                 icon = item.icon,
                 label = item.label,
-                count = when (item.destination) {
-                    SundialDestination.Workbench -> allCount
-                    SundialDestination.Lists -> lists.size
-                    SundialDestination.Analytics -> null
-                },
+                count =
+                    when (item.destination) {
+                        SundialDestination.Workbench -> allCount
+                        SundialDestination.Lists -> lists.size
+                        SundialDestination.Analytics -> null
+                    },
                 selected = destination == item.destination,
                 primary = true,
                 onClick = { mainVm.selectScope(scopeForDestination(item.destination, lists)) },
@@ -91,7 +94,8 @@ fun SidebarNav(
         Spacer(Modifier.height(18.dp))
         val listMode = scope is Scope.List
         if (listMode) {
-            androidx.compose.foundation.text.BasicText("列表", style = RemType.label12.copy(color = colors.textLow))
+            androidx.compose.foundation.text
+                .BasicText("列表", style = RemType.label12.copy(color = colors.textLow))
             Spacer(Modifier.height(6.dp))
             lists.forEach { list ->
                 SundialNavRow(
@@ -105,7 +109,8 @@ fun SidebarNav(
                 )
             }
         } else {
-            androidx.compose.foundation.text.BasicText("工作台视图", style = RemType.label12.copy(color = colors.textLow))
+            androidx.compose.foundation.text
+                .BasicText("工作台视图", style = RemType.label12.copy(color = colors.textLow))
             Spacer(Modifier.height(6.dp))
             SundialNavRow(
                 icon = IconName.Layers,
@@ -159,18 +164,24 @@ fun SidebarNav(
 }
 
 @Composable
-private fun SyncFooter(syncStatus: SyncStatus, onSettings: () -> Unit, onSyncNow: (() -> Unit)?) {
+private fun SyncFooter(
+    syncStatus: SyncStatus,
+    onSettings: () -> Unit,
+    onSyncNow: (() -> Unit)?,
+) {
     val colors = LocalRemColors.current
-    val label = when {
-        syncStatus.mode == SyncMode.Local -> "本地模式"
-        syncStatus.syncing -> "同步中…"
-        syncStatus.connected -> "已同步"
-        else -> "同步中断"
-    }
+    val label =
+        when {
+            syncStatus.mode == SyncMode.Local -> "本地模式"
+            syncStatus.syncing -> "同步中…"
+            syncStatus.connected -> "已同步"
+            else -> "同步中断"
+        }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         RemSyncIndicator(syncStatus.phase(), size = 12.dp)
         Spacer(Modifier.width(8.dp))
-        androidx.compose.foundation.text.BasicText(label, style = RemType.text12.copy(color = colors.textLow), modifier = Modifier.weight(1f))
+        androidx.compose.foundation.text
+            .BasicText(label, style = RemType.text12.copy(color = colors.textLow), modifier = Modifier.weight(1f))
         RemIconButton(IconName.Settings, "设置", onClick = onSettings, size = 16.dp)
         if (onSyncNow != null && syncStatus.mode != SyncMode.Local) {
             RemIconButton(IconName.Sync, "立即同步", onClick = onSyncNow, size = 14.dp)

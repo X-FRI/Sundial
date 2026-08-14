@@ -45,7 +45,10 @@ data class TodayWidgetSnapshot(
     }
 }
 
-enum class WidgetSnapshotSize(val maxTodayTasks: Int, val maxOverdueTasks: Int) {
+enum class WidgetSnapshotSize(
+    val maxTodayTasks: Int,
+    val maxOverdueTasks: Int,
+) {
     Small(maxTodayTasks = 1, maxOverdueTasks = 0),
     Medium(maxTodayTasks = 3, maxOverdueTasks = 1),
     Large(maxTodayTasks = 6, maxOverdueTasks = 3),
@@ -61,12 +64,18 @@ fun buildTodayWidgetSnapshot(
     val today = now.toLocalDateTime(timeZone).date
     val activeParents = todos.filter { !it.isTrashed && !it.isCompleted && it.parentId == null }
     val completedParents = todos.filter { !it.isTrashed && it.isCompleted && it.parentId == null }
-    val todayPending = activeParents
-        .filter { it.dueDate?.toLocalDateTime(timeZone)?.date == today }
-        .sortedWith(compareBy<TodoItem> { it.dueDate }.thenBy { it.sortPosition }.thenBy { it.id })
-    val overdue = activeParents
-        .filter { it.dueDate?.toLocalDateTime(timeZone)?.date?.let { due -> due < today } == true }
-        .sortedWith(compareBy<TodoItem> { it.dueDate }.thenBy { it.sortPosition }.thenBy { it.id })
+    val todayPending =
+        activeParents
+            .filter { it.dueDate?.toLocalDateTime(timeZone)?.date == today }
+            .sortedWith(compareBy<TodoItem> { it.dueDate }.thenBy { it.sortPosition }.thenBy { it.id })
+    val overdue =
+        activeParents
+            .filter {
+                it.dueDate
+                    ?.toLocalDateTime(timeZone)
+                    ?.date
+                    ?.let { due -> due < today } == true
+            }.sortedWith(compareBy<TodoItem> { it.dueDate }.thenBy { it.sortPosition }.thenBy { it.id })
     val next = todayPending.firstOrNull { it.dueDate?.let { due -> due >= now } == true } ?: todayPending.firstOrNull()
 
     return TodayWidgetSnapshot(
@@ -83,8 +92,10 @@ fun buildTodayWidgetSnapshot(
     )
 }
 
-fun TodayWidgetSnapshot.isCurrentFor(now: Instant, timeZone: TimeZone): Boolean =
-    lastUpdatedAt.toLocalDateTime(timeZone).date == now.toLocalDateTime(timeZone).date
+fun TodayWidgetSnapshot.isCurrentFor(
+    now: Instant,
+    timeZone: TimeZone,
+): Boolean = lastUpdatedAt.toLocalDateTime(timeZone).date == now.toLocalDateTime(timeZone).date
 
 private fun TodoItem.toWidgetTask(timeZone: TimeZone): WidgetTask =
     WidgetTask(
@@ -94,7 +105,10 @@ private fun TodoItem.toWidgetTask(timeZone: TimeZone): WidgetTask =
         isFlagged = flag,
     )
 
-private fun formatWidgetTime(instant: Instant, timeZone: TimeZone): String {
+private fun formatWidgetTime(
+    instant: Instant,
+    timeZone: TimeZone,
+): String {
     val time = instant.toLocalDateTime(timeZone).time
     return "${time.hour.toString().padStart(2, '0')}:${time.minute.toString().padStart(2, '0')}"
 }

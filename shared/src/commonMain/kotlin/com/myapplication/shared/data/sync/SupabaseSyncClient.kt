@@ -4,13 +4,13 @@ import arrow.core.Either
 import arrow.fx.coroutines.Resource
 import arrow.fx.coroutines.resource
 import arrow.fx.coroutines.use
-import com.myapplication.shared.effects.catchTransport
-import com.myapplication.shared.effects.runSyncEffect
 import com.myapplication.shared.domain.sync.SyncAction
 import com.myapplication.shared.domain.sync.SyncClient
 import com.myapplication.shared.domain.sync.SyncError
 import com.myapplication.shared.domain.sync.SyncRow
 import com.myapplication.shared.domain.sync.syncJson
+import com.myapplication.shared.effects.catchTransport
+import com.myapplication.shared.effects.runSyncEffect
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
@@ -54,11 +54,11 @@ class SupabaseSyncClient(
     key: String,
     private val deviceId: String,
 ) : SyncClient {
-
-    private val client: SupabaseClient = createSupabaseClient(url, key) {
-        install(Postgrest)
-        install(Realtime)
-    }
+    private val client: SupabaseClient =
+        createSupabaseClient(url, key) {
+            install(Postgrest)
+            install(Realtime)
+        }
 
     /**
      * 推送一批 outbox 行。任一步失败抛异常，整批返回 Left，
@@ -168,35 +168,37 @@ class SupabaseSyncClient(
      * 2. 回声过滤 updated_by == deviceId——本设备的写操作直接跳过。
      * 退订收尾：channel 生命周期由 Resource 管理，流结束/取消时统一释放。
      */
-    override fun observeRemoteChanges(): Flow<SyncRow> =
-        flow { remoteChangesResource().use { emitAll(it) } }
+    override fun observeRemoteChanges(): Flow<SyncRow> = flow { remoteChangesResource().use { emitAll(it) } }
 
-    private fun remoteChangesResource(): Resource<Flow<SyncRow>> = resource {
-        val tables = listOf(
-            "todo" to "sundial-todo",
-            "reminder_list" to "sundial-lists",
-        )
-        val channels = tables.map { (table, channelId) -> client.channel(channelId) to table }
-        onRelease {
-            channels.forEach { (channel, _) -> runCatching { channel.unsubscribe() } }
+    private fun remoteChangesResource(): Resource<Flow<SyncRow>> =
+        resource {
+            val tables =
+                listOf(
+                    "todo" to "sundial-todo",
+                    "reminder_list" to "sundial-lists",
+                )
+            val channels = tables.map { (table, channelId) -> client.channel(channelId) to table }
+            onRelease {
+                channels.forEach { (channel, _) -> runCatching { channel.unsubscribe() } }
+            }
+            val flows =
+                channels.map { (channel, table) ->
+                    channel
+                        .postgresChangeFlow<PostgresAction>("public") { this.table = table }
+                        .filter { it !is PostgresAction.Select }
+                        .map { it.toSyncRow(table) }
+                        .filter { it.updatedBy != deviceId }
+                }
+            channels.forEach { (channel, _) -> channel.subscribe() }
+            merge(*flows.toTypedArray())
         }
-        val flows = channels.map { (channel, table) ->
-            channel.postgresChangeFlow<PostgresAction>("public") { this.table = table }
-                .filter { it !is PostgresAction.Select }
-                .map { it.toSyncRow(table) }
-                .filter { it.updatedBy != deviceId }
-        }
-        channels.forEach { (channel, _) -> channel.subscribe() }
-        merge(*flows.toTypedArray())
-    }
 
     /**
      * 连接健康度：直接映射 Realtime 连接状态。
      * Realtime 状态可能滞后于一次成功的 push（状态更新有延迟），引擎的
      * push 成功置 connected=true 作为兜底，本流负责状态真实变化时收敛。
      */
-    override fun observeConnectionStatus(): Flow<Boolean> =
-        client.realtime.status.map { it == Realtime.Status.CONNECTED }
+    override fun observeConnectionStatus(): Flow<Boolean> = client.realtime.status.map { it == Realtime.Status.CONNECTED }
 
     override suspend fun close() {
         runCatching { client.close() }
@@ -209,12 +211,13 @@ class SupabaseSyncClient(
      */
     private fun PostgresAction.toSyncRow(table: String): SyncRow {
         val isDelete = this is PostgresAction.Delete
-        val record = when (this) {
-            is PostgresAction.Delete -> oldRecord
-            is PostgresAction.Update -> record
-            is PostgresAction.Insert -> record
-            is PostgresAction.Select -> record
-        }
+        val record =
+            when (this) {
+                is PostgresAction.Delete -> oldRecord
+                is PostgresAction.Update -> record
+                is PostgresAction.Insert -> record
+                is PostgresAction.Select -> record
+            }
         return SyncRow(
             seq = 0L,
             table = table,
@@ -229,15 +232,17 @@ class SupabaseSyncClient(
 
     // Realtime record 字段取值：null/JsonNull 归零值，数值/字符串统一转 Long
 
-    private fun JsonElement?.asLong(): Long = when (this) {
-        null, is JsonNull -> 0L
-        else -> jsonPrimitive.longOrNull ?: jsonPrimitive.content.toLongOrNull() ?: 0L
-    }
+    private fun JsonElement?.asLong(): Long =
+        when (this) {
+            null, is JsonNull -> 0L
+            else -> jsonPrimitive.longOrNull ?: jsonPrimitive.content.toLongOrNull() ?: 0L
+        }
 
-    private fun JsonElement?.asText(): String = when (this) {
-        null, is JsonNull -> ""
-        else -> jsonPrimitive.content
-    }
+    private fun JsonElement?.asText(): String =
+        when (this) {
+            null, is JsonNull -> ""
+            else -> jsonPrimitive.content
+        }
 }
 
 internal fun orderedSyncPushBatches(rows: List<SyncRow>): List<List<SyncRow>> {
@@ -253,8 +258,7 @@ internal fun orderedSyncPushBatches(rows: List<SyncRow>): List<List<SyncRow>> {
     return batches.map { it.toList() }
 }
 
-private fun SyncRow.canBatchWith(other: SyncRow): Boolean =
-    action == other.action && (action == SyncAction.DELETE || table == other.table)
+private fun SyncRow.canBatchWith(other: SyncRow): Boolean = action == other.action && (action == SyncAction.DELETE || table == other.table)
 
 internal data class UpsertPayloadBatch(
     val body: JsonArray,
@@ -263,15 +267,17 @@ internal data class UpsertPayloadBatch(
 
 internal fun buildUpsertPayloadBatch(rows: List<SyncRow>): UpsertPayloadBatch {
     var skipped = 0
-    val body = buildJsonArray {
-        rows.forEach { row ->
-            val payload = runCatching { syncJson.parseToJsonElement(row.payload ?: "").jsonObject }
-                .getOrElse {
-                    skipped++
-                    null
-                }
-            if (payload != null) add(payload)
+    val body =
+        buildJsonArray {
+            rows.forEach { row ->
+                val payload =
+                    runCatching { syncJson.parseToJsonElement(row.payload ?: "").jsonObject }
+                        .getOrElse {
+                            skipped++
+                            null
+                        }
+                if (payload != null) add(payload)
+            }
         }
-    }
     return UpsertPayloadBatch(body, skipped)
 }

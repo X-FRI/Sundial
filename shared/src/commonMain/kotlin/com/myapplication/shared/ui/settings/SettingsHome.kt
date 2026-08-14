@@ -93,12 +93,13 @@ private fun WideSettingsHome(
             selected = selected,
             onSelect = onSelect,
             onBack = onBack,
-            modifier = Modifier
-                .width(280.dp)
-                .fillMaxHeight()
-                .background(colors.surfaceAlt)
-                .border(1.dp, colors.borderSubtle)
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .width(280.dp)
+                    .fillMaxHeight()
+                    .background(colors.surfaceAlt)
+                    .border(1.dp, colors.borderSubtle)
+                    .padding(16.dp),
         )
         SettingsSectionContent(
             selected = selected,
@@ -227,8 +228,7 @@ private fun SettingsSectionRow(
                 indication = null,
                 role = Role.Tab,
                 onClick = onClick,
-            )
-            .padding(horizontal = 10.dp, vertical = 9.dp),
+            ).padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RemIcon(section.icon, tint, Modifier.size(18.dp))
@@ -236,10 +236,11 @@ private fun SettingsSectionRow(
         Column(Modifier.weight(1f)) {
             BasicText(
                 section.title,
-                style = RemType.text14.copy(
-                    color = colors.textHigh,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                ),
+                style =
+                    RemType.text14.copy(
+                        color = colors.textHigh,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                    ),
             )
             Spacer(Modifier.height(2.dp))
             BasicText(section.subtitle, style = RemType.text12.copy(color = colors.textLow))
@@ -267,8 +268,7 @@ private fun SettingsSectionPill(
                 indication = null,
                 role = Role.Tab,
                 onClick = onClick,
-            )
-            .padding(horizontal = 12.dp),
+            ).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RemIcon(section.icon, if (selected) colors.brand else colors.textLow, Modifier.size(16.dp))

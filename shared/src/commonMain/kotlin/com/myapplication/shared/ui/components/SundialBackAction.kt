@@ -33,8 +33,7 @@ fun SundialBackAction(
                 indication = null,
                 role = Role.Button,
                 onClick = onClick,
-            )
-            .padding(horizontal = 6.dp),
+            ).padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RemIcon(IconName.ChevronBack, colors.textLow, Modifier.size(16.dp))

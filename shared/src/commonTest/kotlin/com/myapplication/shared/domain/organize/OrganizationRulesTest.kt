@@ -1,12 +1,12 @@
 package com.myapplication.shared.domain.organize
 
 import com.myapplication.shared.domain.model.TodoItem
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class OrganizationRulesTest {
     private val today = LocalDate(2026, 8, 13)
@@ -14,12 +14,13 @@ class OrganizationRulesTest {
 
     @Test
     fun inboxTaskWithoutDateGetsInboxAndNoDateReasons() {
-        val suggestions = buildOrganizationSuggestions(
-            todos = listOf(todo(id = 1, listId = 10, dueMillis = null)),
-            inboxListId = 10,
-            today = today,
-            timeZone = tz,
-        )
+        val suggestions =
+            buildOrganizationSuggestions(
+                todos = listOf(todo(id = 1, listId = 10, dueMillis = null)),
+                inboxListId = 10,
+                today = today,
+                timeZone = tz,
+            )
 
         val reasons = suggestions.single().reasons
         assertTrue(OrganizationReason.Inbox in reasons)
@@ -28,38 +29,42 @@ class OrganizationRulesTest {
 
     @Test
     fun overdueTaskGetsOverdueReasonUsingProvidedTimezone() {
-        val suggestions = buildOrganizationSuggestions(
-            todos = listOf(
-                todo(
-                    id = 1,
-                    listId = 20,
-                    dueMillis = Instant.parse("2026-08-12T16:30:00Z").toEpochMilliseconds(),
-                ),
-            ),
-            inboxListId = 10,
-            today = today,
-            timeZone = TimeZone.of("America/New_York"),
-        )
+        val suggestions =
+            buildOrganizationSuggestions(
+                todos =
+                    listOf(
+                        todo(
+                            id = 1,
+                            listId = 20,
+                            dueMillis = Instant.parse("2026-08-12T16:30:00Z").toEpochMilliseconds(),
+                        ),
+                    ),
+                inboxListId = 10,
+                today = today,
+                timeZone = TimeZone.of("America/New_York"),
+            )
 
         assertEquals(setOf(OrganizationReason.Overdue), suggestions.single().reasons)
     }
 
     @Test
     fun longTitleReasonOnlyAppliesAfterOneHundredCharacters() {
-        val suggestions = buildOrganizationSuggestions(
-            todos = listOf(
-                todo(
-                    id = 1,
-                    listId = 20,
-                    title = "x".repeat(101),
-                    note = "   ",
-                    dueMillis = Instant.parse("2026-08-13T09:00:00Z").toEpochMilliseconds(),
-                ),
-            ),
-            inboxListId = 10,
-            today = today,
-            timeZone = tz,
-        )
+        val suggestions =
+            buildOrganizationSuggestions(
+                todos =
+                    listOf(
+                        todo(
+                            id = 1,
+                            listId = 20,
+                            title = "x".repeat(101),
+                            note = "   ",
+                            dueMillis = Instant.parse("2026-08-13T09:00:00Z").toEpochMilliseconds(),
+                        ),
+                    ),
+                inboxListId = 10,
+                today = today,
+                timeZone = tz,
+            )
 
         assertEquals(
             setOf(OrganizationReason.LongTitle),
@@ -69,72 +74,78 @@ class OrganizationRulesTest {
 
     @Test
     fun titlesUnderOneHundredCharactersAreNotSuggestedJustBecauseNoteIsBlank() {
-        val suggestions = buildOrganizationSuggestions(
-            todos = listOf(
-                todo(
-                    id = 1,
-                    listId = 20,
-                    title = "x".repeat(100),
-                    note = "",
-                    dueMillis = Instant.parse("2026-08-13T09:00:00Z").toEpochMilliseconds(),
-                ),
-            ),
-            inboxListId = 10,
-            today = today,
-            timeZone = tz,
-        )
+        val suggestions =
+            buildOrganizationSuggestions(
+                todos =
+                    listOf(
+                        todo(
+                            id = 1,
+                            listId = 20,
+                            title = "x".repeat(100),
+                            note = "",
+                            dueMillis = Instant.parse("2026-08-13T09:00:00Z").toEpochMilliseconds(),
+                        ),
+                    ),
+                inboxListId = 10,
+                today = today,
+                timeZone = tz,
+            )
 
         assertEquals(emptyList(), suggestions)
     }
 
     @Test
     fun skipsTrashedCompletedSubtasksAndTodosWithoutReasons() {
-        val suggestions = buildOrganizationSuggestions(
-            todos = listOf(
-                todo(id = 1, listId = 10, dueMillis = null, trashed = true),
-                todo(id = 2, listId = 10, dueMillis = null, completed = true),
-                todo(id = 3, listId = 10, dueMillis = null, parentId = 99),
-                todo(id = 4, listId = 20, dueMillis = Instant.parse("2026-08-13T09:00:00Z").toEpochMilliseconds()),
-                todo(id = 5, listId = 10, dueMillis = null),
-            ),
-            inboxListId = 10,
-            today = today,
-            timeZone = tz,
-        )
+        val suggestions =
+            buildOrganizationSuggestions(
+                todos =
+                    listOf(
+                        todo(id = 1, listId = 10, dueMillis = null, trashed = true),
+                        todo(id = 2, listId = 10, dueMillis = null, completed = true),
+                        todo(id = 3, listId = 10, dueMillis = null, parentId = 99),
+                        todo(id = 4, listId = 20, dueMillis = Instant.parse("2026-08-13T09:00:00Z").toEpochMilliseconds()),
+                        todo(id = 5, listId = 10, dueMillis = null),
+                    ),
+                inboxListId = 10,
+                today = today,
+                timeZone = tz,
+            )
 
         assertEquals(listOf(5L), suggestions.map { it.todo.id })
     }
 
     @Test
     fun actionsAreStableDistinctAndLimitedToThree() {
-        val suggestions = buildOrganizationSuggestions(
-            todos = listOf(
-                todo(
-                    id = 1,
-                    listId = 10,
-                    title = "x".repeat(101),
-                    note = "",
-                    dueMillis = null,
-                ),
-                todo(
-                    id = 2,
-                    listId = 20,
-                    title = "This title is long enough",
-                    note = "",
-                    dueMillis = Instant.parse("2026-08-12T09:00:00Z").toEpochMilliseconds(),
-                ),
-                todo(
-                    id = 3,
-                    listId = 20,
-                    title = "x".repeat(101),
-                    note = "",
-                    dueMillis = Instant.parse("2026-08-13T09:00:00Z").toEpochMilliseconds(),
-                ),
-            ),
-            inboxListId = 10,
-            today = today,
-            timeZone = tz,
-        )
+        val suggestions =
+            buildOrganizationSuggestions(
+                todos =
+                    listOf(
+                        todo(
+                            id = 1,
+                            listId = 10,
+                            title = "x".repeat(101),
+                            note = "",
+                            dueMillis = null,
+                        ),
+                        todo(
+                            id = 2,
+                            listId = 20,
+                            title = "This title is long enough",
+                            note = "",
+                            dueMillis = Instant.parse("2026-08-12T09:00:00Z").toEpochMilliseconds(),
+                        ),
+                        todo(
+                            id = 3,
+                            listId = 20,
+                            title = "x".repeat(101),
+                            note = "",
+                            dueMillis = Instant.parse("2026-08-13T09:00:00Z").toEpochMilliseconds(),
+                        ),
+                    ),
+                inboxListId = 10,
+                today = today,
+                timeZone = tz,
+            )
 
         assertEquals(
             listOf(

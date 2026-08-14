@@ -83,9 +83,10 @@ fun DetailContent(
     showCloseButton: Boolean,
 ) {
     // 按 todoId 隔离 ViewModel：每个待办一个实例，防止切换详情时串数据。
-    val detailVm: DetailViewModel = viewModel(key = "detail-$todoId") {
-        DetailViewModel(graph.repository, graph.addSubTask, todoId)
-    }
+    val detailVm: DetailViewModel =
+        viewModel(key = "detail-$todoId") {
+            DetailViewModel(graph.repository, graph.addSubTask, todoId)
+        }
     val colors = LocalRemColors.current
     val todo by detailVm.todo.collectAsState()
     val subtasks by detailVm.subtasks.collectAsState()
@@ -197,7 +198,8 @@ fun DetailContent(
         ) {
             RemIcon(IconName.Calendar, colors.textLow, Modifier.size(14.dp))
             Spacer(Modifier.width(8.dp))
-            androidx.compose.foundation.text.BasicText("日期", style = RemType.text12.copy(color = colors.textNormal))
+            androidx.compose.foundation.text
+                .BasicText("日期", style = RemType.text12.copy(color = colors.textNormal))
             Spacer(Modifier.weight(1f))
             if (current.dueDate != null) {
                 RemBadge(
@@ -210,7 +212,8 @@ fun DetailContent(
                 // 清除日期：直接调 setDueDate(null) 落库。
                 RemButton("清除", onClick = { detailVm.setDueDate(null) })
             } else {
-                androidx.compose.foundation.text.BasicText("无", style = RemType.text12.copy(color = colors.textLow))
+                androidx.compose.foundation.text
+                    .BasicText("无", style = RemType.text12.copy(color = colors.textLow))
             }
         }
 
@@ -230,7 +233,8 @@ fun DetailContent(
         ) {
             RemIcon(IconName.Clock, colors.textLow, Modifier.size(14.dp))
             Spacer(Modifier.width(8.dp))
-            androidx.compose.foundation.text.BasicText("重复", style = RemType.text12.copy(color = colors.textNormal))
+            androidx.compose.foundation.text
+                .BasicText("重复", style = RemType.text12.copy(color = colors.textNormal))
             Spacer(Modifier.weight(1f))
             if (current.recurrenceRule != null) {
                 RemBadge(
@@ -260,11 +264,13 @@ fun DetailContent(
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            androidx.compose.foundation.text.BasicText("旗标", style = RemType.text12.copy(color = colors.textNormal))
+            androidx.compose.foundation.text
+                .BasicText("旗标", style = RemType.text12.copy(color = colors.textNormal))
             Spacer(Modifier.weight(1f))
             RemIcon(IconName.Flag, if (current.flag) colors.warning else colors.textLow, Modifier.size(14.dp))
             Spacer(Modifier.width(4.dp))
-            androidx.compose.foundation.text.BasicText(if (current.flag) "已标记" else "未标记", style = RemType.text12.copy(color = if (current.flag) colors.warning else colors.textLow))
+            androidx.compose.foundation.text
+                .BasicText(if (current.flag) "已标记" else "未标记", style = RemType.text12.copy(color = if (current.flag) colors.warning else colors.textLow))
         }
 
         // 「列表」行：显示当前所属列表（带颜色圆点），点击打开列表选择弹窗。
@@ -284,7 +290,8 @@ fun DetailContent(
         ) {
             RemIcon(IconName.Tray, colors.textLow, Modifier.size(14.dp))
             Spacer(Modifier.width(8.dp))
-            androidx.compose.foundation.text.BasicText("列表", style = RemType.text12.copy(color = colors.textNormal))
+            androidx.compose.foundation.text
+                .BasicText("列表", style = RemType.text12.copy(color = colors.textNormal))
             Spacer(Modifier.weight(1f))
             Box(Modifier.size(10.dp).background(ListColorOf[currentList?.colorKey] ?: Color.Gray, CircleShape))
             Spacer(Modifier.width(6.dp))
@@ -299,7 +306,8 @@ fun DetailContent(
         Row(verticalAlignment = Alignment.CenterVertically) {
             RemIcon(IconName.ChevronDown, colors.textLow, Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
-            androidx.compose.foundation.text.BasicText("子任务", style = RemType.label12.copy(color = colors.textLow))
+            androidx.compose.foundation.text
+                .BasicText("子任务", style = RemType.label12.copy(color = colors.textLow))
         }
         Spacer(Modifier.height(6.dp))
         subtasks.forEach { sub ->
@@ -336,10 +344,11 @@ fun DetailContent(
                 detailVm.addSubTask(newSub)
                 newSub = ""
             },
-            trailing = "添加" to {
-                detailVm.addSubTask(newSub)
-                newSub = ""
-            },
+            trailing =
+                "添加" to {
+                    detailVm.addSubTask(newSub)
+                    newSub = ""
+                },
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(24.dp))
@@ -382,11 +391,19 @@ fun DetailContent(
     if (showDatePicker) {
         RemDatePicker(
             initialDate = current?.dueDate?.toLocalDateTime(TimeZone.currentSystemDefault())?.date,
-            initialTime = current?.dueDate?.toLocalDateTime(TimeZone.currentSystemDefault())?.time?.takeIf { !(it.hour == 0 && it.minute == 0) },
+            initialTime =
+                current
+                    ?.dueDate
+                    ?.toLocalDateTime(TimeZone.currentSystemDefault())
+                    ?.time
+                    ?.takeIf { !(it.hour == 0 && it.minute == 0) },
             onPick = { date ->
-                val time = current?.dueDate
-                    ?.toLocalDateTime(TimeZone.currentSystemDefault())?.time
-                    ?: LocalTime(9, 0)
+                val time =
+                    current
+                        ?.dueDate
+                        ?.toLocalDateTime(TimeZone.currentSystemDefault())
+                        ?.time
+                        ?: LocalTime(9, 0)
                 detailVm.setDueDate(LocalDateTime(date, time))
             },
             onPickTime = { h, m ->
@@ -423,8 +440,7 @@ fun DetailContent(
                             ) {
                                 showListDialog = false
                                 detailVm.moveToList(list.id)
-                            }
-                            .padding(vertical = 6.dp),
+                            }.padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(Modifier.size(10.dp).background(ListColorOf[list.colorKey] ?: Color.Gray, CircleShape))
@@ -454,7 +470,8 @@ fun DetailContent(
             onConfirm = detailVm::dismissError,
             showButtons = false,
             content = {
-                androidx.compose.foundation.text.BasicText(detailErrorMsg, style = RemType.text14.copy(color = colors.textNormal))
+                androidx.compose.foundation.text
+                    .BasicText(detailErrorMsg, style = RemType.text14.copy(color = colors.textNormal))
             },
         )
     }
@@ -471,10 +488,11 @@ private fun DetailTitleField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier.padding(horizontal = 2.dp, vertical = 2.dp),
-        textStyle = RemType.title20.copy(
-            color = colors.textHigh,
-            fontWeight = FontWeight.SemiBold,
-        ),
+        textStyle =
+            RemType.title20.copy(
+                color = colors.textHigh,
+                fontWeight = FontWeight.SemiBold,
+            ),
         cursorBrush = SolidColor(colors.brand),
         singleLine = false,
         minLines = 1,
@@ -482,10 +500,11 @@ private fun DetailTitleField(
             if (value.isEmpty()) {
                 androidx.compose.foundation.text.BasicText(
                     "标题",
-                    style = RemType.title20.copy(
-                        color = colors.textLow,
-                        fontWeight = FontWeight.SemiBold,
-                    ),
+                    style =
+                        RemType.title20.copy(
+                            color = colors.textLow,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
                 )
             }
             inner()
@@ -501,17 +520,19 @@ private fun SubTaskTitleField(
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalRemColors.current
-    val textStyle = RemType.text14.copy(
-        color = if (completed) colors.textLow else colors.textHigh,
-        textDecoration = if (completed) TextDecoration.LineThrough else null,
-    )
+    val textStyle =
+        RemType.text14.copy(
+            color = if (completed) colors.textLow else colors.textHigh,
+            textDecoration = if (completed) TextDecoration.LineThrough else null,
+        )
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier
-            .height(32.dp)
-            .padding(vertical = 2.dp)
-            .semantics { contentDescription = "子任务标题" },
+        modifier =
+            modifier
+                .height(32.dp)
+                .padding(vertical = 2.dp)
+                .semantics { contentDescription = "子任务标题" },
         textStyle = textStyle,
         cursorBrush = SolidColor(colors.brand),
         singleLine = true,

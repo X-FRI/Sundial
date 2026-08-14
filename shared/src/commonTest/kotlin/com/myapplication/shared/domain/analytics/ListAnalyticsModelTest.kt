@@ -1,11 +1,11 @@
 package com.myapplication.shared.domain.analytics
 
 import com.myapplication.shared.domain.model.TodoItem
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class ListAnalyticsModelTest {
     private val today = LocalDate(2026, 8, 13)
@@ -13,17 +13,19 @@ class ListAnalyticsModelTest {
 
     @Test
     fun buildsCompletionSeriesForOnlyTheRequestedList() {
-        val model = buildListAnalyticsModel(
-            listId = 2,
-            todos = listOf(
-                todo(id = 1, listId = 2, completedAt = "2026-08-12T10:00:00Z"),
-                todo(id = 2, listId = 2, completedAt = "2026-08-13T10:00:00Z"),
-                todo(id = 3, listId = 3, completedAt = "2026-08-13T10:00:00Z"),
-            ),
-            today = today,
-            range = AnalyticsRange.Week,
-            timeZone = tz,
-        )
+        val model =
+            buildListAnalyticsModel(
+                listId = 2,
+                todos =
+                    listOf(
+                        todo(id = 1, listId = 2, completedAt = "2026-08-12T10:00:00Z"),
+                        todo(id = 2, listId = 2, completedAt = "2026-08-13T10:00:00Z"),
+                        todo(id = 3, listId = 3, completedAt = "2026-08-13T10:00:00Z"),
+                    ),
+                today = today,
+                range = AnalyticsRange.Week,
+                timeZone = tz,
+            )
 
         assertEquals(2, model.listId)
         assertEquals(2, model.completedTotal)
@@ -35,18 +37,20 @@ class ListAnalyticsModelTest {
 
     @Test
     fun ignoresTrashedIncompleteAndNullCompletedAtTodos() {
-        val model = buildListAnalyticsModel(
-            listId = 2,
-            todos = listOf(
-                todo(id = 1, listId = 2, completedAt = "2026-08-13T10:00:00Z", trashed = true),
-                todo(id = 2, listId = 2, completedAt = "2026-08-13T11:00:00Z", completed = false),
-                todo(id = 3, listId = 2, completedAt = null, completed = true),
-                todo(id = 4, listId = 2, completedAt = "2026-08-13T12:00:00Z"),
-            ),
-            today = today,
-            range = AnalyticsRange.Week,
-            timeZone = tz,
-        )
+        val model =
+            buildListAnalyticsModel(
+                listId = 2,
+                todos =
+                    listOf(
+                        todo(id = 1, listId = 2, completedAt = "2026-08-13T10:00:00Z", trashed = true),
+                        todo(id = 2, listId = 2, completedAt = "2026-08-13T11:00:00Z", completed = false),
+                        todo(id = 3, listId = 2, completedAt = null, completed = true),
+                        todo(id = 4, listId = 2, completedAt = "2026-08-13T12:00:00Z"),
+                    ),
+                today = today,
+                range = AnalyticsRange.Week,
+                timeZone = tz,
+            )
 
         assertEquals(1, model.completedTotal)
         assertEquals(listOf(0, 0, 0, 0, 0, 0, 1), model.completion.points.map { it.value })
@@ -54,13 +58,14 @@ class ListAnalyticsModelTest {
 
     @Test
     fun monthRangeProducesThirtyPoints() {
-        val model = buildListAnalyticsModel(
-            listId = 2,
-            todos = emptyList(),
-            today = today,
-            range = AnalyticsRange.Month,
-            timeZone = tz,
-        )
+        val model =
+            buildListAnalyticsModel(
+                listId = 2,
+                todos = emptyList(),
+                today = today,
+                range = AnalyticsRange.Month,
+                timeZone = tz,
+            )
 
         assertEquals(30, model.completion.points.size)
         assertEquals(30, model.energy.points.size)
@@ -68,18 +73,20 @@ class ListAnalyticsModelTest {
 
     @Test
     fun energySeriesScoresBaseNoteAndFlagPerDay() {
-        val model = buildListAnalyticsModel(
-            listId = 2,
-            todos = listOf(
-                todo(id = 1, listId = 2, completedAt = "2026-08-13T10:00:00Z"),
-                todo(id = 2, listId = 2, completedAt = "2026-08-13T11:00:00Z", note = "deep"),
-                todo(id = 3, listId = 2, completedAt = "2026-08-13T12:00:00Z", flag = true),
-                todo(id = 4, listId = 2, completedAt = "2026-08-12T10:00:00Z", note = "deep", flag = true),
-            ),
-            today = today,
-            range = AnalyticsRange.Week,
-            timeZone = tz,
-        )
+        val model =
+            buildListAnalyticsModel(
+                listId = 2,
+                todos =
+                    listOf(
+                        todo(id = 1, listId = 2, completedAt = "2026-08-13T10:00:00Z"),
+                        todo(id = 2, listId = 2, completedAt = "2026-08-13T11:00:00Z", note = "deep"),
+                        todo(id = 3, listId = 2, completedAt = "2026-08-13T12:00:00Z", flag = true),
+                        todo(id = 4, listId = 2, completedAt = "2026-08-12T10:00:00Z", note = "deep", flag = true),
+                    ),
+                today = today,
+                range = AnalyticsRange.Week,
+                timeZone = tz,
+            )
 
         assertEquals("精力输出", model.energy.title)
         assertEquals(listOf(0, 0, 0, 0, 0, 3, 5), model.energy.points.map { it.value })

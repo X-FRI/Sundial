@@ -46,8 +46,7 @@ class FakeSyncClient : SyncClient {
             else -> Either.Right(pullResult)
         }
 
-    override fun observeRemoteChanges(): Flow<SyncRow> =
-        flow { remote.value.forEach { emit(it) } }
+    override fun observeRemoteChanges(): Flow<SyncRow> = flow { remote.value.forEach { emit(it) } }
 
     override fun observeConnectionStatus(): Flow<Boolean> = MutableStateFlow(false)
 

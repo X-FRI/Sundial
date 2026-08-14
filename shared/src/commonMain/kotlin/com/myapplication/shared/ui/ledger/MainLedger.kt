@@ -2,8 +2,9 @@ package com.myapplication.shared.ui.ledger
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
@@ -33,20 +33,19 @@ import com.myapplication.shared.domain.organize.OrganizationAction
 import com.myapplication.shared.domain.organize.OrganizationSuggestion
 import com.myapplication.shared.domain.organize.buildOrganizationSuggestions
 import com.myapplication.shared.ui.components.IconName
+import com.myapplication.shared.ui.components.RemButton
 import com.myapplication.shared.ui.components.RemDialog
 import com.myapplication.shared.ui.components.RemIcon
-import com.myapplication.shared.ui.components.RemButton
 import com.myapplication.shared.ui.main.MainViewModel
 import com.myapplication.shared.ui.main.Scope
 import com.myapplication.shared.ui.main.scopeTitle
 import com.myapplication.shared.ui.organize.OrganizePanel
 import com.myapplication.shared.ui.theme.ListColorOf
-import com.myapplication.shared.ui.theme.RemControlSize
 import com.myapplication.shared.ui.theme.LocalRemColors
+import com.myapplication.shared.ui.theme.RemControlSize
 import com.myapplication.shared.ui.theme.RemType
 import com.myapplication.shared.ui.todolist.TodoFormDialog
 import com.myapplication.shared.util.todayDate
-import kotlin.time.Clock
 import kotlinx.coroutines.delay
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -54,6 +53,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 @Composable
 fun MainLedger(
@@ -89,25 +89,29 @@ fun MainLedger(
     val timeline = remember(todos, now, timeZone) { buildTodayTimelineState(todos, now, timeZone) }
     val inboxListId = remember(lists) { lists.firstOrNull { it.name == "收件箱" }?.id }
     val contextScope = remember(scope, inboxListId) { scope.toTimelineScope(inboxListId) }
-    val contextTimeline = remember(todos, contextScope, now, timeZone, inboxListId) {
-        buildContextTimelineState(todos, contextScope, now, timeZone, inboxListId)
-    }
+    val contextTimeline =
+        remember(todos, contextScope, now, timeZone, inboxListId) {
+            buildContextTimelineState(todos, contextScope, now, timeZone, inboxListId)
+        }
     val today = todayDate(clock, timeZone)
     val rowMinHeight = if (compactRows) RemControlSize.rowMobile else RemControlSize.rowDesktop
     val checkboxSize = if (compactRows) 20.dp else 16.dp
-    val taskSections = remember(scope, groups, timeline, today, timeZone, inboxListId) {
-        buildLedgerTaskSections(scope, groups, timeline, today, timeZone, inboxListId)
-    }
-    val trashSections = remember(scope, trashGroups, today, timeZone) {
-        buildLedgerTrashSections(scope, trashGroups, today, timeZone)
-    }
-    val organizationSuggestions = remember(scope, query, todos, today, timeZone, inboxListId) {
-        if (scope == Scope.All && query.isBlank()) {
-            buildOrganizationSuggestions(todos, inboxListId, today, timeZone)
-        } else {
-            emptyList()
+    val taskSections =
+        remember(scope, groups, timeline, today, timeZone, inboxListId) {
+            buildLedgerTaskSections(scope, groups, timeline, today, timeZone, inboxListId)
         }
-    }
+    val trashSections =
+        remember(scope, trashGroups, today, timeZone) {
+            buildLedgerTrashSections(scope, trashGroups, today, timeZone)
+        }
+    val organizationSuggestions =
+        remember(scope, query, todos, today, timeZone, inboxListId) {
+            if (scope == Scope.All && query.isBlank()) {
+                buildOrganizationSuggestions(todos, inboxListId, today, timeZone)
+            } else {
+                emptyList()
+            }
+        }
 
     Column(
         modifier
@@ -255,8 +259,7 @@ private fun MoveSuggestionListDialog(
                             indication = null,
                         ) {
                             onMove(list)
-                        }
-                        .padding(vertical = 8.dp),
+                        }.padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(Modifier.size(10.dp).background(ListColorOf[list.colorKey] ?: Color.Gray, CircleShape))
@@ -275,15 +278,16 @@ private fun MoveSuggestionListDialog(
     )
 }
 
-fun Scope.toTimelineScope(inboxListId: Long?): TimelineScope = when (this) {
-    Scope.Today -> TimelineScope.Today
-    Scope.Scheduled -> TimelineScope.Scheduled
-    Scope.All -> TimelineScope.Workbench
-    Scope.Analytics -> TimelineScope.Workbench
-    Scope.Completed -> TimelineScope.Completed
-    Scope.Trash -> TimelineScope.Trash
-    is Scope.List -> TimelineScope.List(listId = listId, isInbox = inboxListId == listId)
-}
+fun Scope.toTimelineScope(inboxListId: Long?): TimelineScope =
+    when (this) {
+        Scope.Today -> TimelineScope.Today
+        Scope.Scheduled -> TimelineScope.Scheduled
+        Scope.All -> TimelineScope.Workbench
+        Scope.Analytics -> TimelineScope.Workbench
+        Scope.Completed -> TimelineScope.Completed
+        Scope.Trash -> TimelineScope.Trash
+        is Scope.List -> TimelineScope.List(listId = listId, isInbox = inboxListId == listId)
+    }
 
 private fun ledgerTitle(
     scope: Scope,
@@ -339,21 +343,51 @@ private fun buildLedgerTaskSections(
                 LedgerTaskSection("已完成", TimelineTone.Success, completed, completed = true, emptyText = "今天还没有完成记录"),
             )
         }
-        Scope.Scheduled -> listOf(
-            LedgerTaskSection("今天", TimelineTone.Brand, active.filter { it.isDueOn(today, timeZone) }, emptyText = "今天没有计划待办"),
-            LedgerTaskSection("明天", TimelineTone.Info, active.filter { it.isDueOn(today.plus(1, DateTimeUnit.DAY), timeZone) }, emptyText = "明天没有计划待办"),
-            LedgerTaskSection("本周", TimelineTone.Warning, active.filter { it.isDueBetween(today, 2, 7, timeZone) }, emptyText = "本周没有更多计划"),
-            LedgerTaskSection("以后", TimelineTone.Neutral, active.filter { it.isDueAfter(today.plus(7, DateTimeUnit.DAY), timeZone) }, emptyText = "没有更晚的计划"),
-        )
-        Scope.Completed -> listOf(
-            LedgerTaskSection("今天完成", TimelineTone.Success, completed.filter { it.item.completedAt?.toLocalDateTime(timeZone)?.date == today }, completed = true, emptyText = "今天还没有完成记录"),
-            LedgerTaskSection("本周完成", TimelineTone.Info, completed.filter { row ->
-                row.item.completedAt?.toLocalDateTime(timeZone)?.date?.let { it < today && it.daysUntil(today) in 1..7 } == true
-            }, completed = true, emptyText = "本周没有其他完成记录"),
-            LedgerTaskSection("更早完成", TimelineTone.Neutral, completed.filter { row ->
-                row.item.completedAt?.toLocalDateTime(timeZone)?.date?.let { it.daysUntil(today) > 7 } ?: true
-            }, completed = true, emptyText = "没有更早完成记录"),
-        )
+        Scope.Scheduled ->
+            listOf(
+                LedgerTaskSection("今天", TimelineTone.Brand, active.filter { it.isDueOn(today, timeZone) }, emptyText = "今天没有计划待办"),
+                LedgerTaskSection("明天", TimelineTone.Info, active.filter { it.isDueOn(today.plus(1, DateTimeUnit.DAY), timeZone) }, emptyText = "明天没有计划待办"),
+                LedgerTaskSection("本周", TimelineTone.Warning, active.filter { it.isDueBetween(today, 2, 7, timeZone) }, emptyText = "本周没有更多计划"),
+                LedgerTaskSection("以后", TimelineTone.Neutral, active.filter { it.isDueAfter(today.plus(7, DateTimeUnit.DAY), timeZone) }, emptyText = "没有更晚的计划"),
+            )
+        Scope.Completed ->
+            listOf(
+                LedgerTaskSection(
+                    "今天完成",
+                    TimelineTone.Success,
+                    completed.filter {
+                        it.item.completedAt
+                            ?.toLocalDateTime(timeZone)
+                            ?.date == today
+                    },
+                    completed = true,
+                    emptyText = "今天还没有完成记录",
+                ),
+                LedgerTaskSection(
+                    "本周完成",
+                    TimelineTone.Info,
+                    completed.filter { row ->
+                        row.item.completedAt
+                            ?.toLocalDateTime(timeZone)
+                            ?.date
+                            ?.let { it < today && it.daysUntil(today) in 1..7 } == true
+                    },
+                    completed = true,
+                    emptyText = "本周没有其他完成记录",
+                ),
+                LedgerTaskSection(
+                    "更早完成",
+                    TimelineTone.Neutral,
+                    completed.filter { row ->
+                        row.item.completedAt
+                            ?.toLocalDateTime(timeZone)
+                            ?.date
+                            ?.let { it.daysUntil(today) > 7 } ?: true
+                    },
+                    completed = true,
+                    emptyText = "没有更早完成记录",
+                ),
+            )
         Scope.Trash -> emptyList()
         Scope.Analytics -> workbenchSections(active, today, timeZone, inboxListId)
         Scope.All -> workbenchSections(active, today, timeZone, inboxListId)
@@ -378,13 +412,14 @@ private fun workbenchSections(
     today: LocalDate,
     timeZone: TimeZone,
     inboxListId: Long?,
-): List<LedgerTaskSection> = listOf(
-    LedgerTaskSection("逾期", TimelineTone.Danger, active.filter { it.isOverdue(today, timeZone) }, emptyText = "没有逾期待办"),
-    LedgerTaskSection("今天", TimelineTone.Brand, active.filter { it.isDueOn(today, timeZone) }, emptyText = "今天没有待办"),
-    LedgerTaskSection("未来 7 天", TimelineTone.Info, active.filter { it.isDueBetween(today, 1, 7, timeZone) }, emptyText = "未来 7 天没有待办"),
-    LedgerTaskSection("无日期", TimelineTone.Neutral, active.filter { it.item.dueDate == null }, emptyText = "没有无日期待办"),
-    LedgerTaskSection("待整理", TimelineTone.Warning, active.filter { inboxListId != null && it.item.listId == inboxListId }, emptyText = "没有待整理任务"),
-)
+): List<LedgerTaskSection> =
+    listOf(
+        LedgerTaskSection("逾期", TimelineTone.Danger, active.filter { it.isOverdue(today, timeZone) }, emptyText = "没有逾期待办"),
+        LedgerTaskSection("今天", TimelineTone.Brand, active.filter { it.isDueOn(today, timeZone) }, emptyText = "今天没有待办"),
+        LedgerTaskSection("未来 7 天", TimelineTone.Info, active.filter { it.isDueBetween(today, 1, 7, timeZone) }, emptyText = "未来 7 天没有待办"),
+        LedgerTaskSection("无日期", TimelineTone.Neutral, active.filter { it.item.dueDate == null }, emptyText = "没有无日期待办"),
+        LedgerTaskSection("待整理", TimelineTone.Warning, active.filter { inboxListId != null && it.item.listId == inboxListId }, emptyText = "没有待整理任务"),
+    )
 
 private fun buildLedgerTrashSections(
     scope: Scope,
@@ -401,21 +436,31 @@ private fun buildLedgerTrashSections(
     )
 }
 
-private fun TaskRowModel.localDueDate(timeZone: TimeZone): LocalDate? =
-    item.dueDate?.toLocalDateTime(timeZone)?.date
+private fun TaskRowModel.localDueDate(timeZone: TimeZone): LocalDate? = item.dueDate?.toLocalDateTime(timeZone)?.date
 
-private fun TaskRowModel.isOverdue(today: LocalDate, timeZone: TimeZone): Boolean =
-    localDueDate(timeZone)?.let { it < today } == true
+private fun TaskRowModel.isOverdue(
+    today: LocalDate,
+    timeZone: TimeZone,
+): Boolean = localDueDate(timeZone)?.let { it < today } == true
 
-private fun TaskRowModel.isDueOn(date: LocalDate, timeZone: TimeZone): Boolean =
-    localDueDate(timeZone) == date
+private fun TaskRowModel.isDueOn(
+    date: LocalDate,
+    timeZone: TimeZone,
+): Boolean = localDueDate(timeZone) == date
 
-private fun TaskRowModel.isDueBetween(today: LocalDate, startOffset: Int, endOffset: Int, timeZone: TimeZone): Boolean {
+private fun TaskRowModel.isDueBetween(
+    today: LocalDate,
+    startOffset: Int,
+    endOffset: Int,
+    timeZone: TimeZone,
+): Boolean {
     val due = localDueDate(timeZone) ?: return false
     val from = today.plus(startOffset, DateTimeUnit.DAY)
     val to = today.plus(endOffset, DateTimeUnit.DAY)
     return due >= from && due <= to
 }
 
-private fun TaskRowModel.isDueAfter(date: LocalDate, timeZone: TimeZone): Boolean =
-    localDueDate(timeZone)?.let { it > date } == true
+private fun TaskRowModel.isDueAfter(
+    date: LocalDate,
+    timeZone: TimeZone,
+): Boolean = localDueDate(timeZone)?.let { it > date } == true

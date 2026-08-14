@@ -16,7 +16,10 @@ import com.patrykandpatrick.vico.multiplatform.cartesian.layer.rememberColumnCar
 import com.patrykandpatrick.vico.multiplatform.cartesian.rememberCartesianChart
 
 @Composable
-internal fun PressureDistributionChart(buckets: List<ChartBucket>, modifier: Modifier = Modifier) {
+internal fun PressureDistributionChart(
+    buckets: List<ChartBucket>,
+    modifier: Modifier = Modifier,
+) {
     val series = prepareBucketSeries(buckets)
     val modelProducer = remember { CartesianChartModelProducer() }
     LaunchedEffect(modelProducer, series.values) {
@@ -27,14 +30,16 @@ internal fun PressureDistributionChart(buckets: List<ChartBucket>, modifier: Mod
         }
     }
     CartesianChartHost(
-        chart = rememberCartesianChart(
-            rememberColumnCartesianLayer(
-                columnProvider = rememberToneColumnProvider(series.tones),
+        chart =
+            rememberCartesianChart(
+                rememberColumnCartesianLayer(
+                    columnProvider = rememberToneColumnProvider(series.tones),
+                ),
+                bottomAxis =
+                    HorizontalAxis.rememberBottom(
+                        valueFormatter = rememberLabelValueFormatter(series.labels),
+                    ),
             ),
-            bottomAxis = HorizontalAxis.rememberBottom(
-                valueFormatter = rememberLabelValueFormatter(series.labels),
-            ),
-        ),
         modelProducer = modelProducer,
         modifier = modifier.fillMaxWidth().height(120.dp),
     )

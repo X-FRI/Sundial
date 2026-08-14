@@ -41,19 +41,22 @@ fun OrganizeSection(
         ) {
             RemIcon(IconName.Send, colors.brand, Modifier.size(14.dp))
             Spacer(Modifier.width(7.dp))
-            androidx.compose.foundation.text.BasicText(title, style = RemType.label12.copy(color = colors.brand))
+            androidx.compose.foundation.text
+                .BasicText(title, style = RemType.label12.copy(color = colors.brand))
             Spacer(Modifier.width(6.dp))
-            androidx.compose.foundation.text.BasicText(suggestions.size.toString(), style = RemType.label12.copy(color = colors.brand))
+            androidx.compose.foundation.text
+                .BasicText(suggestions.size.toString(), style = RemType.label12.copy(color = colors.brand))
             Spacer(Modifier.weight(1f))
         }
 
-        val rowContainer = if (showRowContainer) {
-            Modifier
-                .fillMaxWidth()
-                .background(colors.surface)
-        } else {
-            Modifier.fillMaxWidth()
-        }
+        val rowContainer =
+            if (showRowContainer) {
+                Modifier
+                    .fillMaxWidth()
+                    .background(colors.surface)
+            } else {
+                Modifier.fillMaxWidth()
+            }
         Column(rowContainer) {
             suggestions.forEachIndexed { index, suggestion ->
                 SuggestionRow(

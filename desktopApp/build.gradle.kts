@@ -1,6 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
-val displayVersion = "0.9.0"
+val displayVersion = "0.9.1"
 // jpackage rejects app-version values whose first number is 0.
 val desktopPackageVersion = "1.2.0"
 
@@ -13,7 +13,7 @@ plugins {
 kotlin {
     jvm()
     sourceSets {
-        val jvmMain by getting  {
+        val jvmMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(project(":shared"))

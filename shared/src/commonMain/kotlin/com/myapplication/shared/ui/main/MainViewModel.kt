@@ -22,7 +22,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlin.time.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -30,6 +29,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 /**
  * 全局路由状态机：决定当前显示哪个「页面」。
@@ -44,7 +44,12 @@ import kotlinx.datetime.toLocalDateTime
  */
 sealed interface Route {
     data object Main : Route
-    data class Detail(val todoId: Long, val parentTodoId: Long? = null) : Route
+
+    data class Detail(
+        val todoId: Long,
+        val parentTodoId: Long? = null,
+    ) : Route
+
     data object Settings : Route
 }
 
@@ -57,17 +62,26 @@ sealed interface Route {
  */
 sealed interface Scope {
     data object Analytics : Scope
+
     data object Today : Scope
+
     data object Scheduled : Scope
+
     data object All : Scope
+
     data object Completed : Scope
+
     data object Trash : Scope
-    data class List(val listId: Long) : Scope
+
+    data class List(
+        val listId: Long,
+    ) : Scope
 }
 
 /** 外部启动入口的类型化目标。 */
 sealed interface LaunchTarget {
     data object Workbench : LaunchTarget
+
     data object Today : LaunchTarget
 }
 
@@ -92,19 +106,23 @@ class MainViewModel(
     private val completeRecurringTodo: CompleteRecurringTodoUseCase? = null,
     private val clock: Clock = Clock.System,
 ) : ViewModel() {
-
     /** 当前列表范围（智能列表或自定义列表）。 */
     val scope = MutableStateFlow<Scope>(Scope.All)
+
     /** 搜索关键词；非空时 [todos] 走搜索查询，scope 失效。 */
     val searchQuery = MutableStateFlow("")
+
     /** 当前路由（Main / Detail / Settings），由 AppRoot 消费。 */
     val route = MutableStateFlow<Route>(Route.Main)
+
     /** 最近一次命令失败（若为 null 表示无错误）；AppRoot 订阅并弹窗。 */
     val lastError = MutableStateFlow<TodoError?>(null)
 
     /** 全部自定义列表（含收件箱），供 Sidebar / 表单对话框渲染。 */
-    val lists: StateFlow<List<TodoList>> = repository.observeLists()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val lists: StateFlow<List<TodoList>> =
+        repository
+            .observeLists()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /**
      * 主列表数据流。
@@ -116,18 +134,20 @@ class MainViewModel(
     val todos: StateFlow<List<TodoItem>> =
         combine(scope, searchQuery) { s, q -> s to q }
             .flatMapLatest { (s, q) ->
-                if (q.isNotBlank()) repository.search(q.trim())
-                else when (s) {
-                    Scope.Today -> repository.observeToday()
-                    Scope.Scheduled -> repository.observeScheduled()
-                    Scope.All -> repository.observeAllActive()
-                    Scope.Completed -> repository.observeCompleted()
-                    Scope.Trash -> repository.observeTrashed()
-                    Scope.Analytics -> repository.observeAllActive()
-                    is Scope.List -> repository.observeByList(s.listId)
+                if (q.isNotBlank()) {
+                    repository.search(q.trim())
+                } else {
+                    when (s) {
+                        Scope.Today -> repository.observeToday()
+                        Scope.Scheduled -> repository.observeScheduled()
+                        Scope.All -> repository.observeAllActive()
+                        Scope.Completed -> repository.observeCompleted()
+                        Scope.Trash -> repository.observeTrashed()
+                        Scope.Analytics -> repository.observeAllActive()
+                        is Scope.List -> repository.observeByList(s.listId)
+                    }
                 }
-            }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** 分析页数据：排除垃圾箱，合并活动与已完成记录，供趋势和输出图表使用。 */
     val analyticsTodos: StateFlow<List<TodoItem>> =
@@ -136,8 +156,7 @@ class MainViewModel(
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** 把查询流折叠成计数流；各智能列表徽标共用这一条逻辑。 */
-    private fun count(flow: Flow<List<TodoItem>>): StateFlow<Int> =
-        flow.map { it.size }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    private fun count(flow: Flow<List<TodoItem>>): StateFlow<Int> = flow.map { it.size }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     /** 智能列表计数：各自独立订阅查询流，互不干扰。 */
     val todayCount: StateFlow<Int> = count(repository.observeToday())
@@ -145,16 +164,18 @@ class MainViewModel(
     val allCount: StateFlow<Int> = count(repository.observeAllActive())
     val completedCount: StateFlow<Int> = count(repository.observeCompleted())
     val trashCount: StateFlow<Int> = count(repository.observeTrashed())
+
     /**
      * 每个自定义列表的待办计数（listId -> 数量）。
      * 复用了全部活动待办这一条查询流做分组，避免为每个列表各开一条数据库监听。
      */
-    val listCounts: StateFlow<Map<Long, Int>> = repository.observeAllActive()
-        .map { todos -> todos.groupingBy { it.listId }.eachCount() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+    val listCounts: StateFlow<Map<Long, Int>> =
+        repository
+            .observeAllActive()
+            .map { todos -> todos.groupingBy { it.listId }.eachCount() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
 
-    fun observeListStats(listId: Long): Flow<ListStats> =
-        repository.observeListStats(listId)
+    fun observeListStats(listId: Long): Flow<ListStats> = repository.observeListStats(listId)
 
     init {
         // 启动时确保「收件箱」列表存在：它是所有新待办的默认归属，
@@ -192,7 +213,10 @@ class MainViewModel(
         searchQuery.value = q
     }
 
-    fun openDetail(id: Long, parentTodoId: Long? = null) {
+    fun openDetail(
+        id: Long,
+        parentTodoId: Long? = null,
+    ) {
         route.value = Route.Detail(id, parentTodoId)
     }
 
@@ -202,10 +226,11 @@ class MainViewModel(
 
     /** 返回路由；子任务详情回父任务，普通详情/设置页回主界面。 */
     fun back() {
-        route.value = when (val current = route.value) {
-            is Route.Detail -> current.parentTodoId?.let { Route.Detail(it) } ?: Route.Main
-            else -> Route.Main
-        }
+        route.value =
+            when (val current = route.value) {
+                is Route.Detail -> current.parentTodoId?.let { Route.Detail(it) } ?: Route.Main
+                else -> Route.Main
+            }
     }
 
     /** 关闭当前详情或设置页；与系统返回不同，它不会回到父任务详情。 */
@@ -214,7 +239,13 @@ class MainViewModel(
     }
 
     /** 新建待办：同步校验在 usecase 内，失败统一进 [lastError]。 */
-    fun createTodo(title: String, note: String, due: LocalDateTime?, flag: Boolean = false, listId: Long? = null) {
+    fun createTodo(
+        title: String,
+        note: String,
+        due: LocalDateTime?,
+        flag: Boolean = false,
+        listId: Long? = null,
+    ) {
         launchTodoEffect(lastError) {
             addTodo(
                 AddTodoInput(
@@ -253,7 +284,10 @@ class MainViewModel(
         scheduleOn(item, todayDate(clock, timeZone).plus(1, DateTimeUnit.DAY))
     }
 
-    fun moveTodoToList(item: TodoItem, listId: Long) {
+    fun moveTodoToList(
+        item: TodoItem,
+        listId: Long,
+    ) {
         launchTodoEffect(lastError) { repository.moveToList(item.id, listId) }
     }
 
@@ -266,14 +300,21 @@ class MainViewModel(
     }
 
     /** 新建自定义列表；空名称直接忽略。 */
-    fun addList(name: String, colorKey: String) {
+    fun addList(
+        name: String,
+        colorKey: String,
+    ) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
         launchTodoEffect(lastError) { repository.addList(trimmed, colorKey) }
     }
 
     /** 更新自定义列表；空名称直接忽略。 */
-    fun updateList(list: TodoList, name: String, colorKey: String) {
+    fun updateList(
+        list: TodoList,
+        name: String,
+        colorKey: String,
+    ) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
         launchTodoEffect(lastError) { repository.updateList(list.id, trimmed, colorKey) }
@@ -283,7 +324,10 @@ class MainViewModel(
      * 删除列表。删除成功后，若当前正停留在该列表范围，会先切回「全部」，
      * 避免 UI 停留在已不存在的范围上（此处为乐观切换，不等待删除结果）。
      */
-    fun deleteList(list: TodoList, policy: DeleteListPolicy) {
+    fun deleteList(
+        list: TodoList,
+        policy: DeleteListPolicy,
+    ) {
         launchTodoEffect(lastError) { repository.deleteList(list.id, policy) }
         if (scope.value == Scope.List(list.id)) scope.value = Scope.All
     }
@@ -292,25 +336,33 @@ class MainViewModel(
         deleteList(list, DeleteListPolicy.MoveTasksToInbox)
     }
 
-    private fun scheduleOn(item: TodoItem, date: kotlinx.datetime.LocalDate) {
-        val time = item.dueDate
-            ?.toLocalDateTime(timeZone)
-            ?.time
-            ?.takeIf { it.hour != 0 || it.minute != 0 }
-            ?: LocalTime(9, 0)
+    private fun scheduleOn(
+        item: TodoItem,
+        date: kotlinx.datetime.LocalDate,
+    ) {
+        val time =
+            item.dueDate
+                ?.toLocalDateTime(timeZone)
+                ?.time
+                ?.takeIf { it.hour != 0 || it.minute != 0 }
+                ?: LocalTime(9, 0)
         launchTodoEffect(lastError) { repository.setDueDate(item.id, LocalDateTime(date, time).toInstant(timeZone)) }
     }
 }
 
 /** 顶栏/页头标题：搜索词非空时统一显示「搜索」，否则按范围取标题。 */
-fun scopeTitle(scope: Scope, query: String): String = when {
-    query.isNotBlank() -> "搜索"
-    scope == Scope.Today -> "今天"
-    scope == Scope.Scheduled -> "计划"
-    scope == Scope.All -> "工作台"
-    scope == Scope.Analytics -> "分析"
-    scope == Scope.Completed -> "已完成"
-    scope == Scope.Trash -> "垃圾箱"
-    scope is Scope.List -> "列表"
-    else -> "待办"
-}
+fun scopeTitle(
+    scope: Scope,
+    query: String,
+): String =
+    when {
+        query.isNotBlank() -> "搜索"
+        scope == Scope.Today -> "今天"
+        scope == Scope.Scheduled -> "计划"
+        scope == Scope.All -> "工作台"
+        scope == Scope.Analytics -> "分析"
+        scope == Scope.Completed -> "已完成"
+        scope == Scope.Trash -> "垃圾箱"
+        scope is Scope.List -> "列表"
+        else -> "待办"
+    }

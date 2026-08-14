@@ -7,10 +7,11 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val keystoreProps = Properties().apply {
-    val f = rootProject.file("local.properties")
-    if (f.exists()) load(f.inputStream())
-}
+val keystoreProps =
+    Properties().apply {
+        val f = rootProject.file("local.properties")
+        if (f.exists()) load(f.inputStream())
+    }
 val glanceVersion = findProperty("glance.version") as String
 val serializationVersion = findProperty("serialization.version") as String
 
@@ -37,8 +38,8 @@ android {
         applicationId = "com.myapplication.MyApplication"
         minSdk = (findProperty("android.minSdk") as String).toInt()
         targetSdk = (findProperty("android.targetSdk") as String).toInt()
-        versionCode = 10
-        versionName = "0.9.0"
+        versionCode = 11
+        versionName = "0.9.1"
     }
     signingConfigs {
         if (keystoreProps.getProperty("keystore.storeFile") != null) {

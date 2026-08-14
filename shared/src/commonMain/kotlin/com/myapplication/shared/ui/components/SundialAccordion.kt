@@ -71,40 +71,44 @@ fun SundialAccordionSection(
             Spacer(Modifier.width(7.dp))
             BasicText(
                 title,
-                style = RemType.text14.copy(
-                    color = tone,
-                    fontWeight = FontWeight.SemiBold,
-                ),
+                style =
+                    RemType.text14.copy(
+                        color = tone,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
             )
             Spacer(Modifier.width(8.dp))
             BasicText(
                 count.toString(),
-                style = RemType.label12.copy(
-                    color = colors.textLow,
-                    fontFamily = FontFamily.Monospace,
-                ),
+                style =
+                    RemType.label12.copy(
+                        color = colors.textLow,
+                        fontFamily = FontFamily.Monospace,
+                    ),
             )
             Spacer(Modifier.weight(1f))
         }
         if (!expanded) return@Column
 
-        val bodyModifier = if (contentSurface) {
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(RemRadii.r4))
-                .background(colors.surface)
-        } else {
-            Modifier.fillMaxWidth()
-        }
+        val bodyModifier =
+            if (contentSurface) {
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(RemRadii.r4))
+                    .background(colors.surface)
+            } else {
+                Modifier.fillMaxWidth()
+            }
         Column(bodyModifier) {
             if (count == 0 && emptyText != null) {
                 BasicText(
                     emptyText,
                     style = RemType.text12.copy(color = colors.textLow),
-                    modifier = Modifier.padding(
-                        horizontal = if (contentSurface) 12.dp else 37.dp,
-                        vertical = 10.dp,
-                    ),
+                    modifier =
+                        Modifier.padding(
+                            horizontal = if (contentSurface) 12.dp else 37.dp,
+                            vertical = 10.dp,
+                        ),
                 )
             }
             content()

@@ -61,8 +61,10 @@ fun RemCheckbox(
     Box(
         modifier
             .size(size + 10.dp)
-            .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(CircleShape)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }.clip(CircleShape)
             .toggleable(
                 value = checked,
                 interactionSource = interactionSource,
@@ -79,20 +81,22 @@ fun RemCheckbox(
             drawCircle(fill)
             // 第二层：描边圆，颜色随 hover/选中状态切换；线宽 = 半径的 18%
             drawCircle(
-                color = when {
-                    checked -> colors.brand
-                    hovered -> colors.textHigh
-                    else -> colors.textLow
-                },
+                color =
+                    when {
+                        checked -> colors.brand
+                        hovered -> colors.textHigh
+                        else -> colors.textLow
+                    },
                 style = Stroke(width = r * 0.18f),
             )
             // 第三层：选中时白色对勾，坐标按直径比例硬编码（24%→78% 区间）
             if (checked) {
-                val p = Path().apply {
-                    moveTo(d * 0.24f, d * 0.52f)
-                    lineTo(d * 0.44f, d * 0.72f)
-                    lineTo(d * 0.78f, d * 0.30f)
-                }
+                val p =
+                    Path().apply {
+                        moveTo(d * 0.24f, d * 0.52f)
+                        lineTo(d * 0.44f, d * 0.72f)
+                        lineTo(d * 0.78f, d * 0.30f)
+                    }
                 drawPath(p, Color.White, style = Stroke(width = d * 0.14f, cap = StrokeCap.Round, join = StrokeJoin.Round))
             }
         }

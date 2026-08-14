@@ -9,4 +9,7 @@ import androidx.compose.runtime.Composable
  * 故此处不注册任何处理器。
  */
 @Composable
-actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) = Unit
+actual fun PlatformBackHandler(
+    enabled: Boolean,
+    onBack: () -> Unit,
+) = Unit

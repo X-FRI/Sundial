@@ -54,10 +54,10 @@ import com.myapplication.shared.ui.sync.phase
 import com.myapplication.shared.ui.theme.LocalRemColors
 import com.myapplication.shared.ui.theme.RemRadii
 import com.myapplication.shared.ui.theme.RemType
-import kotlin.time.Clock
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 /**
  * 设置中心入口：外层信息架构由 [SettingsHome] 管理，同步配置作为一个 section 内容嵌入。
@@ -69,7 +69,11 @@ import kotlinx.datetime.toLocalDateTime
  * - 下半部分 [StatusCard] 实时展示 SyncEngine 的连接状态。
  */
 @Composable
-fun SettingsScreen(vm: SettingsViewModel, mainVm: MainViewModel, onBack: () -> Unit) {
+fun SettingsScreen(
+    vm: SettingsViewModel,
+    mainVm: MainViewModel,
+    onBack: () -> Unit,
+) {
     SettingsHome(
         vm = vm,
         mainVm = mainVm,
@@ -78,7 +82,10 @@ fun SettingsScreen(vm: SettingsViewModel, mainVm: MainViewModel, onBack: () -> U
 }
 
 @Composable
-internal fun SyncSettingsContent(vm: SettingsViewModel, onBack: () -> Unit) {
+internal fun SyncSettingsContent(
+    vm: SettingsViewModel,
+    onBack: () -> Unit,
+) {
     val colors = LocalRemColors.current
     val form by vm.form.collectAsState()
     val status by vm.syncStatus.collectAsState()
@@ -167,11 +174,12 @@ internal fun SyncSettingsContent(vm: SettingsViewModel, onBack: () -> Unit) {
                                     leadingIcon = IconName.Key,
                                     style = RemType.text14.copy(fontFamily = FontFamily.Monospace),
                                     modifier = Modifier.fillMaxWidth(),
-                                    visualTransformation = if (keyPresentation.hidden) {
-                                        PasswordVisualTransformation()
-                                    } else {
-                                        VisualTransformation.None
-                                    },
+                                    visualTransformation =
+                                        if (keyPresentation.hidden) {
+                                            PasswordVisualTransformation()
+                                        } else {
+                                            VisualTransformation.None
+                                        },
                                     trailingContent = {
                                         RemIconButton(
                                             icon = keyPresentation.toggleIcon,
@@ -313,8 +321,7 @@ private fun ModeOption(
                 if (selected) 1.dp else 0.dp,
                 colors.brand.copy(alpha = 0.45f),
                 shape,
-            )
-            .clickable(
+            ).clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
             ) { onClick() }
@@ -336,10 +343,11 @@ private fun ModeOption(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BasicText(
                     title,
-                    style = RemType.text14.copy(
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                        color = colors.textHigh,
-                    ),
+                    style =
+                        RemType.text14.copy(
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                            color = colors.textHigh,
+                        ),
                 )
                 if (comingSoon) {
                     Spacer(Modifier.width(6.dp))
@@ -382,18 +390,20 @@ private fun ModeOption(
 private fun StatusCard(status: SyncStatus) {
     val colors = LocalRemColors.current
     // 徽标文案：当前同步模式名。
-    val modeLabel = when (status.mode) {
-        SyncMode.Local -> "本地"
-        SyncMode.Supabase -> "Supabase"
-        SyncMode.SundialServer -> "Sundial-Server"
-    }
+    val modeLabel =
+        when (status.mode) {
+            SyncMode.Local -> "本地"
+            SyncMode.Supabase -> "Supabase"
+            SyncMode.SundialServer -> "Sundial-Server"
+        }
     // 主标题：同步中 / 本地模式 / 已连接 / 未连接。
-    val headline = when {
-        status.syncing -> "同步中…"
-        status.mode == SyncMode.Local -> "本地模式"
-        status.connected -> "已连接"
-        else -> "未连接"
-    }
+    val headline =
+        when {
+            status.syncing -> "同步中…"
+            status.mode == SyncMode.Local -> "本地模式"
+            status.connected -> "已连接"
+            else -> "未连接"
+        }
     val headlineColor = if (status.syncing) colors.brand else colors.textHigh
     SettingsCard {
         Column(Modifier.padding(12.dp)) {
@@ -437,7 +447,11 @@ private fun StatusCard(status: SyncStatus) {
 }
 
 @Composable
-private fun StatRow(label: String, value: String, valueColor: Color? = null) {
+private fun StatRow(
+    label: String,
+    value: String,
+    valueColor: Color? = null,
+) {
     val colors = LocalRemColors.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         BasicText(label, style = RemType.text12.copy(color = colors.textLow))
@@ -447,7 +461,10 @@ private fun StatRow(label: String, value: String, valueColor: Color? = null) {
 }
 
 /** 把时间戳格式化为相对时间：刚/分钟前/小时前，超过一天显示绝对日期时间。 */
-private fun formatRelative(epochMillis: Long, now: Long): String {
+private fun formatRelative(
+    epochMillis: Long,
+    now: Long,
+): String {
     val diff = now - epochMillis
     return when {
         diff < 60_000L -> "刚刚"

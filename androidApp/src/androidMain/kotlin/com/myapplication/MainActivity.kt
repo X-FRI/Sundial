@@ -44,8 +44,7 @@ class MainActivity : AppCompatActivity() {
         launchNonce += 1
     }
 
-    private fun launchTargetFromIntent(intent: Intent?): String? =
-        intent?.getStringExtra(EXTRA_SUNDIAL_TARGET)
+    private fun launchTargetFromIntent(intent: Intent?): String? = intent?.getStringExtra(EXTRA_SUNDIAL_TARGET)
 
     companion object {
         const val EXTRA_SUNDIAL_TARGET = "com.myapplication.extra.SUNDIAL_TARGET"

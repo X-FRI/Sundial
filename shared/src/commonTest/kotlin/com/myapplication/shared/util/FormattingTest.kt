@@ -20,12 +20,16 @@ import kotlin.test.assertEquals
  * - 无到期时间 → 空串。
  */
 class FormattingTest {
-
     private val today: LocalDate = LocalDate(2026, Month.AUGUST, 11) // 周二
     private val tz: TimeZone = TimeZone.UTC
 
-    private fun instantOf(year: Int, month: Int, day: Int, hour: Int = 0, minute: Int = 0): Instant =
-        LocalDateTime(year, month, day, hour, minute).toInstant(tz)
+    private fun instantOf(
+        year: Int,
+        month: Int,
+        day: Int,
+        hour: Int = 0,
+        minute: Int = 0,
+    ): Instant = LocalDateTime(year, month, day, hour, minute).toInstant(tz)
 
     @Test
     fun bucketBoundaries() {

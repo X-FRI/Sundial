@@ -2,11 +2,11 @@ package com.myapplication.shared.ui.analytics
 
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class AnalyticsModelTest {
     private val today = LocalDate(2026, 8, 12)
@@ -14,23 +14,32 @@ class AnalyticsModelTest {
 
     @Test
     fun modelSummarizesCompletionEnergyAndPressure() {
-        val todos = listOf(
-            item(id = 1, title = "today done", due = "2026-08-12T09:00:00Z", completedAt = "2026-08-12T10:00:00Z", note = "deep", flag = true),
-            item(id = 2, title = "yesterday done", due = "2026-08-11T09:00:00Z", completedAt = "2026-08-11T10:00:00Z"),
-            item(id = 3, title = "child done", due = null, completedAt = "2026-08-12T11:00:00Z", parentId = 1),
-            item(id = 4, title = "overdue", due = "2026-08-10T09:00:00Z"),
-            item(id = 5, title = "today pending", due = "2026-08-12T13:00:00Z"),
-            item(id = 6, title = "future", due = "2026-08-18T09:00:00Z"),
-            item(id = 7, title = "loose", due = null),
-            item(id = 8, title = "trashed", due = "2026-08-12T14:00:00Z", trashed = true),
-        )
+        val todos =
+            listOf(
+                item(
+                    id = 1,
+                    title = "today done",
+                    due = "2026-08-12T09:00:00Z",
+                    completedAt = "2026-08-12T10:00:00Z",
+                    note = "deep",
+                    flag = true,
+                ),
+                item(id = 2, title = "yesterday done", due = "2026-08-11T09:00:00Z", completedAt = "2026-08-11T10:00:00Z"),
+                item(id = 3, title = "child done", due = null, completedAt = "2026-08-12T11:00:00Z", parentId = 1),
+                item(id = 4, title = "overdue", due = "2026-08-10T09:00:00Z"),
+                item(id = 5, title = "today pending", due = "2026-08-12T13:00:00Z"),
+                item(id = 6, title = "future", due = "2026-08-18T09:00:00Z"),
+                item(id = 7, title = "loose", due = null),
+                item(id = 8, title = "trashed", due = "2026-08-12T14:00:00Z", trashed = true),
+            )
 
-        val model = buildAnalyticsModel(
-            todos = todos,
-            lists = listOf(TodoList(1, "收件箱", "blue", 0, Instant.parse("2026-08-01T00:00:00Z"))),
-            today = today,
-            timeZone = tz,
-        )
+        val model =
+            buildAnalyticsModel(
+                todos = todos,
+                lists = listOf(TodoList(1, "收件箱", "blue", 0, Instant.parse("2026-08-01T00:00:00Z"))),
+                today = today,
+                timeZone = tz,
+            )
 
         assertEquals(1, model.completedToday)
         assertEquals(2, model.streakDays)
@@ -45,12 +54,13 @@ class AnalyticsModelTest {
 
     @Test
     fun emptyModelEncouragesStartingSmall() {
-        val model = buildAnalyticsModel(
-            todos = emptyList(),
-            lists = emptyList(),
-            today = today,
-            timeZone = tz,
-        )
+        val model =
+            buildAnalyticsModel(
+                todos = emptyList(),
+                lists = emptyList(),
+                today = today,
+                timeZone = tz,
+            )
 
         assertEquals(0, model.completedToday)
         assertEquals(0, model.streakDays)

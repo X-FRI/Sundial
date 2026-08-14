@@ -11,6 +11,9 @@ import androidx.compose.runtime.Composable
  * BackHandler 本身感知组合生命周期：离开组合时自动解绑。
  */
 @Composable
-actual fun PlatformBackHandler(enabled: Boolean, onBack: () -> Unit) {
+actual fun PlatformBackHandler(
+    enabled: Boolean,
+    onBack: () -> Unit,
+) {
     BackHandler(enabled = enabled, onBack = onBack)
 }

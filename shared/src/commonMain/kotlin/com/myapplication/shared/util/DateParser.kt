@@ -10,7 +10,10 @@ import kotlinx.datetime.plus
 /**
  * 快速输入解析结果：清洗后的标题 + 可选到期时间（无时间部分则 null）。
  */
-data class ParsedInput(val title: String, val dueDate: LocalDateTime?)
+data class ParsedInput(
+    val title: String,
+    val dueDate: LocalDateTime?,
+)
 
 /**
  * 自然语言日期解析器：把"明天 交报告"、"周五开会"、"12月25日 圣诞采购"
@@ -30,22 +33,39 @@ data class ParsedInput(val title: String, val dueDate: LocalDateTime?)
  * 标题被清空时回退为原始输入（保证"明天"单独成行也能保留可读标题）。
  */
 object DateParser {
-
     // 中文星期→ISO 星期号（1=周一…7=周日）；"天"是"日"的口语变体
-    private val weekdayZh = mapOf(
-        "一" to 1, "二" to 2, "三" to 3, "四" to 4,
-        "五" to 5, "六" to 6, "日" to 7, "天" to 7,
-    )
+    private val weekdayZh =
+        mapOf(
+            "一" to 1,
+            "二" to 2,
+            "三" to 3,
+            "四" to 4,
+            "五" to 5,
+            "六" to 6,
+            "日" to 7,
+            "天" to 7,
+        )
+
     // 英文星期→ISO 星期号
-    private val weekdayEn = mapOf(
-        "monday" to 1, "tuesday" to 2, "wednesday" to 3, "thursday" to 4,
-        "friday" to 5, "saturday" to 6, "sunday" to 7,
-    )
+    private val weekdayEn =
+        mapOf(
+            "monday" to 1,
+            "tuesday" to 2,
+            "wednesday" to 3,
+            "thursday" to 4,
+            "friday" to 5,
+            "saturday" to 6,
+            "sunday" to 7,
+        )
+
     // 时间格式：可选时段词（上午/中午/下午/晚上/早上）+ 1-2 位数字 +
     // 分隔符（: 或 ：或 点 或 时）+ 可选分钟 + 可选"分"
     private val timeRegex = Regex("""(上午|中午|下午|晚上|早上)?\s*(\d{1,2})\s*[:：点时]\s*(\d{1,2})?\s*分?""")
 
-    fun parse(input: String, today: LocalDate): ParsedInput {
+    fun parse(
+        input: String,
+        today: LocalDate,
+    ): ParsedInput {
         var title = input.trim()
         var date: LocalDate? = null
 
@@ -63,10 +83,11 @@ object DateParser {
         if (date == null) {
             Regex("下周([一二三四五六日天])").find(title)?.let { m ->
                 val target = weekdayZh.getValue(m.groupValues[1])
-                date = today.plus(
-                    (7 - today.dayOfWeek.isoDayNumber + target).toLong(),
-                    DateTimeUnit.DAY,
-                )
+                date =
+                    today.plus(
+                        (7 - today.dayOfWeek.isoDayNumber + target).toLong(),
+                        DateTimeUnit.DAY,
+                    )
                 title = removeToken(title, m.value)
             }
         }
@@ -77,11 +98,12 @@ object DateParser {
             Regex("周([一二三四五六日天])").find(title)?.let { m ->
                 val target = weekdayZh.getValue(m.groupValues[1])
                 val todayDow = today.dayOfWeek.isoDayNumber
-                date = when {
-                    target == todayDow -> today
-                    target > todayDow -> today.plus((target - todayDow).toLong(), DateTimeUnit.DAY)
-                    else -> today.plus((7 - todayDow + target).toLong(), DateTimeUnit.DAY)
-                }
+                date =
+                    when {
+                        target == todayDow -> today
+                        target > todayDow -> today.plus((target - todayDow).toLong(), DateTimeUnit.DAY)
+                        else -> today.plus((7 - todayDow + target).toLong(), DateTimeUnit.DAY)
+                    }
                 title = removeToken(title, m.value)
             }
         }
@@ -123,12 +145,14 @@ object DateParser {
                 else -> {
                     // "next Monday"：与"下周X"同规则（未来第 1 个目标星期几）
                     Regex("""\bnext\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b""", RegexOption.IGNORE_CASE)
-                        .find(title)?.let { m ->
+                        .find(title)
+                        ?.let { m ->
                             val target = weekdayEn.getValue(m.groupValues[1].lowercase())
-                            date = today.plus(
-                                (7 - today.dayOfWeek.isoDayNumber + target).toLong(),
-                                DateTimeUnit.DAY,
-                            )
+                            date =
+                                today.plus(
+                                    (7 - today.dayOfWeek.isoDayNumber + target).toLong(),
+                                    DateTimeUnit.DAY,
+                                )
                             title = removeToken(title, m.value)
                         }
                 }
@@ -142,11 +166,12 @@ object DateParser {
         }
 
         // 步骤 7：组装结果——有日期则时间缺省为 0 点；无日期只有时间 → 当天
-        val due = when {
-            date != null -> LocalDateTime(date, time ?: LocalTime(0, 0))
-            time != null -> LocalDateTime(today, time)
-            else -> null
-        }
+        val due =
+            when {
+                date != null -> LocalDateTime(date, time ?: LocalTime(0, 0))
+                time != null -> LocalDateTime(today, time)
+                else -> null
+            }
         // 压缩连续空白；标题被清空时回退为原始输入，避免空标题
         val cleanTitle = title.replace(Regex("\\s+"), " ").trim()
         return ParsedInput(cleanTitle.ifBlank { input.trim() }, due)
@@ -167,17 +192,20 @@ object DateParser {
         val h = m.groupValues[2].toInt()
         val min = m.groupValues[3].takeIf { it.isNotEmpty() }?.toInt() ?: 0
         val marker = m.groupValues[1]
-        val hour = when (marker) {
-            "下午", "晚上" -> if (h < 12) h + 12 else h
-            "中午" -> if (h == 12) 12 else h + 12
-            "上午", "早上" -> if (h == 12) 0 else h
-            else -> h
-        }
+        val hour =
+            when (marker) {
+                "下午", "晚上" -> if (h < 12) h + 12 else h
+                "中午" -> if (h == 12) 12 else h + 12
+                "上午", "早上" -> if (h == 12) 0 else h
+                else -> h
+            }
         return runCatching { LocalTime(hour, min) }.getOrNull()
     }
 
     // 从标题中移除已消费的关键词：先替换为空格（防止粘连"明天开"→"开"），
     // 再压缩连续空白并去首尾空格
-    private fun removeToken(text: String, token: String): String =
-        text.replace(token, " ").replace(Regex("\\s+"), " ").trim()
+    private fun removeToken(
+        text: String,
+        token: String,
+    ): String = text.replace(token, " ").replace(Regex("\\s+"), " ").trim()
 }

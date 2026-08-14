@@ -22,27 +22,31 @@ data class AddTodoInput(
  *
  * 目标列表解析优先级：子任务 > 显式列表 > 收件箱（惰性创建）。
  */
-class AddTodoUseCase(private val repository: TodoRepository) {
-
-    suspend operator fun invoke(input: AddTodoInput): Either<TodoError, Unit> = either {
-        // 1. 校验标题非空
-        ensure(input.title.isNotBlank()) { TodoError.EmptyTitle }
-        // 2. 决定目标列表：子任务挂父任务的列表；无父任务时用显式 listId；都缺省则落到收件箱
-        val targetListId = when {
-            input.parentId != null ->
-                repository.findByIdActive(input.parentId).bind()?.listId
-                    ?: raise(TodoError.ParentNotFound)
-            input.listId != null -> input.listId
-            else -> repository.ensureInbox().bind()
+class AddTodoUseCase(
+    private val repository: TodoRepository,
+) {
+    suspend operator fun invoke(input: AddTodoInput): Either<TodoError, Unit> =
+        either {
+            // 1. 校验标题非空
+            ensure(input.title.isNotBlank()) { TodoError.EmptyTitle }
+            // 2. 决定目标列表：子任务挂父任务的列表；无父任务时用显式 listId；都缺省则落到收件箱
+            val targetListId =
+                when {
+                    input.parentId != null ->
+                        repository.findByIdActive(input.parentId).bind()?.listId
+                            ?: raise(TodoError.ParentNotFound)
+                    input.listId != null -> input.listId
+                    else -> repository.ensureInbox().bind()
+                }
+            // 3. 插入待办（标题/备注去首尾空格）
+            repository
+                .insertTodo(
+                    listId = targetListId,
+                    title = input.title.trim(),
+                    note = input.note.trim(),
+                    dueDate = input.dueDate,
+                    parentId = input.parentId,
+                    flag = input.flag,
+                ).bind()
         }
-        // 3. 插入待办（标题/备注去首尾空格）
-        repository.insertTodo(
-            listId = targetListId,
-            title = input.title.trim(),
-            note = input.note.trim(),
-            dueDate = input.dueDate,
-            parentId = input.parentId,
-            flag = input.flag,
-        ).bind()
-    }
 }

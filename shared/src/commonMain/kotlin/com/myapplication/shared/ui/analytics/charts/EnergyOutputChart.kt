@@ -16,7 +16,10 @@ import com.patrykandpatrick.vico.multiplatform.cartesian.layer.rememberColumnCar
 import com.patrykandpatrick.vico.multiplatform.cartesian.rememberCartesianChart
 
 @Composable
-internal fun EnergyOutputChart(points: List<ChartPoint>, modifier: Modifier = Modifier) {
+internal fun EnergyOutputChart(
+    points: List<ChartPoint>,
+    modifier: Modifier = Modifier,
+) {
     val series = preparePointSeries(points)
     val modelProducer = remember { CartesianChartModelProducer() }
     LaunchedEffect(modelProducer, series.values) {
@@ -27,12 +30,14 @@ internal fun EnergyOutputChart(points: List<ChartPoint>, modifier: Modifier = Mo
         }
     }
     CartesianChartHost(
-        chart = rememberCartesianChart(
-            rememberColumnCartesianLayer(),
-            bottomAxis = HorizontalAxis.rememberBottom(
-                valueFormatter = rememberLabelValueFormatter(series.labels),
+        chart =
+            rememberCartesianChart(
+                rememberColumnCartesianLayer(),
+                bottomAxis =
+                    HorizontalAxis.rememberBottom(
+                        valueFormatter = rememberLabelValueFormatter(series.labels),
+                    ),
             ),
-        ),
         modelProducer = modelProducer,
         modifier = modifier.fillMaxWidth().height(160.dp),
     )

@@ -78,8 +78,7 @@ fun NarrowTopBar(
             .background(colors.bgPrimary)
             .drawBehind {
                 drawLine(colors.border, Offset(0f, size.height), Offset(size.width, size.height), 1f)
-            }
-            .statusBarsPadding()
+            }.statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
         if (searching) {
@@ -142,7 +141,10 @@ fun NarrowTopBar(
  * 窄屏底部导航：五个智能范围常驻入口，与 Sidebar 的 SmartGrid 同源（同一 scope 状态机）。
  */
 @Composable
-fun NarrowBottomNav(mainVm: MainViewModel, modifier: Modifier = Modifier) {
+fun NarrowBottomNav(
+    mainVm: MainViewModel,
+    modifier: Modifier = Modifier,
+) {
     val colors = LocalRemColors.current
     val scope by mainVm.scope.collectAsState()
     Row(
@@ -152,8 +154,7 @@ fun NarrowBottomNav(mainVm: MainViewModel, modifier: Modifier = Modifier) {
             .background(colors.bgPrimary)
             .drawBehind {
                 drawLine(colors.border, Offset(0f, 0f), Offset(size.width, 0f), 1f)
-            }
-            .navigationBarsPadding(),
+            }.navigationBarsPadding(),
     ) {
         NavItem(IconName.Today, "今天", scope == Scope.Today, Modifier.weight(1f)) { mainVm.selectScope(Scope.Today) }
         NavItem(IconName.Scheduled, "计划", scope == Scope.Scheduled, Modifier.weight(1f)) { mainVm.selectScope(Scope.Scheduled) }
@@ -165,7 +166,13 @@ fun NarrowBottomNav(mainVm: MainViewModel, modifier: Modifier = Modifier) {
 
 /** 单个导航项：图标 + 文字，选中态用品牌色与背景高亮。 */
 @Composable
-private fun NavItem(icon: IconName, label: String, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun NavItem(
+    icon: IconName,
+    label: String,
+    selected: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
     val colors = LocalRemColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val tint = if (selected) colors.brand else colors.textLow
@@ -182,8 +189,9 @@ private fun NavItem(icon: IconName, label: String, selected: Boolean, modifier: 
         Spacer(Modifier.height(2.dp))
         androidx.compose.foundation.text.BasicText(
             label,
-            style = TextStyle(fontSize = 10.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
-                .copy(color = tint),
+            style =
+                TextStyle(fontSize = 10.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
+                    .copy(color = tint),
         )
     }
 }

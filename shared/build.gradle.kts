@@ -85,8 +85,16 @@ kotlin {
                 implementation("io.ktor:ktor-client-darwin:$ktorVersion")
             }
         }
-        iosArm64().compilations.getByName("main").defaultSourceSet.dependsOn(iosMain)
-        iosSimulatorArm64().compilations.getByName("main").defaultSourceSet.dependsOn(iosMain)
+        iosArm64()
+            .compilations
+            .getByName("main")
+            .defaultSourceSet
+            .dependsOn(iosMain)
+        iosSimulatorArm64()
+            .compilations
+            .getByName("main")
+            .defaultSourceSet
+            .dependsOn(iosMain)
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test"))

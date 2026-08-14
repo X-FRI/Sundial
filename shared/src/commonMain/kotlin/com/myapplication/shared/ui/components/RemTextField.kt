@@ -78,8 +78,7 @@ fun RemTextField(
                 },
                 if (focused) colors.brand else colors.border,
                 RoundedCornerShape(RemRadii.r2),
-            )
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            ).padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // 可选前置图标（如搜索），弱化文字色，固定 14dp
@@ -90,10 +89,11 @@ fun RemTextField(
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier
-                .weight(1f)
-                .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-                .onFocusChanged { focused = it.isFocused },
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+                    .onFocusChanged { focused = it.isFocused },
             textStyle = style.copy(color = colors.textHigh),
             readOnly = readOnly,
             cursorBrush = SolidColor(colors.brand),
@@ -106,7 +106,8 @@ fun RemTextField(
             decorationBox = { inner ->
                 // 值为空且有 placeholder 时先画占位文字，再画真正的输入内容
                 if (value.isEmpty() && placeholder.isNotEmpty()) {
-                    androidx.compose.foundation.text.BasicText(placeholder, style = style.copy(color = colors.textLow))
+                    androidx.compose.foundation.text
+                        .BasicText(placeholder, style = style.copy(color = colors.textLow))
                 }
                 inner()
             },
@@ -116,10 +117,11 @@ fun RemTextField(
             androidx.compose.foundation.text.BasicText(
                 trailing.first,
                 style = RemType.label12.copy(color = colors.brand),
-                modifier = Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) { trailing.second() },
+                modifier =
+                    Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) { trailing.second() },
             )
         }
         if (trailingContent != null) {

@@ -37,5 +37,4 @@ private fun visibleValues(values: List<Float>): List<Float> =
         else -> values
     }
 
-private fun labelsOrPlaceholder(labels: List<String>): List<String> =
-    labels.ifEmpty { listOf("") }
+private fun labelsOrPlaceholder(labels: List<String>): List<String> = labels.ifEmpty { listOf("") }

@@ -12,20 +12,22 @@ import kotlin.test.assertTrue
 class SupabaseSyncClientTest {
     @Test
     fun upsertPayloadBatchKeepsExplicitNulls() {
-        val batch = buildUpsertPayloadBatch(
-            listOf(
-                row(
-                    payload = """
-                        {
-                          "id": 1,
-                          "title": "清除重复",
-                          "recurrence_frequency": null,
-                          "recurrence_interval": null
-                        }
-                    """.trimIndent(),
+        val batch =
+            buildUpsertPayloadBatch(
+                listOf(
+                    row(
+                        payload =
+                            """
+                            {
+                              "id": 1,
+                              "title": "清除重复",
+                              "recurrence_frequency": null,
+                              "recurrence_interval": null
+                            }
+                            """.trimIndent(),
+                    ),
                 ),
-            ),
-        )
+            )
 
         val payload = batch.body.single().jsonObject
 
@@ -38,16 +40,24 @@ class SupabaseSyncClientTest {
 
     @Test
     fun upsertPayloadBatchSkipsMalformedPayloads() {
-        val batch = buildUpsertPayloadBatch(
-            listOf(
-                row(payload = "not-json"),
-                row(payload = """{"id":2,"title":"有效"}"""),
-            ),
-        )
+        val batch =
+            buildUpsertPayloadBatch(
+                listOf(
+                    row(payload = "not-json"),
+                    row(payload = """{"id":2,"title":"有效"}"""),
+                ),
+            )
 
         assertEquals(1, batch.skipped)
         assertEquals(1, batch.body.size)
-        assertEquals("有效", batch.body.single().jsonObject["title"]?.jsonPrimitive?.content)
+        assertEquals(
+            "有效",
+            batch.body
+                .single()
+                .jsonObject["title"]
+                ?.jsonPrimitive
+                ?.content,
+        )
     }
 
     private fun row(payload: String): SyncRow =

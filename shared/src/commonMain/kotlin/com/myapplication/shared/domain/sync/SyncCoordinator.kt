@@ -1,10 +1,10 @@
 package com.myapplication.shared.domain.sync
 
 import arrow.core.Either
+import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.effects.bindLocal
 import com.myapplication.shared.effects.catchTransport
 import com.myapplication.shared.effects.runSyncEffect
-import com.myapplication.shared.domain.repository.TodoRepository
 
 /**
  * 同步协调器：把 outbox（本地→远端）与远端变更（远端→本地）两条通路串起来。
@@ -19,7 +19,6 @@ class SyncCoordinator(
     private val client: SyncClient,
     private val deviceId: String,
 ) {
-
     /**
      * 推送一批 outbox 行并清除水位线。返回本次推送行数（0 表示无待推送）。
      *
@@ -29,17 +28,18 @@ class SyncCoordinator(
      * 3. 按最后一条的 seq 清水位线——由于 seq 单调递增且本地命令都在
      *    同一事务内追加，push 成功后这批之前的行必然已推送过，不会重复推。
      */
-    suspend fun drainOutbox(): Either<SyncError, Int> = runSyncEffect {
-        val rows = bindLocal(repository.readOutbox(100))
-        if (rows.isEmpty()) {
-            0
-        } else {
-            val rowsToPush = rows.coalesceUpsertsForPush()
-            client.push(rowsToPush).bind()
-            bindLocal(repository.clearOutbox(rows.last().seq))
-            rows.size
+    suspend fun drainOutbox(): Either<SyncError, Int> =
+        runSyncEffect {
+            val rows = bindLocal(repository.readOutbox(100))
+            if (rows.isEmpty()) {
+                0
+            } else {
+                val rowsToPush = rows.coalesceUpsertsForPush()
+                client.push(rowsToPush).bind()
+                bindLocal(repository.clearOutbox(rows.last().seq))
+                rows.size
+            }
         }
-    }
 
     /**
      * 全量拉取远端状态并逐行应用（复用 [applyRemote] 的 LWW 与回声过滤）。
@@ -49,14 +49,15 @@ class SyncCoordinator(
      * 解析/持久化错误归一为 SyncError.Transport 并跳过），不中断整体。
      * 调用方（SyncEngine.syncNow）可据此感知远端是否有新数据。
      */
-    suspend fun pullFromRemote(): Either<SyncError, Int> = runSyncEffect {
-        val rows = client.pull().bind()
-        var applied = 0
-        rows.filter { it.updatedBy != deviceId }.forEach { row ->
-            applyRemote(row).onRight { applied++ }
+    suspend fun pullFromRemote(): Either<SyncError, Int> =
+        runSyncEffect {
+            val rows = client.pull().bind()
+            var applied = 0
+            rows.filter { it.updatedBy != deviceId }.forEach { row ->
+                applyRemote(row).onRight { applied++ }
+            }
+            applied
         }
-        applied
-    }
 
     /**
      * 应用一条远端变更到本地。行内已含 updatedBy，用于回声过滤。
@@ -69,28 +70,32 @@ class SyncCoordinator(
      *    保持单一错误通道；
      * 3. DELETE 不做表内分发，直接按表名 + rowId 应用（LWW 由 SQL 层保证）。
      */
-    suspend fun applyRemote(row: SyncRow): Either<SyncError, Unit> = runSyncEffect {
-        if (row.updatedBy != deviceId) {
-            when (row.action) {
-                SyncAction.UPSERT -> when (row.table) {
-                    "todo" -> {
-                        val dto = catchTransport("解析远端 todo 行失败") {
-                            syncJson.decodeFromString<TodoRowDto>(row.payload ?: "")
+    suspend fun applyRemote(row: SyncRow): Either<SyncError, Unit> =
+        runSyncEffect {
+            if (row.updatedBy != deviceId) {
+                when (row.action) {
+                    SyncAction.UPSERT ->
+                        when (row.table) {
+                            "todo" -> {
+                                val dto =
+                                    catchTransport("解析远端 todo 行失败") {
+                                        syncJson.decodeFromString<TodoRowDto>(row.payload ?: "")
+                                    }
+                                bindLocal(repository.applyRemoteUpsert(dto))
+                            }
+                            "reminder_list" -> {
+                                val dto =
+                                    catchTransport("解析远端列表行失败") {
+                                        syncJson.decodeFromString<ListRowDto>(row.payload ?: "")
+                                    }
+                                bindLocal(repository.applyRemoteUpsertList(dto))
+                            }
+                            else -> Unit
                         }
-                        bindLocal(repository.applyRemoteUpsert(dto))
-                    }
-                    "reminder_list" -> {
-                        val dto = catchTransport("解析远端列表行失败") {
-                            syncJson.decodeFromString<ListRowDto>(row.payload ?: "")
-                        }
-                        bindLocal(repository.applyRemoteUpsertList(dto))
-                    }
-                    else -> Unit
+                    SyncAction.DELETE -> bindLocal(repository.applyRemoteDelete(row.table, row.rowId, row.updatedAt))
                 }
-                SyncAction.DELETE -> bindLocal(repository.applyRemoteDelete(row.table, row.rowId, row.updatedAt))
             }
         }
-    }
 
     /**
      * PostgREST cannot upsert the same constrained row twice in one command.
@@ -112,8 +117,9 @@ class SyncCoordinator(
         }
 
         forEach { row ->
-            val canJoinRun = row.action == SyncAction.UPSERT &&
-                run.firstOrNull()?.let { it.action == SyncAction.UPSERT && it.table == row.table } != false
+            val canJoinRun =
+                row.action == SyncAction.UPSERT &&
+                    run.firstOrNull()?.let { it.action == SyncAction.UPSERT && it.table == row.table } != false
             if (canJoinRun) {
                 run += row
             } else {

@@ -23,11 +23,12 @@ class SettingsPreferencesTest {
 
     @Test
     fun appearancePreferencesRoundTripSettingKeys() {
-        val preferences = SettingsPreferences(
-            themeMode = ThemeMode.Dark,
-            displayDensity = DisplayDensity.Compact,
-            fontFamily = "Inter",
-        )
+        val preferences =
+            SettingsPreferences(
+                themeMode = ThemeMode.Dark,
+                displayDensity = DisplayDensity.Compact,
+                fontFamily = "Inter",
+            )
         val stored = preferences.toSettingsMap()
         assertEquals(preferences, SettingsPreferences.fromSettingsMap(stored))
     }

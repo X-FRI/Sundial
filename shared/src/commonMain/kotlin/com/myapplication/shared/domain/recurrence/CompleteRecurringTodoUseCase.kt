@@ -10,6 +10,5 @@ class CompleteRecurringTodoUseCase(
     private val repository: TodoRepository,
     @Suppress("unused") private val timeZone: TimeZone,
 ) {
-    suspend operator fun invoke(todo: TodoItem): Either<TodoError, Unit> =
-        repository.completeRecurringTodo(todo.id)
+    suspend operator fun invoke(todo: TodoItem): Either<TodoError, Unit> = repository.completeRecurringTodo(todo.id)
 }

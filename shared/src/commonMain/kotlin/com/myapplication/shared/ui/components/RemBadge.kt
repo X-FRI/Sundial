@@ -23,13 +23,17 @@ import com.myapplication.shared.ui.theme.RemType
  */
 enum class RemBadgeTone { Neutral, Brand, Success, Warning, Error }
 
-private fun badgeToneColor(tone: RemBadgeTone, colors: RemColors): Color? = when (tone) {
-    RemBadgeTone.Neutral -> null
-    RemBadgeTone.Brand -> colors.brand
-    RemBadgeTone.Success -> colors.success
-    RemBadgeTone.Warning -> colors.warning
-    RemBadgeTone.Error -> colors.error
-}
+private fun badgeToneColor(
+    tone: RemBadgeTone,
+    colors: RemColors,
+): Color? =
+    when (tone) {
+        RemBadgeTone.Neutral -> null
+        RemBadgeTone.Brand -> colors.brand
+        RemBadgeTone.Success -> colors.success
+        RemBadgeTone.Warning -> colors.warning
+        RemBadgeTone.Error -> colors.error
+    }
 
 /**
  * 通用小徽章，用于列表颜色、旗标等轻量标签场景。
@@ -69,10 +73,11 @@ fun RemBadge(
         }
         androidx.compose.foundation.text.BasicText(
             label,
-            style = RemType.text10.copy(
-                color = fg,
-                fontFamily = if (monospace) FontFamily.Monospace else FontFamily.Default,
-            ),
+            style =
+                RemType.text10.copy(
+                    color = fg,
+                    fontFamily = if (monospace) FontFamily.Monospace else FontFamily.Default,
+                ),
         )
     }
 }

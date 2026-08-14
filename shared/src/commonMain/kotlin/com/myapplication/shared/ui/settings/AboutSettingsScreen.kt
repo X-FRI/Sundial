@@ -60,7 +60,10 @@ internal fun AboutSettingsScreen() {
 }
 
 @Composable
-private fun AboutFactRow(label: String, value: String) {
+private fun AboutFactRow(
+    label: String,
+    value: String,
+) {
     val colors = LocalRemColors.current
     Row(
         Modifier.fillMaxWidth().height(32.dp),

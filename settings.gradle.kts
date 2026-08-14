@@ -30,11 +30,12 @@ pluginManagement {
         id("org.jetbrains.compose").version(composeVersion)
 
         id("app.cash.sqldelight").version(sqldelightVersion)
+        id("com.diffplug.spotless").version("8.9.0")
     }
 }
 
 plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version("0.4.0")
+    id("org.gradle.toolchains.foojay-resolver-convention") version ("0.4.0")
 }
 
 dependencyResolutionManagement {

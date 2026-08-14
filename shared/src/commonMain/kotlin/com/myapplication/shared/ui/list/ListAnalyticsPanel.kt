@@ -48,10 +48,11 @@ internal fun ListAnalyticsPanel(
                 Spacer(Modifier.height(4.dp))
                 BasicText(
                     "完成 ${model.completedTotal} 项",
-                    style = RemType.text12.copy(
-                        color = colors.textLow,
-                        fontWeight = FontWeight.Medium,
-                    ),
+                    style =
+                        RemType.text12.copy(
+                            color = colors.textLow,
+                            fontWeight = FontWeight.Medium,
+                        ),
                 )
             }
             RemIcon(IconName.Chart, colors.brand, Modifier.size(17.dp), contentDescription = "列表分析")

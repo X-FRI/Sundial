@@ -28,8 +28,6 @@ import com.myapplication.shared.domain.sync.syncFailed
 import com.myapplication.shared.domain.sync.syncStarted
 import com.myapplication.shared.domain.sync.syncSucceeded
 import com.myapplication.shared.domain.sync.userMessage
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -42,6 +40,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * 同步引擎：负责 SyncClient 生命周期、后台同步循环与 SyncStatus。
@@ -70,29 +70,30 @@ class SyncEngine(
     @OptIn(DelicateCoroutinesApi::class)
     fun configure(newConfig: SyncConfig) {
         val previousLifecycle = lifecycleJob
-        lifecycleJob = scope.launch {
-            previousLifecycle?.join()
-            releaseActiveRuntime()
-            _status.update { it.configuring(newConfig.mode) }
+        lifecycleJob =
+            scope.launch {
+                previousLifecycle?.join()
+                releaseActiveRuntime()
+                _status.update { it.configuring(newConfig.mode) }
 
-            clientFactory(newConfig).fold(
-                ifLeft = { error ->
-                    _status.update { it.configurationFailed(newConfig.mode, error) }
-                },
-                ifRight = { newClient ->
-                    val (runtime, release) = syncRuntimeResource(newConfig, newClient).allocate()
-                    val lease = RuntimeLease(runtime, release)
-                    activeRuntime = lease
+                clientFactory(newConfig).fold(
+                    ifLeft = { error ->
+                        _status.update { it.configurationFailed(newConfig.mode, error) }
+                    },
+                    ifRight = { newClient ->
+                        val (runtime, release) = syncRuntimeResource(newConfig, newClient).allocate()
+                        val lease = RuntimeLease(runtime, release)
+                        activeRuntime = lease
 
-                    if (runtime.coordinator != null) {
-                        startPushLoop(runtime)
-                        startRemoteLoop(runtime)
-                        startStatusWatchers(runtime)
-                        syncNow()
-                    }
-                },
-            )
-        }
+                        if (runtime.coordinator != null) {
+                            startPushLoop(runtime)
+                            startRemoteLoop(runtime)
+                            startStatusWatchers(runtime)
+                            syncNow()
+                        }
+                    },
+                )
+            }
     }
 
     /**
@@ -101,12 +102,13 @@ class SyncEngine(
     fun syncNow() {
         val runtime = activeRuntime?.runtime ?: return
         if (runtime.coordinator == null || syncNowJob?.isActive == true) return
-        val job = scope.launch {
-            guarantee(
-                fa = { runSyncNowOnce(runtime) },
-                finalizer = { syncNowJob = null },
-            )
-        }
+        val job =
+            scope.launch {
+                guarantee(
+                    fa = { runSyncNowOnce(runtime) },
+                    finalizer = { syncNowJob = null },
+                )
+            }
         syncNowJob = job
         runtime.jobs += job
         job.invokeOnCompletion { runtime.jobs -= job }
@@ -118,10 +120,11 @@ class SyncEngine(
     ): Resource<SyncRuntime> =
         resource(
             acquire = {
-                val coordinator = when (config.mode) {
-                    SyncMode.Local -> null
-                    else -> SyncCoordinator(repository, client, config.deviceId)
-                }
+                val coordinator =
+                    when (config.mode) {
+                        SyncMode.Local -> null
+                        else -> SyncCoordinator(repository, client, config.deviceId)
+                    }
                 SyncRuntime(client, coordinator)
             },
             release = { runtime, _ ->
@@ -149,12 +152,15 @@ class SyncEngine(
             val drainFailed = drainResult?.isLeft() != false
             val pullFailed = pullResult?.isLeft() != false
             if (drainFailed || pullFailed) {
-                val msg = when {
-                    drainFailed -> (drainResult as? Either.Left<SyncError>)?.value?.userMessage()
-                        ?: "同步失败: 未知错误"
-                    else -> (pullResult as? Either.Left<SyncError>)?.value?.userMessage()
-                        ?: "同步失败: 未知错误"
-                }
+                val msg =
+                    when {
+                        drainFailed ->
+                            (drainResult as? Either.Left<SyncError>)?.value?.userMessage()
+                                ?: "同步失败: 未知错误"
+                        else ->
+                            (pullResult as? Either.Left<SyncError>)?.value?.userMessage()
+                                ?: "同步失败: 未知错误"
+                    }
                 _status.update { it.syncFailed(msg) }
             } else {
                 val pending = repository.observeOutboxCount().first()
@@ -167,72 +173,79 @@ class SyncEngine(
         }
     }
 
-    private suspend fun tryDrainOutbox(coordinator: SyncCoordinator): Either<SyncError, Int>? = try {
-        coordinator.drainOutbox()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        null
-    }
+    private suspend fun tryDrainOutbox(coordinator: SyncCoordinator): Either<SyncError, Int>? =
+        try {
+            coordinator.drainOutbox()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
 
-    private suspend fun tryPullFromRemote(coordinator: SyncCoordinator): Either<SyncError, Int>? = try {
-        coordinator.pullFromRemote()
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        null
-    }
+    private suspend fun tryPullFromRemote(coordinator: SyncCoordinator): Either<SyncError, Int>? =
+        try {
+            coordinator.pullFromRemote()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
 
     private fun startPushLoop(runtime: SyncRuntime) {
         val coordinator = runtime.coordinator ?: return
-        val job = scope.launch {
-            while (isActive) {
-                pushRetrySchedule().retryEither {
-                    drainOutboxOnce(coordinator)
+        val job =
+            scope.launch {
+                while (isActive) {
+                    pushRetrySchedule().retryEither {
+                        drainOutboxOnce(coordinator)
+                    }
+                    delay(backoffBaseMs)
                 }
-                delay(backoffBaseMs)
             }
-        }
         runtime.jobs += job
         job.invokeOnCompletion { runtime.jobs -= job }
     }
 
     private fun startRemoteLoop(runtime: SyncRuntime) {
         val coordinator = runtime.coordinator ?: return
-        val job = scope.launch {
-            runtime.client.observeRemoteChanges()
-                .retry(remoteRetrySchedule())
-                .collect { row ->
-                    try {
-                        when (val result = coordinator.applyRemote(row)) {
-                            is Either.Left -> _status.update { it.remoteApplyFailed(result.value.userMessage()) }
-                            is Either.Right -> {
-                                val pending = repository.observeOutboxCount().first()
-                                _status.update { it.remoteApplied(pending) }
+        val job =
+            scope.launch {
+                runtime.client
+                    .observeRemoteChanges()
+                    .retry(remoteRetrySchedule())
+                    .collect { row ->
+                        try {
+                            when (val result = coordinator.applyRemote(row)) {
+                                is Either.Left -> _status.update { it.remoteApplyFailed(result.value.userMessage()) }
+                                is Either.Right -> {
+                                    val pending = repository.observeOutboxCount().first()
+                                    _status.update { it.remoteApplied(pending) }
+                                }
                             }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            _status.update { it.remoteApplyFailed(e.message ?: "未知错误") }
                         }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        _status.update { it.remoteApplyFailed(e.message ?: "未知错误") }
                     }
-                }
-        }
+            }
         runtime.jobs += job
         job.invokeOnCompletion { runtime.jobs -= job }
     }
 
     private fun startStatusWatchers(runtime: SyncRuntime) {
-        val outboxJob = scope.launch {
-            repository.observeOutboxCount().collect { count ->
-                _status.update { it.outboxObserved(count) }
+        val outboxJob =
+            scope.launch {
+                repository.observeOutboxCount().collect { count ->
+                    _status.update { it.outboxObserved(count) }
+                }
             }
-        }
-        val connectionJob = scope.launch {
-            runtime.client.observeConnectionStatus().collect { connected ->
-                _status.update { it.connectionObserved(connected) }
+        val connectionJob =
+            scope.launch {
+                runtime.client.observeConnectionStatus().collect { connected ->
+                    _status.update { it.connectionObserved(connected) }
+                }
             }
-        }
         runtime.jobs += outboxJob
         runtime.jobs += connectionJob
         outboxJob.invokeOnCompletion { runtime.jobs -= outboxJob }
@@ -261,12 +274,14 @@ class SyncEngine(
         }
 
     private fun pushRetrySchedule(): Schedule<SyncError, *> =
-        Schedule.exponential<SyncError>((backoffBaseMs * 2).milliseconds)
+        Schedule
+            .exponential<SyncError>((backoffBaseMs * 2).milliseconds)
             .doWhile { _, duration -> duration < maxBackoffMs.milliseconds }
             .andThen(Schedule.spaced<SyncError>(maxBackoffMs.milliseconds))
 
     private fun remoteRetrySchedule(): Schedule<Throwable, *> =
-        Schedule.spaced<Throwable>(backoffBaseMs.milliseconds)
+        Schedule
+            .spaced<Throwable>(backoffBaseMs.milliseconds)
             .log { cause, _ ->
                 if (cause !is CancellationException) {
                     _status.update { it.remoteSubscriptionLost(cause.message) }

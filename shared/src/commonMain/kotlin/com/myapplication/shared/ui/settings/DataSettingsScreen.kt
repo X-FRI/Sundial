@@ -80,7 +80,10 @@ internal fun DataSettingsScreen(
 }
 
 @Composable
-private fun DataFactRow(label: String, value: String) {
+private fun DataFactRow(
+    label: String,
+    value: String,
+) {
     val colors = LocalRemColors.current
     Row(
         Modifier.fillMaxWidth().height(34.dp),
@@ -93,7 +96,11 @@ private fun DataFactRow(label: String, value: String) {
 }
 
 @Composable
-private fun DataMetric(label: String, value: String, modifier: Modifier = Modifier) {
+private fun DataMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
     val colors = LocalRemColors.current
     Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {

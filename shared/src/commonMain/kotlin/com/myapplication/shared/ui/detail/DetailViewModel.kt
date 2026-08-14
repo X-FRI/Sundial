@@ -10,7 +10,6 @@ import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.usecase.AddSubTaskUseCase
 import com.myapplication.shared.ui.effects.launchTodoEffect
 import com.myapplication.shared.util.todayDate
-import kotlin.time.Clock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +19,7 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
 
 /**
  * 详情页 ViewModel：以 todoId 为作用域，负责单个待办的读写与子任务管理。
@@ -38,18 +38,23 @@ class DetailViewModel(
     private val clock: Clock = Clock.System,
     private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
 ) : ViewModel() {
-
     /** 当前待办；被删除或不存在时为 null（UI 显示「待办不存在或已删除」）。 */
-    val todo: StateFlow<TodoItem?> = repository.observeTodo(todoId)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val todo: StateFlow<TodoItem?> =
+        repository
+            .observeTodo(todoId)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     /** 该待办下的子任务列表（按 parentId 过滤）。 */
-    val subtasks: StateFlow<List<TodoItem>> = repository.observeSubTasks(todoId)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val subtasks: StateFlow<List<TodoItem>> =
+        repository
+            .observeSubTasks(todoId)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** 全部自定义列表，供「移到列表」对话框渲染。 */
-    val lists: StateFlow<List<TodoList>> = repository.observeLists()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val lists: StateFlow<List<TodoList>> =
+        repository
+            .observeLists()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** 命令失败通道，由 DetailContent 订阅弹窗。 */
     val lastError = MutableStateFlow<TodoError?>(null)
@@ -82,11 +87,15 @@ class DetailViewModel(
      * 仅修改时间部分：以现有截止日期为基准拼出新 LocalDateTime；
      * 若原来没有日期，则以「今天」为基准。未加载到待办（todo == null）时直接忽略。
      */
-    fun setTime(hour: Int, minute: Int) {
+    fun setTime(
+        hour: Int,
+        minute: Int,
+    ) {
         val current = todo.value ?: return
-        val base = current.dueDate
-            ?.toLocalDateTime(timeZone)
-            ?: LocalDateTime(todayDate(clock, timeZone), LocalTime(hour, minute))
+        val base =
+            current.dueDate
+                ?.toLocalDateTime(timeZone)
+                ?: LocalDateTime(todayDate(clock, timeZone), LocalTime(hour, minute))
         val ldt = LocalDateTime(base.date, LocalTime(hour, minute))
         launchTodoEffect(lastError) { repository.setDueDate(todoId, ldt.toInstant(timeZone)) }
     }
@@ -119,7 +128,10 @@ class DetailViewModel(
     }
 
     /** 更新子任务标题：子任务本身也是 TodoItem，按子任务 id 写标题。 */
-    fun setSubTaskTitle(item: TodoItem, title: String) {
+    fun setSubTaskTitle(
+        item: TodoItem,
+        title: String,
+    ) {
         launchTodoEffect(lastError) { repository.setTitle(item.id, title) }
     }
 

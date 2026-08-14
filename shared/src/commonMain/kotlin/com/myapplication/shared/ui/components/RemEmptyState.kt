@@ -77,20 +77,23 @@ fun RemEmptyState(
                         cornerRadius = CornerRadius(s * 0.04f),
                     )
                     // 对勾：品牌色描边折线，圆角端帽
-                    val p = Path().apply {
-                        moveTo(s * 0.34f, s * 0.74f)
-                        lineTo(s * 0.42f, s * 0.82f)
-                        lineTo(s * 0.60f, s * 0.62f)
-                    }
+                    val p =
+                        Path().apply {
+                            moveTo(s * 0.34f, s * 0.74f)
+                            lineTo(s * 0.42f, s * 0.82f)
+                            lineTo(s * 0.60f, s * 0.62f)
+                        }
                     drawPath(p, colors.brand, style = Stroke(width = st, cap = StrokeCap.Round, join = StrokeJoin.Round))
                 }
             }
             Spacer(Modifier.height(16.dp))
         }
-        androidx.compose.foundation.text.BasicText(title, style = RemType.title18.copy(color = colors.textHigh))
+        androidx.compose.foundation.text
+            .BasicText(title, style = RemType.title18.copy(color = colors.textHigh))
         if (subtitle.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
-            androidx.compose.foundation.text.BasicText(subtitle, style = RemType.text12.copy(color = colors.textLow))
+            androidx.compose.foundation.text
+                .BasicText(subtitle, style = RemType.text12.copy(color = colors.textLow))
         }
     }
 }

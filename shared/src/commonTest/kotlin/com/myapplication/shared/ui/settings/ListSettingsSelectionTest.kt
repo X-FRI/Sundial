@@ -1,11 +1,11 @@
 package com.myapplication.shared.ui.settings
 
 import com.myapplication.shared.domain.model.TodoList
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class ListSettingsSelectionTest {
     @Test
@@ -42,7 +42,11 @@ class ListSettingsSelectionTest {
         )
     }
 
-    private fun list(id: Long, name: String, position: Int): TodoList =
+    private fun list(
+        id: Long,
+        name: String,
+        position: Int,
+    ): TodoList =
         TodoList(
             id = id,
             name = name,

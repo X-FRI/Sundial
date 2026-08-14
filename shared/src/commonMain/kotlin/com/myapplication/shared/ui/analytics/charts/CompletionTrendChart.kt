@@ -30,12 +30,14 @@ internal fun CompletionTrendChart(
         }
     }
     CartesianChartHost(
-        chart = rememberCartesianChart(
-            rememberLineCartesianLayer(),
-            bottomAxis = HorizontalAxis.rememberBottom(
-                valueFormatter = rememberLabelValueFormatter(series.labels),
+        chart =
+            rememberCartesianChart(
+                rememberLineCartesianLayer(),
+                bottomAxis =
+                    HorizontalAxis.rememberBottom(
+                        valueFormatter = rememberLabelValueFormatter(series.labels),
+                    ),
             ),
-        ),
         modelProducer = modelProducer,
         modifier = modifier.fillMaxWidth().height(160.dp),
     )

@@ -3,9 +3,9 @@ package com.myapplication.shared.ui.design
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.ui.components.IconName
 import com.myapplication.shared.ui.main.Scope
+import kotlinx.datetime.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlinx.datetime.Instant
 
 class SundialDesignLanguageTest {
     @Test

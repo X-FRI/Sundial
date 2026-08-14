@@ -123,10 +123,11 @@ fun TodoFormDialog(
                 trailing = {
                     if (dueDate != null) {
                         RemBadge(
-                            label = formatDueDate(
-                                LocalDateTime(dueDate!!, dueTime ?: LocalTime(9, 0))
-                                    .toInstant(TimeZone.currentSystemDefault()),
-                            ),
+                            label =
+                                formatDueDate(
+                                    LocalDateTime(dueDate!!, dueTime ?: LocalTime(9, 0))
+                                        .toInstant(TimeZone.currentSystemDefault()),
+                                ),
                             color = colors.warning,
                             monospace = true,
                         )
@@ -212,8 +213,7 @@ fun TodoFormDialog(
                             ) {
                                 listId = list.id
                                 showListPicker = false
-                            }
-                            .padding(vertical = 8.dp),
+                            }.padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(Modifier.size(10.dp).clip(CircleShape).background(ListColorOf[list.colorKey] ?: Color.Gray))

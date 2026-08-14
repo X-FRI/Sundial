@@ -50,19 +50,39 @@ fun RemIcon(
         val u = s / 24f
         // 标准描边宽度：1.8 网格单位
         val st = 1.8f * u
-        fun line(x1: Float, y1: Float, x2: Float, y2: Float) =
-            drawLine(tint, Offset(x1 * u, y1 * u), Offset(x2 * u, y2 * u), strokeWidth = st, cap = StrokeCap.Round)
-        fun circle(cx: Float, cy: Float, r: Float, filled: Boolean = false) =
-            drawCircle(tint, radius = r * u, center = Offset(cx * u, cy * u), style = if (filled) Fill else Stroke(width = st))
-        fun box(x: Float, y: Float, w: Float, h: Float, r: Float = 2f) =
-            drawRoundRect(
-                tint,
-                topLeft = Offset(x * u, y * u),
-                size = Size(w * u, h * u),
-                cornerRadius = CornerRadius(r * u, r * u),
-                style = Stroke(width = st),
-            )
-        fun poly(vararg pts: Float, filled: Boolean = false) {
+
+        fun line(
+            x1: Float,
+            y1: Float,
+            x2: Float,
+            y2: Float,
+        ) = drawLine(tint, Offset(x1 * u, y1 * u), Offset(x2 * u, y2 * u), strokeWidth = st, cap = StrokeCap.Round)
+
+        fun circle(
+            cx: Float,
+            cy: Float,
+            r: Float,
+            filled: Boolean = false,
+        ) = drawCircle(tint, radius = r * u, center = Offset(cx * u, cy * u), style = if (filled) Fill else Stroke(width = st))
+
+        fun box(
+            x: Float,
+            y: Float,
+            w: Float,
+            h: Float,
+            r: Float = 2f,
+        ) = drawRoundRect(
+            tint,
+            topLeft = Offset(x * u, y * u),
+            size = Size(w * u, h * u),
+            cornerRadius = CornerRadius(r * u, r * u),
+            style = Stroke(width = st),
+        )
+
+        fun poly(
+            vararg pts: Float,
+            filled: Boolean = false,
+        ) {
             val p = Path()
             var i = 0
             while (i + 1 < pts.size) {

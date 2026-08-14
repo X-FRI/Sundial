@@ -73,11 +73,12 @@ fun TaskSection(
         headerInset = !showRowContainer,
         contentSurface = showRowContainer,
     ) {
-        val rowContainerModifier = if (showRowContainer) {
-            Modifier.fillMaxWidth()
-        } else {
-            Modifier.fillMaxWidth()
-        }
+        val rowContainerModifier =
+            if (showRowContainer) {
+                Modifier.fillMaxWidth()
+            } else {
+                Modifier.fillMaxWidth()
+            }
         Column(
             rowContainerModifier,
         ) {
@@ -161,10 +162,11 @@ fun TaskRow(
     val item = model.item
     val interaction = remember { MutableInteractionSource() }
     val hover = rememberHoverBackground(interaction)
-    val rowBg = when {
-        selected -> colors.brandSubtle
-        else -> hover
-    }
+    val rowBg =
+        when {
+            selected -> colors.brandSubtle
+            else -> hover
+        }
     Row(
         modifier
             .fillMaxWidth()
@@ -180,20 +182,22 @@ fun TaskRow(
         Column(Modifier.weight(1f)) {
             androidx.compose.foundation.text.BasicText(
                 item.title,
-                style = RemType.text14.copy(
-                    color = if (item.isCompleted) colors.textLow else colors.textHigh,
-                    fontWeight = FontWeight.Medium,
-                    textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
-                ),
+                style =
+                    RemType.text14.copy(
+                        color = if (item.isCompleted) colors.textLow else colors.textHigh,
+                        fontWeight = FontWeight.Medium,
+                        textDecoration = if (item.isCompleted) TextDecoration.LineThrough else null,
+                    ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            val support = when {
-                item.note.isNotBlank() -> item.note
-                model.subtasks.isNotEmpty() -> "${model.subtasks.size} 个子任务"
-                item.isCompleted && item.completedAt != null -> "已完成 ${formatDueDate(item.completedAt)}"
-                else -> null
-            }
+            val support =
+                when {
+                    item.note.isNotBlank() -> item.note
+                    model.subtasks.isNotEmpty() -> "${model.subtasks.size} 个子任务"
+                    item.isCompleted && item.completedAt != null -> "已完成 ${formatDueDate(item.completedAt)}"
+                    else -> null
+                }
             if (support != null) {
                 androidx.compose.foundation.text.BasicText(
                     support,
@@ -253,14 +257,19 @@ fun TrashRow(
 }
 
 @Composable
-private fun DueBadge(item: TodoItem, today: LocalDate) {    val due = item.dueDate ?: return
+private fun DueBadge(
+    item: TodoItem,
+    today: LocalDate,
+) {
+    val due = item.dueDate ?: return
     val tz = TimeZone.currentSystemDefault()
     val bucket = bucketOf(due.toLocalDateTime(tz).date, today)
-    val tone = when (bucket) {
-        DueBucket.OVERDUE -> RemBadgeTone.Error
-        DueBucket.TODAY -> RemBadgeTone.Brand
-        else -> RemBadgeTone.Neutral
-    }
+    val tone =
+        when (bucket) {
+            DueBucket.OVERDUE -> RemBadgeTone.Error
+            DueBucket.TODAY -> RemBadgeTone.Brand
+            else -> RemBadgeTone.Neutral
+        }
     RemBadge(
         label = formatDueDate(due, tz, today),
         tone = tone,

@@ -10,6 +10,10 @@ import com.myapplication.shared.ui.main.MainViewModel
  * 实现委托给 [SidebarNav]。
  */
 @Composable
-fun Sidebar(mainVm: MainViewModel, syncStatus: SyncStatus = SyncStatus.initial, onSyncNow: (() -> Unit)? = null) {
+fun Sidebar(
+    mainVm: MainViewModel,
+    syncStatus: SyncStatus = SyncStatus.initial,
+    onSyncNow: (() -> Unit)? = null,
+) {
     SidebarNav(mainVm = mainVm, syncStatus = syncStatus, onSyncNow = onSyncNow)
 }

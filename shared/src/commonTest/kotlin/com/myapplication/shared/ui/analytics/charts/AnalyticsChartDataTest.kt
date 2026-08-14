@@ -9,12 +9,13 @@ import kotlin.test.assertEquals
 class AnalyticsChartDataTest {
     @Test
     fun pointSeriesPreservesLabelsAndUsesBaselineForAllZeroValues() {
-        val series = preparePointSeries(
-            listOf(
-                ChartPoint("Mon", 0),
-                ChartPoint("Tue", 0),
-            ),
-        )
+        val series =
+            preparePointSeries(
+                listOf(
+                    ChartPoint("Mon", 0),
+                    ChartPoint("Tue", 0),
+                ),
+            )
 
         assertEquals(listOf("Mon", "Tue"), series.labels)
         assertEquals(listOf(MinimumVisibleChartValue, MinimumVisibleChartValue), series.values)
@@ -22,12 +23,13 @@ class AnalyticsChartDataTest {
 
     @Test
     fun pointSeriesKeepsZeroValuesWhenSeriesHasRealSignal() {
-        val series = preparePointSeries(
-            listOf(
-                ChartPoint("Mon", 0),
-                ChartPoint("Tue", 4),
-            ),
-        )
+        val series =
+            preparePointSeries(
+                listOf(
+                    ChartPoint("Mon", 0),
+                    ChartPoint("Tue", 4),
+                ),
+            )
 
         assertEquals(listOf(0f, 4f), series.values)
     }
@@ -42,12 +44,13 @@ class AnalyticsChartDataTest {
 
     @Test
     fun bucketSeriesPreservesLabelsTonesAndUsesBaselineForAllZeroValues() {
-        val series = prepareBucketSeries(
-            listOf(
-                ChartBucket("Overdue", 0, ChartTone.Danger),
-                ChartBucket("Today", 0, ChartTone.Primary),
-            ),
-        )
+        val series =
+            prepareBucketSeries(
+                listOf(
+                    ChartBucket("Overdue", 0, ChartTone.Danger),
+                    ChartBucket("Today", 0, ChartTone.Primary),
+                ),
+            )
 
         assertEquals(listOf("Overdue", "Today"), series.labels)
         assertEquals(listOf(ChartTone.Danger, ChartTone.Primary), series.tones)

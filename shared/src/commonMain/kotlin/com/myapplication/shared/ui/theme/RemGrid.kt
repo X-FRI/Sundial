@@ -13,7 +13,11 @@ import androidx.compose.ui.unit.dp
  * 实现：drawBehind 按 spacing 步长在宽/高方向画 1px 竖线与横线，
  * 线色 = border 色 + 透明度参数；默认 alpha 0.35 足够可见又不遮挡内容。
  */
-fun Modifier.remGrid(colors: RemColors, spacing: Dp = 8.dp, alpha: Float = 0.35f): Modifier =
+fun Modifier.remGrid(
+    colors: RemColors,
+    spacing: Dp = 8.dp,
+    alpha: Float = 0.35f,
+): Modifier =
     drawBehind {
         val s = spacing.toPx()
         val line = colors.border.copy(alpha = alpha)

@@ -47,11 +47,12 @@ private class ToneColumnProvider(
         extraStore: ExtraStore,
     ): LineComponent = columns.columnAt(entry.x.roundToInt())
 
-    override fun getWidestSeriesColumn(seriesIndex: Int, extraStore: ExtraStore): LineComponent =
-        columns.columnAt(seriesIndex)
+    override fun getWidestSeriesColumn(
+        seriesIndex: Int,
+        extraStore: ExtraStore,
+    ): LineComponent = columns.columnAt(seriesIndex)
 
-    private fun List<LineComponent>.columnAt(index: Int): LineComponent =
-        getOrElse(index) { last() }
+    private fun List<LineComponent>.columnAt(index: Int): LineComponent = getOrElse(index) { last() }
 }
 
 private fun ChartTone.chartColor(colors: AnalyticsChartColors): Color =

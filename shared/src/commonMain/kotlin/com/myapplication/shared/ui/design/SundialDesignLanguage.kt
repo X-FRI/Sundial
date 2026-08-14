@@ -28,36 +28,40 @@ data class SundialLensItem(
     val icon: IconName,
 )
 
-fun sundialPrimaryDestinations(): List<SundialNavItem> = listOf(
-    SundialNavItem(SundialDestination.Workbench, "工作台", IconName.Layers),
-    SundialNavItem(SundialDestination.Lists, "列表", IconName.Tray),
-    SundialNavItem(SundialDestination.Analytics, "分析", IconName.Chart),
-)
+fun sundialPrimaryDestinations(): List<SundialNavItem> =
+    listOf(
+        SundialNavItem(SundialDestination.Workbench, "工作台", IconName.Layers),
+        SundialNavItem(SundialDestination.Lists, "列表", IconName.Tray),
+        SundialNavItem(SundialDestination.Analytics, "分析", IconName.Chart),
+    )
 
-fun sundialWorkbenchLenses(): List<SundialLensItem> = listOf(
-    SundialLensItem(Scope.All, "全部", IconName.Layers),
-    SundialLensItem(Scope.Today, "今天", IconName.Today),
-    SundialLensItem(Scope.Scheduled, "计划", IconName.Scheduled),
-    SundialLensItem(Scope.Completed, "已完成", IconName.CheckCircle),
-    SundialLensItem(Scope.Trash, "垃圾箱", IconName.Trash),
-)
+fun sundialWorkbenchLenses(): List<SundialLensItem> =
+    listOf(
+        SundialLensItem(Scope.All, "全部", IconName.Layers),
+        SundialLensItem(Scope.Today, "今天", IconName.Today),
+        SundialLensItem(Scope.Scheduled, "计划", IconName.Scheduled),
+        SundialLensItem(Scope.Completed, "已完成", IconName.CheckCircle),
+        SundialLensItem(Scope.Trash, "垃圾箱", IconName.Trash),
+    )
 
-fun destinationForScope(scope: Scope): SundialDestination = when (scope) {
-    Scope.Analytics -> SundialDestination.Analytics
-    is Scope.List -> SundialDestination.Lists
-    Scope.All,
-    Scope.Today,
-    Scope.Scheduled,
-    Scope.Completed,
-    Scope.Trash,
-    -> SundialDestination.Workbench
-}
+fun destinationForScope(scope: Scope): SundialDestination =
+    when (scope) {
+        Scope.Analytics -> SundialDestination.Analytics
+        is Scope.List -> SundialDestination.Lists
+        Scope.All,
+        Scope.Today,
+        Scope.Scheduled,
+        Scope.Completed,
+        Scope.Trash,
+        -> SundialDestination.Workbench
+    }
 
 fun scopeForDestination(
     destination: SundialDestination,
     lists: List<TodoList>,
-): Scope = when (destination) {
-    SundialDestination.Workbench -> Scope.All
-    SundialDestination.Lists -> lists.firstOrNull()?.let { Scope.List(it.id) } ?: Scope.All
-    SundialDestination.Analytics -> Scope.Analytics
-}
+): Scope =
+    when (destination) {
+        SundialDestination.Workbench -> Scope.All
+        SundialDestination.Lists -> lists.firstOrNull()?.let { Scope.List(it.id) } ?: Scope.All
+        SundialDestination.Analytics -> Scope.Analytics
+    }
