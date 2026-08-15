@@ -9,18 +9,12 @@ import com.myapplication.shared.domain.sync.SyncClient
 import com.myapplication.shared.domain.sync.SyncConfig
 import com.myapplication.shared.domain.sync.SyncCoordinator
 import com.myapplication.shared.domain.sync.SyncMode
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
-import kotlin.time.Clock
 
 internal class SyncRuntime internal constructor(
-    internal val scope: CoroutineScope,
-    internal val repository: SyncStore,
     internal val client: SyncClient,
-    internal val config: SyncConfig,
-    internal val clock: Clock,
     internal val coordinator: SyncCoordinator?,
 ) {
     private val jobs = mutableListOf<Job>()
@@ -53,11 +47,9 @@ internal class SyncRuntimeLease internal constructor(
 }
 
 internal fun syncRuntimeResource(
-    scope: CoroutineScope,
     repository: SyncStore,
     client: SyncClient,
     config: SyncConfig,
-    clock: Clock,
 ): Resource<SyncRuntime> =
     resource(
         acquire = {
@@ -66,7 +58,7 @@ internal fun syncRuntimeResource(
                     SyncMode.Local -> null
                     else -> SyncCoordinator(repository, client, config.deviceId)
                 }
-            SyncRuntime(scope, repository, client, config, clock, coordinator)
+            SyncRuntime(client, coordinator)
         },
         release = { runtime, _ ->
             runtime.cancelJobs()
@@ -76,12 +68,10 @@ internal fun syncRuntimeResource(
 
 @OptIn(DelicateCoroutinesApi::class)
 internal suspend fun allocateSyncRuntime(
-    scope: CoroutineScope,
     repository: SyncStore,
     client: SyncClient,
     config: SyncConfig,
-    clock: Clock,
 ): SyncRuntimeLease {
-    val (runtime, release) = syncRuntimeResource(scope, repository, client, config, clock).allocate()
+    val (runtime, release) = syncRuntimeResource(repository, client, config).allocate()
     return SyncRuntimeLease(runtime, release)
 }

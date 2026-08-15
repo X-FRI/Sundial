@@ -14,7 +14,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import kotlin.time.Clock
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SyncRuntimeTest {
@@ -31,11 +30,9 @@ class SyncRuntimeTest {
         runTest {
             val lease =
                 allocateSyncRuntime(
-                    scope = backgroundScope,
                     repository = FakeTodoRepository(),
                     client = FakeSyncClient(),
                     config = supabaseConfig(),
-                    clock = Clock.System,
                 )
             val job = backgroundScope.launch(start = CoroutineStart.LAZY) {}
 
@@ -55,11 +52,9 @@ class SyncRuntimeTest {
             var cancelled = false
             val lease =
                 allocateSyncRuntime(
-                    scope = backgroundScope,
                     repository = FakeTodoRepository(),
                     client = client,
                     config = supabaseConfig(),
-                    clock = Clock.System,
                 )
             val job =
                 backgroundScope.launch {

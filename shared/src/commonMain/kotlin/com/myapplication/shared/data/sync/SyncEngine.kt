@@ -75,11 +75,9 @@ class SyncEngine(
                     ifRight = { newClient ->
                         val lease =
                             allocateSyncRuntime(
-                                scope = scope,
                                 repository = repository,
                                 client = newClient,
                                 config = newConfig,
-                                clock = clock,
                             )
                         val runtime = lease.runtime
                         activeRuntime = lease
