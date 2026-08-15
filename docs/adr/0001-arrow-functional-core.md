@@ -13,7 +13,7 @@
 
 1. 引入 `io.arrow-kt:arrow-core:2.2.3`、`io.arrow-kt:arrow-fx-coroutines:2.2.3` 与 `io.arrow-kt:arrow-resilience:2.2.3`（KMP：JVM/Android/iOS）。核心 API：`Either`、`either {}` DSL、`ensure`/`bind`/`raise`；Fx API 优先用于 resource safety、typed effect scope、结构化并发；Resilience API 用于 `Schedule`、retry/backoff 等调度/重试策略。
 2. 错误建模为 `TodoError` sealed ADT（`EmptyTitle`/`ParentNotFound`/`InboxNotFound`/`Persistence`），UI 层对 ADT 穷尽映射为用户文案（`ui/ErrorUi.kt`）。
-3. 所有写命令返回 `Either<TodoError, Unit>`；查询保持 `Flow` 流不包装（数据流非 Effect）。
+3. 写命令使用 `Either<TodoError, *>` 表达类型化错误；查询保持 `Flow` 流不包装（数据流非 Effect）。
 4. 副作用收敛到明确的 effect handler：Repository 适配器通过统一 DB command handler 解释数据库 effect，把异常映射为 `Persistence` 并重抛 `CancellationException`；UI 通过统一 command launcher 把 typed error 折叠为可观察状态。
 5. 编排逻辑（目标列表解析、父任务存在性）落 `domain/usecase/`，ViewModel 消费 `Either` 经 `lastError` StateFlow 呈现。
 6. `Clock`/`TimeZone` 通过 `AppGraph` 显式注入，领域层不读全局时钟。
@@ -30,7 +30,7 @@
 ## 2026-08-14 架构深化
 
 1. `TodoRepository` 拆分为更窄的领域端口：`TodoQueries`、`TodoCommands`、`ListCommands`、`SyncStore`、`SettingsStore`。`TodoRepository` 仍保留为兼容聚合接口，避免一次性迁移所有调用点。
-2. ViewModel 中的写入规则下沉到 use case：完成切换、日期安排、列表保存、设置保存分别由领域用例拥有；ViewModel 负责调用用例、折叠 `Either`、暴露 UI 状态。
+2. ViewModel 中的核心工作流写入规则下沉到 use case：工作台/主列表完成切换、日期安排、列表保存、设置保存分别由领域用例拥有；简单详情编辑与子任务编辑等路径仍可直接调用命令端口。
 3. 命令继续使用 `Either` 表达 typed effects；查询继续保持 `Flow`，不把响应式数据流包装成领域 effect。
 4. Compose 生命周期、`viewModelScope`、`LaunchedEffect` 仍是 UI 运行时边界，不包装进领域 effect。领域层不拥有 Compose 生命周期。
 5. 同步运行时生命周期隔离到 `Resource`/lease 风格模块；`SyncCoordinator` 依赖窄端口 `SyncStore` 与 `SyncClient`，不再需要完整仓库聚合。

@@ -90,7 +90,7 @@ flowchart TB
 
 函数式边界：
 
-- UI 写入路径通过 use case 调用窄端口，完成切换、日程安排、列表保存、设置保存等规则不放在 ViewModel 里。
+- 核心工作流写入规则通过 use case 调用窄端口，例如工作台/主列表完成切换、日程安排、列表保存、设置保存；简单详情编辑与子任务编辑仍可直接调用命令端口。
 - 查询仍保持 `Flow`，服务 Compose 的响应式状态；写命令使用 Arrow `Either` 表达可见错误。
 - 同步编排依赖 `SyncStore` + `SyncClient`，运行时生命周期由 Resource/lease 风格模块管理。
 
