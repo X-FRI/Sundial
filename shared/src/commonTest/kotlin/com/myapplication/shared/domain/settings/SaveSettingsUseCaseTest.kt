@@ -2,7 +2,6 @@ package com.myapplication.shared.domain.settings
 
 import com.myapplication.shared.domain.sync.SyncMode
 import com.myapplication.shared.test.FakeTodoRepository
-import com.myapplication.shared.ui.settings.SettingsForm
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,7 +15,7 @@ class SaveSettingsUseCaseTest {
 
             val result =
                 useCase(
-                    SettingsForm(
+                    SaveSettingsInput(
                         mode = SyncMode.Supabase,
                         supabaseUrl = " ",
                         supabaseKey = "key",
@@ -35,7 +34,7 @@ class SaveSettingsUseCaseTest {
 
             val result =
                 useCase(
-                    SettingsForm(
+                    SaveSettingsInput(
                         mode = SyncMode.Supabase,
                         supabaseUrl = " https://example.supabase.co ",
                         supabaseKey = " secret-key ",
@@ -61,5 +60,24 @@ class SaveSettingsUseCaseTest {
             assertEquals("secret-key", result.getOrNull()?.supabaseKey)
             assertEquals("https://sundial.example", result.getOrNull()?.sundialUrl)
             assertEquals("generated-device", result.getOrNull()?.deviceId)
+        }
+
+    @Test
+    fun settingsStoreFailureMapsToPersistenceError() =
+        runTest {
+            val repository =
+                FakeTodoRepository().apply {
+                    failSetSetting = true
+                }
+            val useCase = SaveSettingsUseCase(repository) { "generated-device" }
+
+            val result =
+                useCase(
+                    SaveSettingsInput(
+                        mode = SyncMode.Local,
+                    ),
+                )
+
+            assertEquals(SettingsError.Persistence("settings write failed"), result.leftOrNull())
         }
 }

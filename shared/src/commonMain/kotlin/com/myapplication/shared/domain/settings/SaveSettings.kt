@@ -6,13 +6,19 @@ import arrow.core.raise.ensure
 import com.myapplication.shared.domain.repository.SettingsStore
 import com.myapplication.shared.domain.sync.SyncConfig
 import com.myapplication.shared.domain.sync.SyncMode
-import com.myapplication.shared.ui.settings.SettingsForm
+
+data class SaveSettingsInput(
+    val mode: SyncMode,
+    val supabaseUrl: String = "",
+    val supabaseKey: String = "",
+    val sundialUrl: String = "",
+)
 
 class SaveSettingsUseCase(
     private val settings: SettingsStore,
     private val createDeviceId: () -> String,
 ) {
-    suspend operator fun invoke(input: SettingsForm): Either<SettingsError, SyncConfig> =
+    suspend operator fun invoke(input: SaveSettingsInput): Either<SettingsError, SyncConfig> =
         either {
             val supabaseUrl = input.supabaseUrl.trim()
             val supabaseKey = input.supabaseKey.trim()

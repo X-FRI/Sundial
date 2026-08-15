@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.myapplication.shared.data.sync.SyncEngine
 import com.myapplication.shared.domain.repository.TodoRepository
+import com.myapplication.shared.domain.settings.SaveSettingsInput
 import com.myapplication.shared.domain.settings.SaveSettingsUseCase
 import com.myapplication.shared.domain.settings.SettingsError
+import com.myapplication.shared.domain.settings.toSettingsError
 import com.myapplication.shared.domain.sync.SyncMode
 import com.myapplication.shared.domain.sync.SyncStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -115,7 +117,9 @@ class SettingsViewModel(
         if (!preferencesLoaded) return
         viewModelScope.launch {
             next.toSettingsMap().forEach { (key, value) ->
-                repository.setSetting(key, value).onLeft { }
+                repository.setSetting(key, value).onLeft { error ->
+                    _lastSettingsError.value = error.toSettingsError()
+                }
             }
         }
     }
@@ -127,7 +131,7 @@ class SettingsViewModel(
     fun save() {
         if (!formLoaded) return
         viewModelScope.launch {
-            saveSettings(_form.value).fold(
+            saveSettings(_form.value.toSaveSettingsInput()).fold(
                 ifLeft = { error ->
                     _lastSettingsError.value = error
                 },
@@ -139,3 +143,11 @@ class SettingsViewModel(
         }
     }
 }
+
+private fun SettingsForm.toSaveSettingsInput(): SaveSettingsInput =
+    SaveSettingsInput(
+        mode = mode,
+        supabaseUrl = supabaseUrl,
+        supabaseKey = supabaseKey,
+        sundialUrl = sundialUrl,
+    )

@@ -77,4 +77,23 @@ class SettingsPreferencesTest {
             assertEquals(SettingsError.Persistence("读取设置失败"), viewModel.lastSettingsError.value)
             assertEquals(emptyMap(), repository.settingsState.value)
         }
+
+    @Test
+    fun preferenceWriteFailureExposesSettingsError() =
+        runTest(dispatcher) {
+            val repository =
+                FakeTodoRepository().apply {
+                    failSetSetting = true
+                }
+            val engine = SyncEngine(backgroundScope, repository, kotlin.time.Clock.System)
+            val saveSettings = SaveSettingsUseCase(repository) { "generated-device" }
+            val viewModel = SettingsViewModel(repository, engine, saveSettings)
+
+            advanceUntilIdle()
+            viewModel.setThemeMode(ThemeMode.Dark)
+            advanceUntilIdle()
+
+            assertEquals(SettingsError.Persistence("settings write failed"), viewModel.lastSettingsError.value)
+            assertEquals(ThemeMode.Dark, viewModel.preferences.value.themeMode)
+        }
 }

@@ -68,6 +68,7 @@ class FakeTodoRepository : TodoRepository {
     val outboxState = MutableStateFlow<List<SyncRow>>(emptyList())
     val settingsState = MutableStateFlow<Map<String, String>>(emptyMap())
     var failGetSettings = false
+    var failSetSetting = false
     var appliedUpserts = mutableListOf<TodoRowDto>()
     var appliedDeletes = mutableListOf<Pair<String, Long>>()
     private val fakeToday = LocalDate(2026, 8, 13)
@@ -399,6 +400,7 @@ class FakeTodoRepository : TodoRepository {
         key: String,
         value: String,
     ): Either<TodoError, Unit> {
+        if (failSetSetting) return Either.Left(TodoError.Persistence("settings write failed"))
         settingsState.value = settingsState.value + (key to value)
         return Either.Right(Unit)
     }
