@@ -116,11 +116,13 @@ class SettingsViewModel(
         _preferences.value = next
         if (!preferencesLoaded) return
         viewModelScope.launch {
+            var writeError: SettingsError? = null
             next.toSettingsMap().forEach { (key, value) ->
                 repository.setSetting(key, value).onLeft { error ->
-                    _lastSettingsError.value = error.toSettingsError()
+                    writeError = error.toSettingsError()
                 }
             }
+            _lastSettingsError.value = writeError
         }
     }
 

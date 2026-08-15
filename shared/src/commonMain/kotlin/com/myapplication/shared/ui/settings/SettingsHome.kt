@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.myapplication.shared.domain.settings.SettingsError
 import com.myapplication.shared.ui.components.RemIcon
 import com.myapplication.shared.ui.components.SundialBackAction
 import com.myapplication.shared.ui.main.MainViewModel
@@ -51,6 +53,7 @@ internal fun SettingsHome(
     onBack: () -> Unit,
 ) {
     val colors = LocalRemColors.current
+    val lastSettingsError by vm.lastSettingsError.collectAsState()
     var selected by rememberSaveable { mutableStateOf(SettingsSection.Sync) }
 
     BoxWithConstraints(
@@ -76,8 +79,47 @@ internal fun SettingsHome(
                 onBack = onBack,
             )
         }
+        lastSettingsError?.let { error ->
+            SettingsErrorBanner(
+                message = error.uiMessage(),
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 10.dp),
+            )
+        }
     }
 }
+
+@Composable
+private fun SettingsErrorBanner(
+    message: String,
+    modifier: Modifier = Modifier,
+) {
+    val colors = LocalRemColors.current
+    Box(
+        modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        BasicText(
+            message,
+            style = RemType.text12.copy(color = colors.error),
+            modifier =
+                Modifier
+                    .clip(RoundedCornerShape(RemRadii.r4))
+                    .background(colors.bgPrimary)
+                    .border(1.dp, colors.error.copy(alpha = 0.35f), RoundedCornerShape(RemRadii.r4))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+        )
+    }
+}
+
+private fun SettingsError.uiMessage(): String =
+    when (this) {
+        SettingsError.MissingSupabaseConfig -> "请先填写 Supabase URL 与 anon 公钥"
+        is SettingsError.Persistence -> message
+    }
 
 @Composable
 private fun WideSettingsHome(
