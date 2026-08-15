@@ -123,21 +123,16 @@ class SyncEngine(
         val coordinator = runtime.coordinator ?: return
         _status.update { it.syncStarted() }
         try {
-            val drainResult = tryDrainOutbox(coordinator)
-            val pullResult = tryPullFromRemote(coordinator)
-            val drainFailed = drainResult?.isLeft() != false
-            val pullFailed = pullResult?.isLeft() != false
-            if (drainFailed || pullFailed) {
-                val msg =
-                    when {
-                        drainFailed ->
-                            (drainResult as? Either.Left<SyncError>)?.value?.userMessage()
-                                ?: "同步失败: 未知错误"
-                        else ->
-                            (pullResult as? Either.Left<SyncError>)?.value?.userMessage()
-                                ?: "同步失败: 未知错误"
-                    }
-                _status.update { it.syncFailed(msg) }
+            val drainResult = drainOutboxEffect(coordinator)
+            val pullResult = pullFromRemoteEffect(coordinator)
+            val failure =
+                when {
+                    drainResult is Either.Left -> drainResult.value
+                    pullResult is Either.Left -> pullResult.value
+                    else -> null
+                }
+            if (failure != null) {
+                _status.update { it.syncFailed(failure.userMessage()) }
             } else {
                 val pending = repository.observeOutboxCount().first()
                 _status.update { it.syncSucceeded(pending, clock.now().toEpochMilliseconds()) }
@@ -149,23 +144,25 @@ class SyncEngine(
         }
     }
 
-    private suspend fun tryDrainOutbox(coordinator: SyncCoordinator): Either<SyncError, Int>? =
+    private suspend fun drainOutboxEffect(coordinator: SyncCoordinator): Either<SyncError, Int> =
         try {
             coordinator.drainOutbox()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            null
+            Either.Left(unexpectedSyncFailure())
         }
 
-    private suspend fun tryPullFromRemote(coordinator: SyncCoordinator): Either<SyncError, Int>? =
+    private suspend fun pullFromRemoteEffect(coordinator: SyncCoordinator): Either<SyncError, Int> =
         try {
             coordinator.pullFromRemote()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            null
+            Either.Left(unexpectedSyncFailure())
         }
+
+    private fun unexpectedSyncFailure(): SyncError.Transport = SyncError.Transport("同步失败: 未知错误")
 
     private fun startPushLoop(runtime: SyncRuntime) {
         val coordinator = runtime.coordinator ?: return
