@@ -13,18 +13,8 @@ import com.myapplication.shared.domain.sync.TodoRowDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.Instant
 
-/**
- * 待办仓库接口：UI 与同步引擎访问数据的唯一入口。
- *
- * 设计要点：
- * - 查询用 [Flow] 实现响应式（SQLDelight asFlow 推送变更），不包装成 Either；
- * - 命令返回 Either<TodoError, Unit>，校验/持久化失败走 Left；
- * - 所有本地写命令都会在事务内「更新行 + 写 outbox」，供同步引擎推送远端；
- *   而 applyRemote* 系列（远端应用）刻意不写 outbox，防止本机改动又被推回远端
- *   造成 ping-pong 循环。
- */
-interface TodoRepository {
-    // Queries — 数据流保持 Flow，不包装
+/** 查询端口：数据流保持 [Flow]，不包装成 Either。 */
+interface TodoQueries {
     fun observeLists(): Flow<List<TodoList>>
 
     fun observeAllActive(): Flow<List<TodoItem>>
@@ -50,25 +40,11 @@ interface TodoRepository {
     suspend fun findById(id: Long): Either<TodoError, TodoItem?>
 
     suspend fun findByIdActive(id: Long): Either<TodoError, TodoItem?>
+}
 
-    // Commands — 类型化错误，纯 Effect
+/** 待办写命令端口：类型化错误，纯 Effect。 */
+interface TodoCommands {
     suspend fun ensureInbox(): Either<TodoError, Long>
-
-    suspend fun addList(
-        name: String,
-        colorKey: String,
-    ): Either<TodoError, Unit>
-
-    suspend fun updateList(
-        listId: Long,
-        name: String,
-        colorKey: String,
-    ): Either<TodoError, Unit>
-
-    suspend fun deleteList(
-        listId: Long,
-        policy: DeleteListPolicy = DeleteListPolicy.MoveTasksToInbox,
-    ): Either<TodoError, Unit>
 
     suspend fun insertTodo(
         listId: Long,
@@ -122,9 +98,29 @@ interface TodoRepository {
     suspend fun restore(id: Long): Either<TodoError, Unit>
 
     suspend fun deleteForever(id: Long): Either<TodoError, Unit>
+}
 
-    // Sync support — 由 SyncCoordinator 驱动，不写 outbox（防 ping-pong）
+/** 清单写命令端口。 */
+interface ListCommands {
+    suspend fun addList(
+        name: String,
+        colorKey: String,
+    ): Either<TodoError, Unit>
 
+    suspend fun updateList(
+        listId: Long,
+        name: String,
+        colorKey: String,
+    ): Either<TodoError, Unit>
+
+    suspend fun deleteList(
+        listId: Long,
+        policy: DeleteListPolicy = DeleteListPolicy.MoveTasksToInbox,
+    ): Either<TodoError, Unit>
+}
+
+/** 同步存储端口：由 SyncCoordinator 驱动，不写 outbox（防 ping-pong）。 */
+interface SyncStore {
     /**
      * 读取 outbox 中待推送的行，按 seq 升序，最多 [limit] 条。
      * 返回的 [SyncRow] 由 coordinator 推送后按 seq 水位线清理（见 clearOutbox）。
@@ -157,7 +153,10 @@ interface TodoRepository {
         rowId: Long,
         updatedAt: Long,
     ): Either<TodoError, Unit>
+}
 
+/** 本地设置存储端口。 */
+interface SettingsStore {
     suspend fun getSetting(key: String): Either<TodoError, String?>
 
     /** 写本地设置（同步 token 等）。setSetting 不经过 outbox。 */
@@ -168,3 +167,20 @@ interface TodoRepository {
 
     suspend fun getSettings(): Either<TodoError, Map<String, String>>
 }
+
+/**
+ * 待办仓库兼容聚合接口：UI 与同步引擎访问数据的既有入口。
+ *
+ * 设计要点：
+ * - 查询用 [Flow] 实现响应式（SQLDelight asFlow 推送变更），不包装成 Either；
+ * - 命令返回 Either<TodoError, Unit>，校验/持久化失败走 Left；
+ * - 所有本地写命令都会在事务内「更新行 + 写 outbox」，供同步引擎推送远端；
+ *   而 applyRemote* 系列（远端应用）刻意不写 outbox，防止本机改动又被推回远端
+ *   造成 ping-pong 循环。
+ */
+interface TodoRepository :
+    TodoQueries,
+    TodoCommands,
+    ListCommands,
+    SyncStore,
+    SettingsStore
