@@ -67,6 +67,7 @@ class FakeTodoRepository : TodoRepository {
     // —— 同步相关状态 ——
     val outboxState = MutableStateFlow<List<SyncRow>>(emptyList())
     val settingsState = MutableStateFlow<Map<String, String>>(emptyMap())
+    var failGetSettings = false
     var appliedUpserts = mutableListOf<TodoRowDto>()
     var appliedDeletes = mutableListOf<Pair<String, Long>>()
     private val fakeToday = LocalDate(2026, 8, 13)
@@ -402,5 +403,10 @@ class FakeTodoRepository : TodoRepository {
         return Either.Right(Unit)
     }
 
-    override suspend fun getSettings(): Either<TodoError, Map<String, String>> = Either.Right(settingsState.value)
+    override suspend fun getSettings(): Either<TodoError, Map<String, String>> =
+        if (failGetSettings) {
+            Either.Left(TodoError.Persistence("boom"))
+        } else {
+            Either.Right(settingsState.value)
+        }
 }

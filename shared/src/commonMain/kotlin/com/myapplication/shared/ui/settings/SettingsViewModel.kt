@@ -4,10 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.myapplication.shared.data.sync.SyncEngine
 import com.myapplication.shared.domain.repository.TodoRepository
-import com.myapplication.shared.domain.sync.SyncConfig
+import com.myapplication.shared.domain.settings.SaveSettingsUseCase
+import com.myapplication.shared.domain.settings.SettingsError
 import com.myapplication.shared.domain.sync.SyncMode
 import com.myapplication.shared.domain.sync.SyncStatus
-import com.myapplication.shared.util.createDeviceId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +41,7 @@ data class SettingsForm(
 class SettingsViewModel(
     private val repository: TodoRepository,
     private val engine: SyncEngine,
+    private val saveSettings: SaveSettingsUseCase,
 ) : ViewModel() {
     /** 同步引擎实时状态（连接与否、待同步条数、最近错误），供状态卡片展示。 */
     val syncStatus: StateFlow<SyncStatus> =
@@ -53,25 +54,35 @@ class SettingsViewModel(
     private val _preferences = MutableStateFlow(SettingsPreferences())
     val preferences: StateFlow<SettingsPreferences> = _preferences
 
+    private val _lastSettingsError = MutableStateFlow<SettingsError?>(null)
+    val lastSettingsError: StateFlow<SettingsError?> = _lastSettingsError
+
     /** 持久化表单是否已加载完成；为 false 时 save() 一律拒绝。 */
     private var formLoaded = false
     private var preferencesLoaded = false
 
     init {
-        // 异步加载已保存的设置并回填表单；读取失败（getOrNull() == null）时
-        // 退回全部默认值（本地模式），并照常置 formLoaded = true。
+        // 异步加载已保存的设置并回填表单；读取失败时保留默认 UI 值，
+        // 但不置 loaded，避免后续 save() 用默认值覆盖未知的已保存设置。
         viewModelScope.launch {
-            val settings = repository.getSettings().getOrNull() ?: emptyMap()
-            _form.value =
-                SettingsForm(
-                    mode = SyncMode.fromKey(settings["sync.mode"] ?: "local"),
-                    supabaseUrl = settings["sync.supabase.url"] ?: "",
-                    supabaseKey = settings["sync.supabase.key"] ?: "",
-                    sundialUrl = settings["sync.sundial.url"] ?: "",
-                )
-            _preferences.value = SettingsPreferences.fromSettingsMap(settings)
-            formLoaded = true
-            preferencesLoaded = true
+            repository.getSettings().fold(
+                ifLeft = {
+                    _lastSettingsError.value = SettingsError.Persistence("读取设置失败")
+                },
+                ifRight = { settings ->
+                    _form.value =
+                        SettingsForm(
+                            mode = SyncMode.fromKey(settings["sync.mode"] ?: "local"),
+                            supabaseUrl = settings["sync.supabase.url"] ?: "",
+                            supabaseKey = settings["sync.supabase.key"] ?: "",
+                            sundialUrl = settings["sync.sundial.url"] ?: "",
+                        )
+                    _preferences.value = SettingsPreferences.fromSettingsMap(settings)
+                    _lastSettingsError.value = null
+                    formLoaded = true
+                    preferencesLoaded = true
+                },
+            )
         }
     }
 
@@ -110,46 +121,20 @@ class SettingsViewModel(
     }
 
     /**
-     * 保存配置。两步：
-     * 1. 持久化：逐条写入 settings（同步模式、URL、key），此处忽略单个写入失败；
-     * 2. 应用：确保 deviceId 存在（没有就生成并持久化），再把完整 SyncConfig
-     *    交给引擎 configure，触发引擎按新配置（重新）连接。
-     * 前置校验：表单未加载完成或 Supabase 配置不完整时直接返回，不落库。
+     * 保存配置：由 SaveSettingsUseCase 负责校验、持久化与 deviceId 装配；
+     * ViewModel 只处理 UI 错误状态与同步引擎重配置。
      */
     fun save() {
         if (!formLoaded) return
-        val f = _form.value
-        if (f.mode == SyncMode.Supabase && (f.supabaseUrl.isBlank() || f.supabaseKey.isBlank())) return
         viewModelScope.launch {
-            val settings =
-                mapOf(
-                    "sync.mode" to
-                        when (f.mode) {
-                            SyncMode.Local -> "local"
-                            SyncMode.Supabase -> "supabase"
-                            SyncMode.SundialServer -> "sundial"
-                        },
-                    "sync.supabase.url" to f.supabaseUrl.trim(),
-                    "sync.supabase.key" to f.supabaseKey.trim(),
-                    "sync.sundial.url" to f.sundialUrl.trim(),
-                )
-            settings.forEach { (k, v) -> repository.setSetting(k, v).onLeft { } }
-            // deviceId 是同步客户端身份标识，只生成一次；重启后从库里取回。
-            val deviceId =
-                repository.getSetting("sync.deviceId").getOrNull()
-                    ?: run {
-                        val id = createDeviceId()
-                        repository.setSetting("sync.deviceId", id)
-                        id
-                    }
-            engine.configure(
-                SyncConfig(
-                    mode = f.mode,
-                    supabaseUrl = f.supabaseUrl.trim(),
-                    supabaseKey = f.supabaseKey.trim(),
-                    sundialUrl = f.sundialUrl.trim(),
-                    deviceId = deviceId,
-                ),
+            saveSettings(_form.value).fold(
+                ifLeft = { error ->
+                    _lastSettingsError.value = error
+                },
+                ifRight = { config ->
+                    _lastSettingsError.value = null
+                    engine.configure(config)
+                },
             )
         }
     }

@@ -5,6 +5,7 @@ import com.myapplication.shared.data.TodoDb
 import com.myapplication.shared.data.TodoRepositoryImpl
 import com.myapplication.shared.data.sync.SyncEngine
 import com.myapplication.shared.domain.repository.TodoRepository
+import com.myapplication.shared.domain.settings.SaveSettingsUseCase
 import com.myapplication.shared.domain.sync.SyncConfig
 import com.myapplication.shared.domain.sync.SyncMode
 import com.myapplication.shared.domain.usecase.AddSubTaskUseCase
@@ -53,6 +54,7 @@ class AppGraph(
     val saveList: SaveListUseCase by lazy { SaveListUseCase(repository) }
     val toggleTodoCompletion: ToggleTodoCompletionUseCase by lazy { ToggleTodoCompletionUseCase(repository) }
     val scheduleTodo: ScheduleTodoUseCase by lazy { ScheduleTodoUseCase(repository, clock, timeZone) }
+    val saveSettings: SaveSettingsUseCase by lazy { SaveSettingsUseCase(repository, ::createDeviceId) }
 
     // 引擎专属作用域：与 UI 作用域隔离，引擎内部错误互不影响
     private val engineScope = CoroutineScope(SupervisorJob())
@@ -63,7 +65,7 @@ class AppGraph(
     }
 
     val settingsViewModelFactory: () -> SettingsViewModel = {
-        SettingsViewModel(repository, engine)
+        SettingsViewModel(repository, engine, saveSettings)
     }
 
     /**

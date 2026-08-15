@@ -1,10 +1,36 @@
 package com.myapplication.shared.ui.settings
 
+import com.myapplication.shared.data.sync.SyncEngine
+import com.myapplication.shared.domain.settings.SaveSettingsUseCase
+import com.myapplication.shared.domain.settings.SettingsError
+import com.myapplication.shared.test.FakeTodoRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SettingsPreferencesTest {
+    private val dispatcher = StandardTestDispatcher()
+
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(dispatcher)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
     fun settingsSectionsDoNotExposeStandaloneWidgetsDestination() {
         assertEquals(
@@ -32,4 +58,23 @@ class SettingsPreferencesTest {
         val stored = preferences.toSettingsMap()
         assertEquals(preferences, SettingsPreferences.fromSettingsMap(stored))
     }
+
+    @Test
+    fun settingsLoadFailureExposesErrorAndDoesNotSaveDefaults() =
+        runTest(dispatcher) {
+            val repository =
+                FakeTodoRepository().apply {
+                    failGetSettings = true
+                }
+            val engine = SyncEngine(backgroundScope, repository, kotlin.time.Clock.System)
+            val saveSettings = SaveSettingsUseCase(repository) { "generated-device" }
+            val viewModel = SettingsViewModel(repository, engine, saveSettings)
+
+            advanceUntilIdle()
+            viewModel.save()
+            advanceUntilIdle()
+
+            assertEquals(SettingsError.Persistence("读取设置失败"), viewModel.lastSettingsError.value)
+            assertEquals(emptyMap(), repository.settingsState.value)
+        }
 }
