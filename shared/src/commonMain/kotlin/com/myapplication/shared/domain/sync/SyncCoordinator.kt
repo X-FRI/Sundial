@@ -1,7 +1,7 @@
 package com.myapplication.shared.domain.sync
 
 import arrow.core.Either
-import com.myapplication.shared.domain.repository.TodoRepository
+import com.myapplication.shared.domain.repository.SyncStore
 import com.myapplication.shared.effects.bindLocal
 import com.myapplication.shared.effects.catchTransport
 import com.myapplication.shared.effects.runSyncEffect
@@ -15,7 +15,7 @@ import com.myapplication.shared.effects.runSyncEffect
  * - 远端到本地的行应用经由 applyRemote*，绝不写 outbox（防 ping-pong）。
  */
 class SyncCoordinator(
-    private val repository: TodoRepository,
+    private val repository: SyncStore,
     private val client: SyncClient,
     private val deviceId: String,
 ) {

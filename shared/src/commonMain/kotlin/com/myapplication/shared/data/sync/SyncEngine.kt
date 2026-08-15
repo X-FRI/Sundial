@@ -1,16 +1,11 @@
 package com.myapplication.shared.data.sync
 
 import arrow.core.Either
-import arrow.fx.coroutines.ExitCase
-import arrow.fx.coroutines.Resource
-import arrow.fx.coroutines.allocate
-import arrow.fx.coroutines.bracket
 import arrow.fx.coroutines.guarantee
-import arrow.fx.coroutines.resource
 import arrow.resilience.Schedule
 import arrow.resilience.retry
 import arrow.resilience.retryEither
-import com.myapplication.shared.domain.repository.TodoRepository
+import com.myapplication.shared.domain.repository.SyncStore
 import com.myapplication.shared.domain.sync.SyncClient
 import com.myapplication.shared.domain.sync.SyncConfig
 import com.myapplication.shared.domain.sync.SyncCoordinator
@@ -30,9 +25,7 @@ import com.myapplication.shared.domain.sync.syncSucceeded
 import com.myapplication.shared.domain.sync.userMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,12 +41,12 @@ import kotlin.time.Duration.Companion.milliseconds
  *
  * 这里的边界刻意收敛成三层：
  * - Resource：描述一个同步 runtime（client + coordinator + jobs）如何释放；
- * - bracket：切换配置时先释放旧 runtime，再启动新 runtime；
+ * - Lease：切换配置时先释放旧 runtime，再启动新 runtime；
  * - Schedule：描述 push/remote 的重试节奏，把退避策略从 while 循环里拿出来。
  */
 class SyncEngine(
     private val scope: CoroutineScope,
-    private val repository: TodoRepository,
+    private val repository: SyncStore,
     private val clock: Clock,
     private val clientFactory: (SyncConfig) -> Either<SyncError, SyncClient> = SyncClientFactory::create,
 ) {
@@ -63,11 +56,10 @@ class SyncEngine(
     private val backoffBaseMs = 2_000L
     private val maxBackoffMs = 30_000L
 
-    private var activeRuntime: RuntimeLease? = null
+    private var activeRuntime: SyncRuntimeLease? = null
     private var lifecycleJob: Job? = null
     private var syncNowJob: Job? = null
 
-    @OptIn(DelicateCoroutinesApi::class)
     fun configure(newConfig: SyncConfig) {
         val previousLifecycle = lifecycleJob
         lifecycleJob =
@@ -81,8 +73,15 @@ class SyncEngine(
                         _status.update { it.configurationFailed(newConfig.mode, error) }
                     },
                     ifRight = { newClient ->
-                        val (runtime, release) = syncRuntimeResource(newConfig, newClient).allocate()
-                        val lease = RuntimeLease(runtime, release)
+                        val lease =
+                            allocateSyncRuntime(
+                                scope = scope,
+                                repository = repository,
+                                client = newClient,
+                                config = newConfig,
+                                clock = clock,
+                            )
+                        val runtime = lease.runtime
                         activeRuntime = lease
 
                         if (runtime.coordinator != null) {
@@ -110,37 +109,16 @@ class SyncEngine(
                 )
             }
         syncNowJob = job
-        runtime.jobs += job
-        job.invokeOnCompletion { runtime.jobs -= job }
+        runtime.track(job)
     }
-
-    private fun syncRuntimeResource(
-        config: SyncConfig,
-        client: SyncClient,
-    ): Resource<SyncRuntime> =
-        resource(
-            acquire = {
-                val coordinator =
-                    when (config.mode) {
-                        SyncMode.Local -> null
-                        else -> SyncCoordinator(repository, client, config.deviceId)
-                    }
-                SyncRuntime(client, coordinator)
-            },
-            release = { runtime, _ ->
-                runtime.cancelJobs()
-                runtime.client.close()
-            },
-        )
 
     private suspend fun releaseActiveRuntime() {
         val lease = activeRuntime ?: return
         activeRuntime = null
-        bracket(
-            acquire = { lease },
-            use = { it.runtime.cancelJobs() },
-            release = { it.release(ExitCase.Completed) },
-        )
+        lease.release()
+        if (syncNowJob != null && syncNowJob?.isActive != true) {
+            syncNowJob = null
+        }
     }
 
     private suspend fun runSyncNowOnce(runtime: SyncRuntime) {
@@ -202,8 +180,7 @@ class SyncEngine(
                     delay(backoffBaseMs)
                 }
             }
-        runtime.jobs += job
-        job.invokeOnCompletion { runtime.jobs -= job }
+        runtime.track(job)
     }
 
     private fun startRemoteLoop(runtime: SyncRuntime) {
@@ -229,8 +206,7 @@ class SyncEngine(
                         }
                     }
             }
-        runtime.jobs += job
-        job.invokeOnCompletion { runtime.jobs -= job }
+        runtime.track(job)
     }
 
     private fun startStatusWatchers(runtime: SyncRuntime) {
@@ -246,10 +222,8 @@ class SyncEngine(
                     _status.update { it.connectionObserved(connected) }
                 }
             }
-        runtime.jobs += outboxJob
-        runtime.jobs += connectionJob
-        outboxJob.invokeOnCompletion { runtime.jobs -= outboxJob }
-        connectionJob.invokeOnCompletion { runtime.jobs -= connectionJob }
+        runtime.track(outboxJob)
+        runtime.track(connectionJob)
     }
 
     private suspend fun drainOutboxOnce(coordinator: SyncCoordinator): Either<SyncError, Unit> =
@@ -287,23 +261,4 @@ class SyncEngine(
                     _status.update { it.remoteSubscriptionLost(cause.message) }
                 }
             }
-
-    private suspend fun SyncRuntime.cancelJobs() {
-        jobs.toList().forEach { it.cancelAndJoin() }
-        jobs.clear()
-        if (syncNowJob != null && syncNowJob?.isActive != true) {
-            syncNowJob = null
-        }
-    }
-
-    private data class RuntimeLease(
-        val runtime: SyncRuntime,
-        val release: suspend (ExitCase) -> Unit,
-    )
-
-    private data class SyncRuntime(
-        val client: SyncClient,
-        val coordinator: SyncCoordinator?,
-        val jobs: MutableList<Job> = mutableListOf(),
-    )
 }
