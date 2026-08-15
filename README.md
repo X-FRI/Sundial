@@ -39,7 +39,7 @@ Sundial 把待办拆成四个自然步骤：先捕获到收件箱，再安排到
 | 层 | 技术 |
 | --- | --- |
 | UI | Compose Multiplatform（共享 UI） |
-| 架构 | 分层架构 + Arrow `Either` 类型化错误处理 |
+| 架构 | 分层架构 + Arrow typed effects + 窄端口 use-case 层 |
 | 数据库 | SQLDelight（SQLite），本地优先 |
 | 同步 | supabase-kt（PostgREST + Realtime），`SyncClient` 端口可插拔 |
 | 日期 | kotlinx-datetime |
@@ -55,7 +55,8 @@ flowchart TB
     end
 
     subgraph Domain["领域层"]
-        RepoPort["TodoRepository 端口"]
+        RepoPort["TodoQueries / TodoCommands"]
+        MorePorts["ListCommands / SyncStore / SettingsStore"]
         SyncPort["SyncClient 端口"]
         UseCases["用例"]
     end
@@ -72,8 +73,12 @@ flowchart TB
     Supabase["Supabase（PostgREST + Realtime）"]
 
     Screens --> ViewModels
+    ViewModels --> UseCases
     ViewModels --> RepoPort
+    UseCases --> RepoPort
+    UseCases --> MorePorts
     RepoPort --> Impl
+    MorePorts --> Impl
     Impl --> LWW
     Impl --> DB
     SyncPort --> Noop
@@ -82,6 +87,12 @@ flowchart TB
     Supa <--> Supabase
     Domain -. 依赖注入 .-> Data
 ```
+
+函数式边界：
+
+- UI 写入路径通过 use case 调用窄端口，完成切换、日程安排、列表保存、设置保存等规则不放在 ViewModel 里。
+- 查询仍保持 `Flow`，服务 Compose 的响应式状态；写命令使用 Arrow `Either` 表达可见错误。
+- 同步编排依赖 `SyncStore` + `SyncClient`，运行时生命周期由 Resource/lease 风格模块管理。
 
 同步核心设计：
 

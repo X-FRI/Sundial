@@ -1,7 +1,7 @@
 # ADR 0001: 采用 Arrow typed errors 与 Arrow Fx 的函数式领域层
 
 - 日期：2026-08-11
-- 状态：已接受，2026-08-12 更新
+- 状态：已接受，2026-08-14 更新
 
 ## 背景
 
@@ -27,8 +27,16 @@
 
 2026-08-12 修订：后续资源生命周期（同步 client、DB dispatcher、外部连接）应优先用 Arrow Fx `Resource`/`bracket`/`guarantee` 表达；重试/轮询应优先使用 Arrow Resilience `Schedule` 或同等可组合策略。
 
+## 2026-08-14 架构深化
+
+1. `TodoRepository` 拆分为更窄的领域端口：`TodoQueries`、`TodoCommands`、`ListCommands`、`SyncStore`、`SettingsStore`。`TodoRepository` 仍保留为兼容聚合接口，避免一次性迁移所有调用点。
+2. ViewModel 中的写入规则下沉到 use case：完成切换、日期安排、列表保存、设置保存分别由领域用例拥有；ViewModel 负责调用用例、折叠 `Either`、暴露 UI 状态。
+3. 命令继续使用 `Either` 表达 typed effects；查询继续保持 `Flow`，不把响应式数据流包装成领域 effect。
+4. Compose 生命周期、`viewModelScope`、`LaunchedEffect` 仍是 UI 运行时边界，不包装进领域 effect。领域层不拥有 Compose 生命周期。
+5. 同步运行时生命周期隔离到 `Resource`/lease 风格模块；`SyncCoordinator` 依赖窄端口 `SyncStore` 与 `SyncClient`，不再需要完整仓库聚合。
+
 ## 后果
 
 - 优点：错误类型即接口文档；编译器强制穷尽处理；use case 可脱离 UI 独立测试（行为层测试面）；静默吞错路径消灭。
 - 代价：新增第三方依赖；所有命令调用点需处理 `Either`（ViewModel 模式统一）。
-- 后续演进：`addList` 空名校验仍留 VM，可再收敛入 use case；`Persistence.message` 可接入日志。
+- 后续演进：继续减少直接依赖兼容聚合接口的调用点；`Persistence.message` 可接入日志。
