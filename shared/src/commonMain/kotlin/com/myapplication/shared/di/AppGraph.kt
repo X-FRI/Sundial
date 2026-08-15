@@ -4,12 +4,13 @@ import app.cash.sqldelight.db.SqlDriver
 import com.myapplication.shared.data.TodoDb
 import com.myapplication.shared.data.TodoRepositoryImpl
 import com.myapplication.shared.data.sync.SyncEngine
-import com.myapplication.shared.domain.recurrence.CompleteRecurringTodoUseCase
 import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.sync.SyncConfig
 import com.myapplication.shared.domain.sync.SyncMode
 import com.myapplication.shared.domain.usecase.AddSubTaskUseCase
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
+import com.myapplication.shared.domain.usecase.ScheduleTodoUseCase
+import com.myapplication.shared.domain.usecase.ToggleTodoCompletionUseCase
 import com.myapplication.shared.ui.settings.SettingsViewModel
 import com.myapplication.shared.util.createDeviceId
 import kotlinx.coroutines.CoroutineScope
@@ -48,9 +49,8 @@ class AppGraph(
     val repository: TodoRepository by lazy { TodoRepositoryImpl(db, clock, timeZone, loadDeviceId(), dbDispatcher) }
     val addTodo: AddTodoUseCase by lazy { AddTodoUseCase(repository) }
     val addSubTask: AddSubTaskUseCase by lazy { AddSubTaskUseCase(repository) }
-    val completeRecurringTodo: CompleteRecurringTodoUseCase by lazy {
-        CompleteRecurringTodoUseCase(repository, timeZone)
-    }
+    val toggleTodoCompletion: ToggleTodoCompletionUseCase by lazy { ToggleTodoCompletionUseCase(repository) }
+    val scheduleTodo: ScheduleTodoUseCase by lazy { ScheduleTodoUseCase(repository, clock, timeZone) }
 
     // 引擎专属作用域：与 UI 作用域隔离，引擎内部错误互不影响
     private val engineScope = CoroutineScope(SupervisorJob())

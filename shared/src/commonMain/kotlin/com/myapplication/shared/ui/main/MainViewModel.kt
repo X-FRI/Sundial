@@ -7,12 +7,12 @@ import com.myapplication.shared.domain.list.DeleteListPolicy
 import com.myapplication.shared.domain.list.ListStats
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
-import com.myapplication.shared.domain.recurrence.CompleteRecurringTodoUseCase
 import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.usecase.AddTodoInput
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
+import com.myapplication.shared.domain.usecase.ScheduleTodoUseCase
+import com.myapplication.shared.domain.usecase.ToggleTodoCompletionUseCase
 import com.myapplication.shared.ui.effects.launchTodoEffect
-import com.myapplication.shared.util.todayDate
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,14 +22,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
-import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.plus
 import kotlinx.datetime.toInstant
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Clock
 
 /**
  * 全局路由状态机：决定当前显示哪个「页面」。
@@ -102,9 +97,9 @@ sealed interface LaunchTarget {
 class MainViewModel(
     private val repository: TodoRepository,
     private val addTodo: AddTodoUseCase,
+    private val toggleTodoCompletion: ToggleTodoCompletionUseCase,
+    private val scheduleTodo: ScheduleTodoUseCase,
     private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
-    private val completeRecurringTodo: CompleteRecurringTodoUseCase? = null,
-    private val clock: Clock = Clock.System,
 ) : ViewModel() {
     /** 当前列表范围（智能列表或自定义列表）。 */
     val scope = MutableStateFlow<Scope>(Scope.All)
@@ -261,11 +256,7 @@ class MainViewModel(
     }
 
     fun toggleCompleted(item: TodoItem) {
-        if (!item.isCompleted && item.recurrenceRule != null && completeRecurringTodo != null) {
-            launchTodoEffect(lastError) { completeRecurringTodo(item) }
-        } else {
-            launchTodoEffect(lastError) { repository.setCompleted(item.id, !item.isCompleted) }
-        }
+        launchTodoEffect(lastError) { toggleTodoCompletion(item) }
     }
 
     fun toggleFlag(item: TodoItem) {
@@ -277,11 +268,11 @@ class MainViewModel(
     }
 
     fun scheduleToday(item: TodoItem) {
-        scheduleOn(item, todayDate(clock, timeZone))
+        launchTodoEffect(lastError) { scheduleTodo.scheduleToday(item) }
     }
 
     fun scheduleTomorrow(item: TodoItem) {
-        scheduleOn(item, todayDate(clock, timeZone).plus(1, DateTimeUnit.DAY))
+        launchTodoEffect(lastError) { scheduleTodo.scheduleTomorrow(item) }
     }
 
     fun moveTodoToList(
@@ -334,19 +325,6 @@ class MainViewModel(
 
     fun deleteList(list: TodoList) {
         deleteList(list, DeleteListPolicy.MoveTasksToInbox)
-    }
-
-    private fun scheduleOn(
-        item: TodoItem,
-        date: kotlinx.datetime.LocalDate,
-    ) {
-        val time =
-            item.dueDate
-                ?.toLocalDateTime(timeZone)
-                ?.time
-                ?.takeIf { it.hour != 0 || it.minute != 0 }
-                ?: LocalTime(9, 0)
-        launchTodoEffect(lastError) { repository.setDueDate(item.id, LocalDateTime(date, time).toInstant(timeZone)) }
     }
 }
 

@@ -4,9 +4,10 @@ import com.myapplication.shared.domain.error.TodoError
 import com.myapplication.shared.domain.list.DeleteListPolicy
 import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
-import com.myapplication.shared.domain.recurrence.CompleteRecurringTodoUseCase
 import com.myapplication.shared.domain.recurrence.RecurrenceRule
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
+import com.myapplication.shared.domain.usecase.ScheduleTodoUseCase
+import com.myapplication.shared.domain.usecase.ToggleTodoCompletionUseCase
 import com.myapplication.shared.test.FakeTodoRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -64,14 +65,25 @@ class MainViewModelTest {
         backgroundScope.launch { vm.lists.collect {} }
     }
 
-    private fun vm(repo: FakeTodoRepository): MainViewModel = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+    private fun vm(
+        repo: FakeTodoRepository,
+        timeZone: TimeZone = TimeZone.currentSystemDefault(),
+        clock: kotlin.time.Clock = kotlin.time.Clock.System,
+    ): MainViewModel =
+        MainViewModel(
+            repo,
+            AddTodoUseCase(repo),
+            ToggleTodoCompletionUseCase(repo),
+            ScheduleTodoUseCase(repo, clock, timeZone),
+            timeZone,
+        )
 
     @Test
     fun createTodoWithDateAndNote() =
         runTest(dispatcher) {
             val repo = FakeTodoRepository()
             repo.ensureInbox()
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            val vm = vm(repo)
             collect(vm)
             val due = LocalDateTime(2026, 8, 12, 15, 0)
             vm.createTodo("交报告", "备注内容", due)
@@ -87,7 +99,7 @@ class MainViewModelTest {
         runTest(dispatcher) {
             val repo = FakeTodoRepository()
             repo.ensureInbox()
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            val vm = vm(repo)
             collect(vm)
             vm.createTodo("写周报", "", null, false, 7)
             advanceUntilIdle()
@@ -98,7 +110,7 @@ class MainViewModelTest {
     fun createTodoBlankShowsEmptyTitleError() =
         runTest(dispatcher) {
             val repo = FakeTodoRepository()
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            val vm = vm(repo)
             collect(vm)
             vm.createTodo("   ", "", null)
             advanceUntilIdle()
@@ -113,7 +125,7 @@ class MainViewModelTest {
             val repo = FakeTodoRepository()
             repo.ensureInbox()
             repo.failNextInsert = true
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            val vm = vm(repo)
             collect(vm)
             vm.createTodo("写不了", "", null)
             advanceUntilIdle()
@@ -125,7 +137,7 @@ class MainViewModelTest {
     fun dismissErrorClearsLastError() {
         // 纯同步状态操作，无需协程调度器
         val repo = FakeTodoRepository()
-        val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+        val vm = vm(repo)
         vm.lastError.value = TodoError.EmptyTitle
         vm.dismissError()
         assertNull(vm.lastError.value)
@@ -136,7 +148,7 @@ class MainViewModelTest {
         runTest(dispatcher) {
             val repo = FakeTodoRepository()
             repo.ensureInbox()
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            val vm = vm(repo)
             collect(vm)
             // 构造一个内存 item（id=5）触发切换，验证只转发 id + 目标值
             val item = TodoItem(5, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
@@ -151,13 +163,7 @@ class MainViewModelTest {
         runTest(dispatcher) {
             val repo = FakeTodoRepository()
             repo.ensureInbox()
-            val vm =
-                MainViewModel(
-                    repo,
-                    AddTodoUseCase(repo),
-                    TimeZone.UTC,
-                    CompleteRecurringTodoUseCase(repo, TimeZone.UTC),
-                )
+            val vm = vm(repo, TimeZone.UTC)
             collect(vm)
             repo.insertTodo(1, "站会", "", Instant.parse("2026-08-13T09:00:00Z"), null, false)
             val item = repo.todos.first().copy(recurrenceRule = RecurrenceRule.Daily())
@@ -178,13 +184,7 @@ class MainViewModelTest {
         runTest(dispatcher) {
             val repo = FakeTodoRepository()
             repo.ensureInbox()
-            val vm =
-                MainViewModel(
-                    repo,
-                    AddTodoUseCase(repo),
-                    TimeZone.UTC,
-                    CompleteRecurringTodoUseCase(repo, TimeZone.UTC),
-                )
+            val vm = vm(repo, TimeZone.UTC)
             collect(vm)
             val item =
                 TodoItem(
@@ -217,7 +217,7 @@ class MainViewModelTest {
         runTest(dispatcher) {
             val repo = FakeTodoRepository()
             repo.ensureInbox()
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            val vm = vm(repo)
             collect(vm)
             val item = TodoItem(6, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
             vm.toggleFlag(item)
@@ -234,7 +234,7 @@ class MainViewModelTest {
                 object : kotlin.time.Clock {
                     override fun now(): Instant = Instant.parse("2026-08-13T12:00:00Z")
                 }
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.UTC, clock = fixedClock)
+            val vm = vm(repo, TimeZone.UTC, fixedClock)
             collect(vm)
             val item = TodoItem(6, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
 
@@ -254,7 +254,7 @@ class MainViewModelTest {
                 object : kotlin.time.Clock {
                     override fun now(): Instant = Instant.parse("2026-08-13T12:00:00Z")
                 }
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.UTC, clock = fixedClock)
+            val vm = vm(repo, TimeZone.UTC, fixedClock)
             collect(vm)
             val item =
                 TodoItem(
@@ -285,7 +285,7 @@ class MainViewModelTest {
     fun moveTodoToListDelegatesWithoutOpeningDetail() =
         runTest(dispatcher) {
             val repo = FakeTodoRepository()
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.UTC)
+            val vm = vm(repo, TimeZone.UTC)
             collect(vm)
             val item = TodoItem(8, 1, "x", "", null, false, false, null, false, null, null, 0.0, Instant.fromEpochMilliseconds(0))
 
@@ -344,7 +344,7 @@ class MainViewModelTest {
         runTest(dispatcher) {
             val repo = FakeTodoRepository()
             repo.ensureInbox()
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            val vm = vm(repo)
             collect(vm)
             vm.selectScope(Scope.List(7))
             // 当前 scope 对应的列表被删 → scope 回退到 All，避免指向不存在的列表
@@ -359,7 +359,7 @@ class MainViewModelTest {
             val repo = FakeTodoRepository()
             repo.ensureInbox()
             repo.addList("项目", "blue")
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            val vm = vm(repo)
             collect(vm)
             val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
 
@@ -375,7 +375,7 @@ class MainViewModelTest {
             val repo = FakeTodoRepository()
             repo.ensureInbox()
             repo.addList("项目", "blue")
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            val vm = vm(repo)
             collect(vm)
             val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
 
@@ -392,7 +392,7 @@ class MainViewModelTest {
             val repo = FakeTodoRepository()
             repo.ensureInbox()
             repo.addList("项目", "blue")
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            val vm = vm(repo)
             collect(vm)
             val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
 
@@ -408,7 +408,7 @@ class MainViewModelTest {
             val repo = FakeTodoRepository()
             repo.ensureInbox()
             repo.addList("项目", "blue")
-            val vm = MainViewModel(repo, AddTodoUseCase(repo), TimeZone.currentSystemDefault())
+            val vm = vm(repo)
             collect(vm)
             val beforeLists = repo.listsState.value
             val list = TodoList(2, "项目", "blue", 1, Instant.fromEpochMilliseconds(0))
