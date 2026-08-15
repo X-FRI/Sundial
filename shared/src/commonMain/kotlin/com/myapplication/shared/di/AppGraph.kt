@@ -9,6 +9,7 @@ import com.myapplication.shared.domain.sync.SyncConfig
 import com.myapplication.shared.domain.sync.SyncMode
 import com.myapplication.shared.domain.usecase.AddSubTaskUseCase
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
+import com.myapplication.shared.domain.usecase.SaveListUseCase
 import com.myapplication.shared.domain.usecase.ScheduleTodoUseCase
 import com.myapplication.shared.domain.usecase.ToggleTodoCompletionUseCase
 import com.myapplication.shared.ui.settings.SettingsViewModel
@@ -49,6 +50,7 @@ class AppGraph(
     val repository: TodoRepository by lazy { TodoRepositoryImpl(db, clock, timeZone, loadDeviceId(), dbDispatcher) }
     val addTodo: AddTodoUseCase by lazy { AddTodoUseCase(repository) }
     val addSubTask: AddSubTaskUseCase by lazy { AddSubTaskUseCase(repository) }
+    val saveList: SaveListUseCase by lazy { SaveListUseCase(repository) }
     val toggleTodoCompletion: ToggleTodoCompletionUseCase by lazy { ToggleTodoCompletionUseCase(repository) }
     val scheduleTodo: ScheduleTodoUseCase by lazy { ScheduleTodoUseCase(repository, clock, timeZone) }
 

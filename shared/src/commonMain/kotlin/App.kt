@@ -76,7 +76,7 @@ fun AppRoot(
 ) {
     val mainVm: MainViewModel =
         viewModel {
-            MainViewModel(graph.repository, graph.addTodo, graph.toggleTodoCompletion, graph.scheduleTodo, graph.timeZone)
+            MainViewModel(graph.repository, graph.addTodo, graph.saveList, graph.toggleTodoCompletion, graph.scheduleTodo, graph.timeZone)
         }
     LaunchedEffect(launchEffectKey(launchTarget, launchNonce)) {
         when (launchTarget) {

@@ -10,6 +10,7 @@ import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.repository.TodoRepository
 import com.myapplication.shared.domain.usecase.AddTodoInput
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
+import com.myapplication.shared.domain.usecase.SaveListUseCase
 import com.myapplication.shared.domain.usecase.ScheduleTodoUseCase
 import com.myapplication.shared.domain.usecase.ToggleTodoCompletionUseCase
 import com.myapplication.shared.ui.effects.launchTodoEffect
@@ -97,6 +98,7 @@ sealed interface LaunchTarget {
 class MainViewModel(
     private val repository: TodoRepository,
     private val addTodo: AddTodoUseCase,
+    private val saveList: SaveListUseCase,
     private val toggleTodoCompletion: ToggleTodoCompletionUseCase,
     private val scheduleTodo: ScheduleTodoUseCase,
     private val timeZone: TimeZone = TimeZone.currentSystemDefault(),
@@ -290,25 +292,21 @@ class MainViewModel(
         launchTodoEffect(lastError) { repository.deleteForever(item.id) }
     }
 
-    /** 新建自定义列表；空名称直接忽略。 */
+    /** 新建自定义列表；同步校验在 usecase 内，失败统一进 [lastError]。 */
     fun addList(
         name: String,
         colorKey: String,
     ) {
-        val trimmed = name.trim()
-        if (trimmed.isEmpty()) return
-        launchTodoEffect(lastError) { repository.addList(trimmed, colorKey) }
+        launchTodoEffect(lastError) { saveList.add(name, colorKey) }
     }
 
-    /** 更新自定义列表；空名称直接忽略。 */
+    /** 更新自定义列表；同步校验在 usecase 内，失败统一进 [lastError]。 */
     fun updateList(
         list: TodoList,
         name: String,
         colorKey: String,
     ) {
-        val trimmed = name.trim()
-        if (trimmed.isEmpty()) return
-        launchTodoEffect(lastError) { repository.updateList(list.id, trimmed, colorKey) }
+        launchTodoEffect(lastError) { saveList.update(list.id, name, colorKey) }
     }
 
     /**

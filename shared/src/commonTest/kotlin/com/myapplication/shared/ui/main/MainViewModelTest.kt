@@ -6,6 +6,7 @@ import com.myapplication.shared.domain.model.TodoItem
 import com.myapplication.shared.domain.model.TodoList
 import com.myapplication.shared.domain.recurrence.RecurrenceRule
 import com.myapplication.shared.domain.usecase.AddTodoUseCase
+import com.myapplication.shared.domain.usecase.SaveListUseCase
 import com.myapplication.shared.domain.usecase.ScheduleTodoUseCase
 import com.myapplication.shared.domain.usecase.ToggleTodoCompletionUseCase
 import com.myapplication.shared.test.FakeTodoRepository
@@ -73,6 +74,7 @@ class MainViewModelTest {
         MainViewModel(
             repo,
             AddTodoUseCase(repo),
+            SaveListUseCase(repo),
             ToggleTodoCompletionUseCase(repo),
             ScheduleTodoUseCase(repo, clock, timeZone),
             timeZone,
@@ -403,7 +405,7 @@ class MainViewModelTest {
         }
 
     @Test
-    fun blankListNamesDoNotWrite() =
+    fun blankListNamesSurfaceEmptyTitleAndDoNotWrite() =
         runTest(dispatcher) {
             val repo = FakeTodoRepository()
             repo.ensureInbox()
@@ -418,6 +420,7 @@ class MainViewModelTest {
             advanceUntilIdle()
 
             assertEquals(beforeLists, repo.listsState.value)
+            assertEquals(TodoError.EmptyTitle, vm.lastError.value)
             assertNull(repo.lastUpdatedListName)
         }
 
