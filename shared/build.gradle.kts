@@ -71,7 +71,7 @@ kotlin {
                 implementation(compose.desktop.common)
                 implementation("app.cash.sqldelight:sqlite-driver:$sqlDelightVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.2")
-                implementation("io.ktor:ktor-client-cio:$ktorVersion")
+                implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
             }
         }
         val iosMain by creating {
